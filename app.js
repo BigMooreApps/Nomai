@@ -3971,7 +3971,10 @@ function parseExcelFile(arrayBuffer, fileName) {
         }
         
         const cc = kCC && row[kCC] ? row[kCC].toString().trim() : "";
-        const dcc = kDCC && row[kDCC] ? row[kDCC].toString().trim() : "";
+        let dcc = kDCC && row[kDCC] ? row[kDCC].toString().trim() : "";
+        if (cc && !dcc) {
+            dcc = cc;
+        }
         const cg = kCg && row[kCg] ? row[kCg].toString().trim().toUpperCase() : "";
         const pa = kPa && row[kPa] ? parseInt(row[kPa]) : null;
         
