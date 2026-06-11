@@ -156,6 +156,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Inicializa los clicks en el Sidebar y el boton toggle
 function initSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    
+    // Prevenir duplicidad de listeners si se vuelve a llamar esta función
+    if (sidebar.dataset.listenerBound) return;
+    sidebar.dataset.listenerBound = 'true';
+
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    const closeMobileSidebar = () => {
+        sidebar.classList.remove('mobile-open');
+        if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+    };
+
+    const openMobileSidebar = () => {
+        sidebar.classList.add('mobile-open');
+        if (sidebarOverlay) sidebarOverlay.classList.add('active');
+    };
+
     // Escuchar clicks en los enlaces del sidebar que tengan data-tab (navegación real)
     const navLinks = document.querySelectorAll('.nav-link[data-tab]');
     navLinks.forEach(link => {
@@ -165,16 +185,15 @@ function initSidebar() {
             if (tabId) {
                 switchTab(tabId);
             }
+            closeMobileSidebar();
         });
     });
     
     // Toggle del Sidebar colapsable
-    const sidebar = document.getElementById('sidebar');
     const toggleBtn = document.getElementById('sidebar-toggle');
     const toggleBtnBottom = document.getElementById('sidebar-toggle-bottom');
     
     const handleToggle = () => {
-        if (!sidebar) return;
         sidebar.classList.toggle('collapsed');
         
         // Al colapsar el sidebar, cerramos todos los dropdowns abiertos para limpieza visual
@@ -204,9 +223,22 @@ function initSidebar() {
         }
     };
 
-    if (sidebar) {
-        if (toggleBtn) toggleBtn.addEventListener('click', handleToggle);
-        if (toggleBtnBottom) toggleBtnBottom.addEventListener('click', handleToggle);
+    if (toggleBtn) toggleBtn.addEventListener('click', handleToggle);
+    if (toggleBtnBottom) toggleBtnBottom.addEventListener('click', handleToggle);
+
+    // Eventos móviles para abrir/cerrar sidebar
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openMobileSidebar();
+        });
+    }
+
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
+            closeMobileSidebar();
+        });
     }
 
     // Manejo de Dropdowns de categorías (Acordeón)

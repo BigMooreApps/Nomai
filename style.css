@@ -1516,3 +1516,314 @@ table .status-badge,
 table * {
     font-weight: normal !important;
 }
+
+/* ============================================================
+   ESTILOS RESPONSIVOS MÓVILES (NomAI Premium Responsive)
+   ============================================================ */
+
+/* Botón hamburguesa oculto por defecto en escritorio */
+.hamburger-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(108, 0, 211, 0.06);
+    border: 1px solid rgba(108, 0, 211, 0.12);
+    color: var(--primary);
+    cursor: pointer;
+    transition: all var(--t-fast);
+    outline: none;
+}
+.hamburger-menu-btn:hover {
+    background: var(--primary);
+    color: #FFFFFF;
+    border-color: transparent;
+}
+.hamburger-menu-btn svg, .hamburger-menu-btn i {
+    width: 20px;
+    height: 20px;
+}
+
+/* Overlay del Sidebar en móvil */
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 12, 30, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--t-normal);
+}
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ──────────────────────────────
+   MEDIA QUERY: TABLETS Y MÓVILES (<= 768px)
+   ────────────────────────────── */
+@media (max-width: 768px) {
+    /* Contenedor principal */
+    .app-container {
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Sidebar off-canvas */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: -240px;
+        width: 240px;
+        z-index: 10000;
+        box-shadow: 5px 0 25px rgba(15, 12, 30, 0.15);
+        transition: transform var(--t-sidebar);
+        padding: 20px 0;
+    }
+    .sidebar.mobile-open {
+        transform: translateX(240px);
+    }
+    .sidebar.collapsed {
+        width: 240px; /* En móvil no usamos modo colapsado pequeño */
+    }
+    
+    /* Ocultar botones de colapso en móvil */
+    .sidebar-toggle,
+    .sidebar-toggle-bottom {
+        display: none !important;
+    }
+
+    /* Mostrar texto de logo y enlaces siempre en menú móvil */
+    .sidebar.collapsed .logo-text,
+    .sidebar.collapsed .nav-link span,
+    .sidebar.collapsed .dropdown-chevron {
+        opacity: 1 !important;
+        width: auto !important;
+        overflow: visible !important;
+        display: inline-block !important;
+    }
+    .sidebar.collapsed .dropdown-chevron {
+        display: block !important;
+    }
+
+    /* Encabezado compacto */
+    .header {
+        height: 56px;
+        padding: 0 16px;
+        gap: 12px;
+        justify-content: space-between;
+    }
+    .hamburger-menu-btn {
+        display: inline-flex;
+    }
+    
+    /* Ocultar textos del perfil de usuario, dejar solo avatar */
+    .header-profile {
+        padding: 2px;
+        margin-left: 2px;
+    }
+    .header-profile .profile-info {
+        display: none !important;
+    }
+    .header-right-controls {
+        gap: 4px;
+    }
+
+    /* Barra de filtros deslizable horizontalmente (Evita apilamiento vertical) */
+    .filter-toolbar {
+        padding: 8px 16px;
+        overflow: visible;
+        background: rgba(255, 255, 255, 0.85);
+    }
+    .filter-toolbar-inner {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        gap: 8px !important;
+        padding-bottom: 4px;
+        scrollbar-width: none; /* Firefox */
+        width: 100%;
+        align-items: center;
+    }
+    .filter-toolbar-inner::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+    
+    .filter-group {
+        flex-shrink: 0 !important; /* Evita que se encojan los dropdowns */
+    }
+    .filter-divider {
+        display: none !important; /* Ahorra espacio */
+    }
+
+    /* Panel de contenido general */
+    .content-area {
+        padding: 16px;
+    }
+    .page-header {
+        margin-bottom: 16px;
+    }
+    .page-title {
+        font-size: 1.35rem;
+    }
+    .page-subtitle {
+        font-size: 0.8rem;
+    }
+
+    /* KPIs adaptables */
+    .kpi-grid {
+        gap: 10px;
+    }
+    .kpi-card {
+        padding: 14px 16px;
+        border-radius: 12px;
+    }
+    .kpi-value {
+        font-size: 1.4rem;
+        letter-spacing: -0.4px;
+    }
+
+    /* Gráficos responsivos */
+    .chart-container {
+        min-height: 210px !important;
+        height: 210px !important;
+    }
+    .chart-card {
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    /* Tablas adaptables */
+    .table-card {
+        padding: 16px;
+        border-radius: 14px;
+    }
+    .custom-table th, 
+    .custom-table td {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+}
+
+/* ──────────────────────────────
+   MEDIA QUERY: SMARTPHONES PEQUEÑOS (<= 480px)
+   ────────────────────────────── */
+@media (max-width: 480px) {
+    /* Forzar KPIs a 2 columnas */
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px;
+    }
+    .kpi-card {
+        padding: 10px 12px;
+    }
+    .kpi-value {
+        font-size: 1.15rem;
+        margin-bottom: 2px;
+    }
+    .kpi-title {
+        font-size: 0.62rem;
+        letter-spacing: 0.2px;
+    }
+    .kpi-subtitle {
+        font-size: 0.68rem;
+        line-height: 1.1;
+    }
+    .kpi-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+    }
+    .kpi-icon svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    /* Ajustar títulos y controles del panel superior */
+    .grid-controls {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+    .grid-controls > div[style*="margin-left: auto;"] {
+        margin-left: 0 !important;
+        text-align: left !important;
+    }
+    .grid-controls h3, 
+    .grid-controls div {
+        text-align: left !important;
+    }
+
+    /* Ajustes específicos de tablas comparativas en celulares */
+    .compare-table th:nth-child(3), 
+    .compare-table td:nth-child(3), /* Ocultar columna Naturaleza en móvil extremo */
+    .compare-table th:nth-child(8),
+    .compare-table td:nth-child(8) { /* Ocultar columna % en móvil extremo */
+        display: none !important;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ──────────────────────────────
+   DISEÑO BOTTOM SHEET PARA MODALES EN MÓVIL
+   ────────────────────────────── */
+@media (max-width: 576px) {
+    .modal-overlay {
+        align-items: flex-end; /* Alinear abajo */
+    }
+    .modal-content.glass-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 85vh !important;
+        border-radius: 24px 24px 0 0 !important;
+        transform: translateY(100%) scale(1) !important;
+        margin-bottom: 0;
+        transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-bottom: none;
+    }
+    .modal-overlay.show .modal-content.glass-panel {
+        transform: translateY(0) scale(1) !important;
+    }
+    
+    /* Añadir tirador o grab handle estilo nativo superior */
+    .modal-content.glass-panel::before {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 2px;
+        margin: 10px auto 2px auto;
+        flex-shrink: 0;
+    }
+
+    /* Ajustar paddings de modales */
+    .modal-header {
+        padding: 10px 20px 14px 20px;
+    }
+    .modal-body {
+        padding: 10px 20px;
+    }
+    .modal-footer {
+        padding: 16px 20px 20px 20px;
+    }
+}
+
