@@ -3341,95 +3341,17 @@ function handleExcelFile(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
+            const arrayBuffer = e.target.result;
+            const mappedData = parseExcelFile(arrayBuffer, file.name);
+            const consolidated = aggregateRecords(mappedData);
             
-            // Obtener primera pestaña
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            
-            // Parsear como JSON (cabeceras en primera fila)
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
-            
-            if (jsonData.length === 0) {
-                alert('El archivo de Excel parece estar vacío.');
-                return;
-            }
-            
-            // Validar cabeceras requeridas
-            // CEDULA | APELLIDOS | NOMBRES | CONCEPTO | TOTAL 2 | MES | AÑO | TIPO | NATURALEZA
-            const firstRow = jsonData[0];
-            const keys = Object.keys(firstRow);
-            
-            const requiredHeaders = ['CEDULA', 'CONCEPTO', 'TOTAL 2', 'MES', 'AÑO', 'TIPO', 'NATURALEZA'];
-            const missing = requiredHeaders.filter(h => !keys.some(k => k.toUpperCase().trim() === h));
-            
-            if (missing.length > 0) {
-                alert(`Cabeceras inválidas. Falta: ${missing.join(', ')}.\nRevisa el formato original.`);
-                return;
-            }
-            
-            // Encontrar la clave exacta que corresponde a cada columna (sin importar acentos o espacios extras)
-            const getColKey = (stdName) => {
-                return keys.find(k => k.toUpperCase().trim() === stdName) || stdName;
-            };
-            
-            const kCed = getColKey('CEDULA');
-            const kApe = getColKey('APELLIDOS');
-            const kNom = getColKey('NOMBRES');
-            const kCon = getColKey('CONCEPTO');
-            const kTot = getColKey('TOTAL 2');
-            const kMes = getColKey('MES');
-            const kAnio = getColKey('AÑO');
-            const kTip = getColKey('TIPO');
-            const kNat = getColKey('NATURALEZA');
-            
-            // Mapear a nuestra estructura
-            const mappedData = [];
-            
-            jsonData.forEach((row, idx) => {
-                const cedula = row[kCed];
-                if (cedula === null || cedula === undefined || cedula.toString().trim() === "") {
-                    return; // saltar vacios
-                }
-                
-                const apellidos = row[kApe] ? row[kApe].toString().trim() : "";
-                const nombres = row[kNom] ? row[kNom].toString().trim() : "";
-                const fullName = `${apellidos} ${nombres}`.trim().replace(/\s+/g, ' ');
-                
-                // Limpieza del total
-                let valNum = 0.0;
-                const rawVal = row[kTot];
-                if (rawVal !== null && rawVal !== undefined) {
-                    if (typeof rawVal === 'number') {
-                        valNum = rawVal;
-                    } else {
-                        // Limpieza de string en caso de formato manual
-                        const cleaned = rawVal.toString().replace(/[^\d.-]/g, '');
-                        valNum = parseFloat(cleaned) || 0.0;
-                    }
-                }
-                
-                const mappedRow = {
-                    c: cedula.toString().trim(),
-                    n: fullName,
-                    co: row[kCon] ? row[kCon].toString().trim() : "N/A",
-                    v: valNum,
-                    m: row[kMes] ? row[kMes].toString().trim() : "N/A",
-                    a: row[kAnio] ? parseInt(row[kAnio]) : 0,
-                    t: row[kTip] ? row[kTip].toString().trim() : "N/A",
-                    na: row[kNat] ? row[kNat].toString().trim() : "N/A"
-                };
-                mappedData.push(mappedRow);
-            });
-            
-            if (mappedData.length === 0) {
+            if (consolidated.length === 0) {
                 alert('No se encontraron registros de pagos válidos.');
                 return;
             }
             
             // Cargar en el estado global
-            state.data = mappedData.filter(d => d.na !== 'BENEFICIO');
+            state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
             
             // Inicializar caché de valores únicos con nuevos datos
             initUniqueValuesCache();
@@ -3441,13 +3363,17 @@ function handleExcelFile(file) {
             state.selectedEmployeeCedula = '';
             state.selectedConceptName = '';
             state.compareEmployees = [];
+            state.comparePeriods = [];
+            state.compareConcepts = [];
+            state.compareCecos = [];
+            state.compareCargos = [];
             
             processData();
             
             // Mostrar confirmación
             if (fileInfo) {
                 fileInfo.style.display = 'inline-flex';
-                document.getElementById('file-info-text').innerText = `¡Cargados con éxito ${mappedData.length} registros del archivo: ${file.name}!`;
+                document.getElementById('file-info-text').innerText = `¡Cargados con éxito ${consolidated.length} registros del archivo: ${file.name}!`;
             }
             
             // Llenar selectores de periodos con nuevos datos
@@ -3462,7 +3388,7 @@ function handleExcelFile(file) {
             }, 1500);
             
         } catch (error) {
-            console.error(error);
+            console.error('Error procesando archivo:', error);
             alert(`Error al procesar el archivo Excel: ${error.message}`);
         }
     };
@@ -3888,26 +3814,45 @@ function parseExcelFile(arrayBuffer, fileName) {
     const keys = Object.keys(firstRow);
     
     const getColKey = (stdNames) => {
+        const cleanStr = (str) => {
+            if (!str) return '';
+            return str.toUpperCase()
+                      .normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, "")
+                      .replace(/\s+/g, ' ')
+                      .trim();
+        };
+
+        const cleanStdNames = stdNames.map(cleanStr);
+        
+        // 1. Coincidencia exacta primero (sin acentos, espacios normalizados)
+        let found = keys.find(k => {
+            const cleanK = cleanStr(k);
+            return cleanStdNames.some(name => cleanK === name);
+        });
+        if (found) return found;
+        
+        // 2. Coincidencia parcial (inclusión)
         return keys.find(k => {
-            const cleanK = k.toUpperCase().replace(/\s+/g, ' ').trim();
-            return stdNames.some(name => cleanK.includes(name));
+            const cleanK = cleanStr(k);
+            return cleanStdNames.some(name => cleanK.includes(name));
         });
     };
     
-    const kCed = getColKey(['CEDULA', 'IDENTIFICAC', 'DOCUMENTO', 'N PERS.']);
-    const kApe = getColKey(['APELLIDOS']);
-    const kNom = getColKey(['NOMBRES']);
-    const kFullName = getColKey(['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE']);
-    const kCon = getColKey(['NOMBRE CONCEPTO', 'CONCEPTO']);
-    const kTot = getColKey(['VALOR', 'TOTAL', 'IMPORTE']);
+    const kCed = getColKey(['CEDULA', 'IDENTIFICACION', 'IDENTIFICAC', 'DOCUMENTO', 'N PERS', 'ID']);
+    const kApe = getColKey(['APELLIDOS', 'APELLIDO']);
+    const kNom = getColKey(['NOMBRES', 'NOMBRE']);
+    const kFullName = getColKey(['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE COMPLETO', 'NOMBRE Y APELLIDO', 'NOMBRE Y APELLIDOS']);
+    const kCon = getColKey(['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO']);
+    const kTot = getColKey(['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE']);
     const kMes = getColKey(['MES ACUMULADO', 'MES']);
     const kAnio = getColKey(['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA']);
-    const kTip = getColKey(['TIPO DE NÓMINA', 'TIPO DE NOMINA', 'TIPO']);
+    const kTip = getColKey(['TIPO DE NOMINA', 'TIPO DE NÓMINA', 'TIPO']);
     const kNat = getColKey(['NATURALEZA']);
-    const kCC = getColKey(['CENTRO DE COSTO', 'COD CECO', 'CECO']);
-    const kDCC = getColKey(['DESCRIPCIÓN CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO']);
+    const kCC = getColKey(['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO']);
+    const kDCC = getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
     const kCg = getColKey(['NOMBRE CARGO', 'CARGO']);
-    const kPa = getColKey(['PERÍODO ACUMULA', 'PERIODO ACUMULA', 'PERIODO']);
+    const kPa = getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
     
     if (!kCed || !kCon || !kTot) {
         throw new Error('No se encontraron las columnas mínimas requeridas (Cédula, Concepto y Valor).');
