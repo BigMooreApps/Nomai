@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Nómina e Ingresos Netos</title>
+    <!-- CSS Estilos Personalizados -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <span class="logo-letter">N</span>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-text-inner">NomAI</span>
+                    <span class="logo-text-sub">Payroll Analytics</span>
+                </div>
+            </div>
+            
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-tab="overview">
+                            <i data-lucide="layout-dashboard"></i>
+                            <span>Resumen General</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="comparison">
+                            <i data-lucide="bar-chart-horizontal"></i>
+                            <span>Comparativas</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle">
+                            <i data-lucide="user"></i>
+                            <span>Análisis Individual</span>
+                            <i data-lucide="chevron-down" class="dropdown-chevron"></i>
+                        </a>
+                        <ul class="dropdown-menu-list">
+                            <li class="nav-sub-item">
+                                <a class="nav-link" data-tab="employee">
+                                    <i data-lucide="user-search"></i>
+                                    <span>Por Personas</span>
+                                </a>
+                            </li>
+                            <li class="nav-sub-item">
+                                <a class="nav-link" data-tab="concept">
+                                    <i data-lucide="file-search"></i>
+                                    <span>Por Conceptos</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle">
+                            <i data-lucide="users"></i>
+                            <span>Análisis Masivo</span>
+                            <i data-lucide="chevron-down" class="dropdown-chevron"></i>
+                        </a>
+                        <ul class="dropdown-menu-list">
+                            <li class="nav-sub-item">
+                                <a class="nav-link" data-tab="period-compare">
+                                    <i data-lucide="users"></i>
+                                    <span>Por Personas</span>
+                                </a>
+                            </li>
+                            <li class="nav-sub-item">
+                                <a class="nav-link" data-tab="concept-compare">
+                                    <i data-lucide="layers"></i>
+                                    <span>Por Conceptos</span>
+                                </a>
+                            </li>
+                            <li class="nav-sub-item">
+                                <a class="nav-link" data-tab="ceco-compare">
+                                    <i data-lucide="building-2"></i>
+                                    <span>Por Centro de Costo</span>
+                                </a>
+                            </li>
+                            <li class="nav-sub-item">
+                                <a class="nav-link" data-tab="cargo-compare">
+                                    <i data-lucide="briefcase"></i>
+                                    <span>Por Cargos</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <li class="nav-item" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+                        <a class="nav-link" data-tab="importer">
+                            <i data-lucide="upload-cloud"></i>
+                            <span>Importar Excel</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+
+
+            <div class="sidebar-toggle-bottom" id="sidebar-toggle-bottom">
+                <i data-lucide="chevron-left"></i>
+            </div>
+        </aside>
+
+        <main class="main-panel">
+            <!-- Header superior (Estilo de la imagen) -->
+            <header class="header">
+                <!-- Search bar removed -->
+                
+                <div class="header-right-controls">
+                    <button class="header-control-btn notification-btn" aria-label="Notificaciones">
+                        <i data-lucide="bell"></i>
+                        <span class="notification-badge"></span>
+                    </button>
+                    <button class="header-control-btn" aria-label="Configuración">
+                        <i data-lucide="settings"></i>
+                    </button>
+                    <div class="header-profile">
+                        <div class="profile-avatar">
+                            <span class="avatar-letter">AV</span>
+                        </div>
+                        <div class="profile-info">
+                            <span class="profile-name">Adriana V.</span>
+                            <span class="profile-role">HR Director</span>
+                        </div>
+                    </div>
+                    <button class="header-control-btn" aria-label="Menú">
+                        <i data-lucide="menu"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div id="global-filter-toolbar" class="filter-toolbar">
+                <div class="filter-toolbar-inner" style="display: flex; width: 100%; gap: 16px; align-items: center; flex-wrap: wrap;">
+                    
+                    <!-- Date Filters Group (Años, Meses, Quincenas) -->
+                    <div id="date-filters-group" class="filter-group" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                        <!-- Años Filter -->
+                        <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
+                            <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="calendar"></i> Años:</span>
+                            <button class="filter-lupa-btn" id="btn-open-filter-years" title="Buscar Años" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+
+                        <div class="filter-divider"></div>
+
+                        <!-- Meses Filter -->
+                        <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
+                            <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="calendar-days"></i> Meses:</span>
+                            <button class="filter-lupa-btn" id="btn-open-filter-months" title="Buscar Meses" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+
+                        <div class="filter-divider"></div>
+
+                        <!-- Quincenas Filter -->
+                        <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
+                            <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="calendar-range"></i> Quincenas:</span>
+                            <button class="filter-lupa-btn" id="btn-open-filter-quincenas" title="Buscar Quincenas" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="filter-divider" id="filter-divider-1"></div>
+
+                    <!-- Tipo Filter -->
+                    <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
+                        <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="tag"></i> Tipo:</span>
+                        <button class="filter-lupa-btn" id="btn-open-filter-types" title="Buscar Tipos de Nómina" type="button">
+                            <i data-lucide="search"></i>
+                        </button>
+                    </div>
+                    
+                    <button id="btn-clear-filters" class="btn btn-secondary" style="margin-left: auto; padding: 6px 12px; font-size: 0.8rem; height: 32px; flex-shrink: 0;" title="Limpiar Filtros">
+                        <i data-lucide="filter-x" style="width: 14px; height: 14px;"></i>
+                        <span>Limpiar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Zona de Contenido Dinámico -->
+            <section class="content-area">
+                
+                <!-- PESTAÑA 1: RESUMEN GENERAL -->
+                <div id="tab-overview" class="tab-content active">
+                    <!-- Fila de Tarjetas KPI -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card kpi-blue">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Neto Pagado</span>
+                                <div class="kpi-icon"><i data-lucide="dollar-sign"></i></div>
+                            </div>
+                            <div id="overview-total-neto" class="kpi-value">$ 0</div>
+                            <div id="overview-total-neto-sub" class="kpi-subtitle">Devengos y descuentos aplicados</div>
+                        </div>
+                        <div class="kpi-card kpi-emerald">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Colaboradores</span>
+                                <div class="kpi-icon"><i data-lucide="users"></i></div>
+                            </div>
+                            <div id="overview-total-empleados" class="kpi-value">0</div>
+                            <div class="kpi-subtitle">Personas con transacciones registradas</div>
+                        </div>
+                        <div class="kpi-card kpi-warning">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Conceptos</span>
+                                <div class="kpi-icon"><i data-lucide="layers"></i></div>
+                            </div>
+                            <div id="overview-total-conceptos" class="kpi-value">0</div>
+                            <div class="kpi-subtitle">Ingresos y deducciones</div>
+                        </div>
+                        <div class="kpi-card kpi-info">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Promedio Neto por Persona</span>
+                                <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
+                            </div>
+                            <div id="overview-promedio-salario" class="kpi-value">$ 0</div>
+                            <div id="overview-total-beneficios-sub" class="kpi-subtitle">En el periodo seleccionado</div>
+                        </div>
+                    </div>
+
+                    <!-- Fila de Gráficos -->
+                    <div class="chart-grid">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Tendencia de Pagos Mensual</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="overview-trend-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Distribución por Naturaleza</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="overview-nature-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEGUNDA FILA: CECOS Y CARGOS -->
+                    <div class="overview-charts" style="margin-top: 24px;">
+                        <!-- Gráfico Top 10 Centro de Costo -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Top 10 · Centros de Costo</h3>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Por Neto Pagado</span>
+                            </div>
+                            <div class="chart-container" style="min-height: 380px;">
+                                <canvas id="cecoChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico Top 10 Cargos -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Top 10 · Cargos</h3>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Por Neto Pagado</span>
+                            </div>
+                            <div class="chart-container" style="min-height: 380px;">
+                                <canvas id="cargoChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resumen Consolidado -->
+                    <div class="table-card" style="margin-top: 24px; max-width: 1000px; margin-left: auto; margin-right: auto;">
+                        <div class="table-header">
+                            <h3 class="table-title">Resumen Mensual Consolidado</h3>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 28%;">Mes / Año</th>
+                                        <th style="text-align: right; width: 24%;">Ingresos (Devengos)</th>
+                                        <th style="text-align: right; width: 24%;">Deducciones (Descuentos)</th>
+                                        <th style="text-align: right; width: 24%;">Neto Recibido</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overview-monthly-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 2: ANÁLISIS POR PERSONA -->
+                <div id="tab-employee" class="tab-content">
+                    <div class="grid-controls">
+                        <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary);">Seleccionar Colaborador:</div>
+                        <!-- Selector Autocomplete -->
+                        <div class="searchable-select">
+                            <input type="text" id="employee-search-input" class="search-input" placeholder="Buscar por nombre o cédula...">
+                            <div id="employee-dropdown-list" class="dropdown-list">
+                                <!-- Elementos dinámicos -->
+                            </div>
+                        </div>
+                        <div style="margin-left: auto;">
+                            <h3 id="employee-title-name" style="text-align: right; font-weight: 600;">-</h3>
+                            <div id="employee-title-id" style="font-size: 0.85rem; color: var(--text-muted); text-align: right;">Cédula: -</div>
+                        </div>
+                    </div>
+
+                    <!-- KPIs del Empleado -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card kpi-blue">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Salario Neto Pagado</span>
+                                <div class="kpi-icon"><i data-lucide="credit-card"></i></div>
+                            </div>
+                            <div id="emp-kpi-neto" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Ingresos netos transferidos</div>
+                        </div>
+                        <div class="kpi-card kpi-emerald">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Ingresos Totales (Devengos)</span>
+                                <div class="kpi-icon"><i data-lucide="plus-circle"></i></div>
+                            </div>
+                            <div id="emp-kpi-devengos" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Total devengado bruto</div>
+                        </div>
+                        <div class="kpi-card kpi-danger">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Deducciones Totales</span>
+                                <div class="kpi-icon"><i data-lucide="minus-circle"></i></div>
+                            </div>
+                            <div id="emp-kpi-descuentos" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Total retenido / descontado</div>
+                        </div>
+                        <div class="kpi-card kpi-info">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Sueldo Básico Actual</span>
+                                <div class="kpi-icon"><i data-lucide="award"></i></div>
+                            </div>
+                            <div id="emp-kpi-basico" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Última asignación básica mensual</div>
+                        </div>
+                    </div>
+
+                    <!-- Fila de Gráficos -->
+                    <div class="chart-grid">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Evolución Salarial Mensual</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="employee-history-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Distribución de Conceptos</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="employee-distribution-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fila de Endeudamiento y Detalle de Transacciones (Una sola fila) -->
+                    <div class="overview-charts" style="margin-top: 24px; align-items: stretch; grid-template-columns: 1.1fr 0.9fr;">
+                        <!-- Gráfico de Endeudamiento -->
+                        <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+                            <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <h3 class="chart-card-title">Capacidad de Endeudamiento por Periodo</h3>
+                                <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">Fórmula: Descuentos / Ingresos</span>
+                            </div>
+                            <div class="chart-container" style="flex-grow: 1; min-height: 320px; height: 100%;">
+                                <canvas id="employee-debt-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Detalle -->
+                        <div class="table-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+                            <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                                <h3 class="table-title">Detalle de Transacciones de Pago</h3>
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Periodo:</span>
+                                        <div class="select-wrapper" style="width: 170px;">
+                                            <select id="employee-detail-filter-period" class="custom-select" style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
+                                                <option value="ALL">Todos los Periodos</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Concepto:</span>
+                                        <div class="select-wrapper" style="width: 210px;">
+                                            <select id="employee-detail-filter-concept" class="custom-select" style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
+                                                <option value="ALL">Todos los Conceptos</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table-wrapper" style="flex-grow: 1; max-height: 320px; overflow-y: auto;">
+                                <table class="custom-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 25%;">Periodo</th>
+                                            <th style="width: 35%;">Concepto</th>
+                                            <th style="text-align: right; width: 20%;">Ingresos</th>
+                                            <th style="text-align: right; width: 20%;">Descuentos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="employee-details-tbody">
+                                        <!-- Dinámico por JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 3: ANÁLISIS POR CONCEPTO -->
+                <div id="tab-concept" class="tab-content">
+                    <div class="grid-controls">
+                        <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary);">Seleccionar Concepto:</div>
+                        <div class="searchable-select">
+                            <input type="text" id="concept-search-input" class="search-input" placeholder="Buscar concepto de nómina...">
+                            <div id="concept-dropdown-list" class="dropdown-list">
+                                <!-- Elementos dinámicos -->
+                            </div>
+                        </div>
+                        <div style="margin-left: auto;">
+                            <h3 id="concept-title-name" style="text-align: right; font-weight: 600;">-</h3>
+                            <div id="concept-title-meta" style="font-size: 0.85rem; color: var(--text-muted); text-align: right;">N/A</div>
+                        </div>
+                    </div>
+
+                    <!-- KPIs del Concepto -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card kpi-blue">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Monto Acumulado</span>
+                                <div class="kpi-icon"><i data-lucide="layers"></i></div>
+                            </div>
+                            <div id="concept-kpi-total" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Sumatoria total pagada/descontada</div>
+                        </div>
+                        <div class="kpi-card kpi-emerald">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Personas Impactadas</span>
+                                <div class="kpi-icon"><i data-lucide="users"></i></div>
+                            </div>
+                            <div id="concept-kpi-personas" class="kpi-value">0</div>
+                            <div class="kpi-subtitle">Colaboradores con este concepto</div>
+                        </div>
+                        <div class="kpi-card kpi-warning">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Monto Promedio</span>
+                                <div class="kpi-icon"><i data-lucide="calculator"></i></div>
+                            </div>
+                            <div id="concept-kpi-promedio" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Promedio por transacción</div>
+                        </div>
+                        <div class="kpi-card kpi-info">
+                            <div class="kpi-header">
+                                <span class="kpi-title">Monto Máximo</span>
+                                <div class="kpi-icon"><i data-lucide="arrow-up-circle"></i></div>
+                            </div>
+                            <div id="concept-kpi-maximo" class="kpi-value">$ 0</div>
+                            <div class="kpi-subtitle">Mayor registro individual</div>
+                        </div>
+                    </div>
+
+                    <!-- Fila de Gráficos -->
+                    <div class="chart-grid">
+                        <!-- Tendencia (Más grande, 2fr) -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Tendencia del Concepto</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="concept-trend-chart"></canvas>
+                            </div>
+                        </div>
+                        <!-- Top 10 Colaboradores (Más pequeño, 1fr) -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Top 10 Colaboradores por Monto</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="concept-top-people-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fila de Gráficos de Distribución por CECO y Cargo -->
+                    <div class="overview-charts" style="margin-top: 24px;">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Top 10 Centros de Costo por Concepto</h3>
+                            </div>
+                            <div class="chart-container" style="height: 320px;">
+                                <canvas id="concept-ceco-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Top 10 Cargos por Concepto</h3>
+                            </div>
+                            <div class="chart-container" style="height: 320px;">
+                                <canvas id="concept-cargo-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fila de Gráfico de Relación Cargo vs CECO (Nuevo) -->
+                    <div class="chart-grid" style="margin-top: 24px; grid-template-columns: 1fr;">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Distribución Cruzada: Centro de Costo vs Personas</h3>
+                            </div>
+                            <div class="chart-container" style="height: 380px;">
+                                <canvas id="concept-cross-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Detalle -->
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3 class="table-title">Desglose de Concepto por Persona</h3>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Posición</th>
+                                        <th>Colaborador</th>
+                                        <th>Periodo</th>
+                                        <th style="text-align: right;">Monto Absoluto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="concept-details-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 4: COMPARATIVAS -->
+                <div id="tab-comparison" class="tab-content">
+                    <div class="grid-controls" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+                        <div style="display: flex; width: 100%; gap: 16px; align-items: center; min-height: 40px;">
+                            <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary); flex-shrink:0; width: 80px;">Personas:</div>
+                            <button class="filter-lupa-btn" id="btn-open-filter-employees" title="Buscar Personas" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                            <div id="compare-tags-container" class="multi-select-container" style="flex-grow: 1; flex-wrap: wrap;"></div>
+                        </div>
+                        <div style="display: flex; width: 100%; gap: 16px; align-items: center; min-height: 40px;">
+                            <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary); flex-shrink:0; width: 80px;">Concepto:</div>
+                            <button class="filter-lupa-btn" id="btn-open-filter-concepts" title="Buscar Conceptos" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                            <div id="compare-concept-tags-container" class="multi-select-container" style="flex-grow: 1; flex-wrap: wrap;"></div>
+                        </div>
+                        <div style="display: flex; width: 100%; gap: 16px; align-items: center; min-height: 40px;">
+                            <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary); flex-shrink:0; width: 80px;">Cargo:</div>
+                            <button class="filter-lupa-btn" id="btn-open-filter-cargos" title="Buscar Cargos" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                            <div id="compare-cargo-tags-container" class="multi-select-container" style="flex-grow: 1; flex-wrap: wrap;"></div>
+                        </div>
+                        <div style="display: flex; width: 100%; gap: 16px; align-items: center; min-height: 40px;">
+                            <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary); flex-shrink:0; width: 80px;">Ceco:</div>
+                            <button class="filter-lupa-btn" id="btn-open-filter-cecos" title="Buscar Centros de Costo" type="button">
+                                <i data-lucide="search"></i>
+                            </button>
+                            <div id="compare-ceco-tags-container" class="multi-select-container" style="flex-grow: 1; flex-wrap: wrap;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico Comparativo -->
+                    <div class="chart-card" style="height: 380px;">
+                        <div class="chart-card-header">
+                            <h3 class="chart-card-title">Comparativa de Salario Neto Recibido</h3>
+                        </div>
+                        <div id="compare-empty-msg" style="display:none; text-align:center; padding:60px 0; color:var(--text-muted);">
+                            Selecciona colaboradores arriba para graficar su comparativa.
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="compare-employees-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Matriz General (Heatmap) -->
+                    <div class="table-card">
+                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                            <h3 class="table-title">Matriz Cruzada Mensual (Ingresos Netos)</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Muestra el salario neto mensual por colaborador. Celdas más azules representan montos más altos (escala de calor relativa).</p>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="custom-table" style="font-size: 0.82rem;">
+                                <thead>
+                                    <tr id="heatmap-header-tr">
+                                        <!-- Cabeceras dinámicas por JS -->
+                                    </tr>
+                                </thead>
+                                <tbody id="heatmap-tbody">
+                                    <!-- Matriz dinámica por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA: COMPARAR PERIODOS -->
+                <div id="tab-period-compare" class="tab-content">
+                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
+                            <div class="select-wrapper">
+                                <select id="period-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
+                            <div class="select-wrapper">
+                                <select id="period-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Colaborador:</span>
+                            <input type="text" id="period-compare-search" class="search-input" placeholder="Nombre o cédula..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
+                            <div class="custom-dropdown" id="period-compare-tipo-dropdown">
+                                <div class="custom-dropdown-trigger" id="period-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
+                                    <span class="selected-text">Todos</span>
+                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
+                                </div>
+                                <div class="custom-dropdown-menu" id="period-compare-tipo-menu">
+                                    <ul class="custom-dropdown-list" id="period-compare-tipo-list">
+                                        <!-- Dinámico por JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-left: auto; display: flex; gap: 8px;">
+                            <button id="btn-period-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                <i data-lucide="chevrons-down"></i>
+                            </button>
+                            <button id="btn-period-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                <i data-lucide="chevrons-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Comparación Jerárquica -->
+                    <div class="table-card">
+                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <h3 class="table-title">Desglose Comparativo de Nómina</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier colaborador para expandir o contraer su desglose de conceptos detallado.</p>
+                        </div>
+                        <div class="table-wrapper" style="max-height: 600px;">
+                            <table class="custom-table compare-table">
+                                <thead>
+                                    <tr>
+                                        <th>Colaborador</th>
+                                        <th>Cédula</th>
+                                        <th>Naturaleza</th>
+                                        <th>Concepto</th>
+                                        <th id="period-header-p1" style="text-align: right; width: 110px;">Periodo 1</th>
+                                        <th id="period-header-p2" style="text-align: right; width: 110px;">Periodo 2</th>
+                                        <th style="text-align: right; width: 100px;">Variación</th>
+                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th style="width: 140px;">Análisis</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="period-compare-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA: COMPARAR CONCEPTOS -->
+                <div id="tab-concept-compare" class="tab-content">
+                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
+                            <div class="select-wrapper">
+                                <select id="concept-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
+                            <div class="select-wrapper">
+                                <select id="concept-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Concepto:</span>
+                            <input type="text" id="concept-compare-search" class="search-input" placeholder="Nombre de concepto..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
+                            <div class="custom-dropdown" id="concept-compare-tipo-dropdown">
+                                <div class="custom-dropdown-trigger" id="concept-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
+                                    <span class="selected-text">Todos</span>
+                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
+                                </div>
+                                <div class="custom-dropdown-menu" id="concept-compare-tipo-menu">
+                                    <ul class="custom-dropdown-list" id="concept-compare-tipo-list">
+                                        <!-- Dinámico por JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+                            <button id="btn-concept-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                <i data-lucide="chevrons-down"></i>
+                            </button>
+                            <button id="btn-concept-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                <i data-lucide="chevrons-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Comparación Jerárquica de Conceptos -->
+                    <div class="table-card">
+                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <h3 class="table-title">Desglose Comparativo por Concepto</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier concepto para expandir o contraer el listado de colaboradores desglosados.</p>
+                        </div>
+                        <div class="table-wrapper" style="max-height: 600px;">
+                            <table class="custom-table compare-table">
+                                <thead>
+                                    <tr>
+                                        <th>Concepto</th>
+                                        <th>Naturaleza</th>
+                                        <th>Colaborador</th>
+                                        <th>Cédula</th>
+                                        <th id="concept-period-header-p1" style="text-align: right; width: 110px;">Periodo 1</th>
+                                        <th id="concept-period-header-p2" style="text-align: right; width: 110px;">Periodo 2</th>
+                                        <th style="text-align: right; width: 100px;">Variación</th>
+                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th style="width: 140px;">Análisis</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="concept-compare-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA: COMPARAR CENTROS DE COSTO -->
+                <div id="tab-ceco-compare" class="tab-content">
+                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center; overflow: visible;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
+                            <div class="select-wrapper">
+                                <select id="ceco-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
+                            <div class="select-wrapper">
+                                <select id="ceco-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Centro de Costo:</span>
+                            <input type="text" id="ceco-compare-search" class="search-input" placeholder="Nombre o código..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
+                            <div class="custom-dropdown" id="ceco-compare-tipo-dropdown">
+                                <div class="custom-dropdown-trigger" id="ceco-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
+                                    <span class="selected-text">Todos</span>
+                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
+                                </div>
+                                <div class="custom-dropdown-menu" id="ceco-compare-tipo-menu">
+                                    <ul class="custom-dropdown-list" id="ceco-compare-tipo-list">
+                                        <!-- Dinámico por JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+                            <button id="btn-ceco-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                <i data-lucide="chevrons-down"></i>
+                            </button>
+                            <button id="btn-ceco-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                <i data-lucide="chevrons-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Comparación Jerárquica de Centros de Costo -->
+                    <div class="table-card">
+                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <h3 class="table-title">Desglose Comparativo por Centro de Costo</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier Centro de Costo para expandir o contraer el desglose de conceptos detallado.</p>
+                        </div>
+                        <div class="table-wrapper" style="max-height: 600px;">
+                            <table class="custom-table compare-table">
+                                <thead>
+                                    <tr>
+                                        <th>Centro de Costo</th>
+                                        <th>Naturaleza</th>
+                                        <th>Concepto</th>
+                                        <th>-</th>
+                                        <th id="ceco-compare-header-p1" style="text-align: right; width: 110px;">Periodo 1</th>
+                                        <th id="ceco-compare-header-p2" style="text-align: right; width: 110px;">Periodo 2</th>
+                                        <th style="text-align: right; width: 100px;">Variación</th>
+                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th style="width: 140px;">Análisis</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ceco-compare-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA: COMPARAR CARGOS -->
+                <div id="tab-cargo-compare" class="tab-content">
+                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center; overflow: visible;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
+                            <div class="select-wrapper">
+                                <select id="cargo-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
+                            <div class="select-wrapper">
+                                <select id="cargo-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
+                                    <!-- Dinámico por JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Cargo:</span>
+                            <input type="text" id="cargo-compare-search" class="search-input" placeholder="Nombre de cargo..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
+                            <div class="custom-dropdown" id="cargo-compare-tipo-dropdown">
+                                <div class="custom-dropdown-trigger" id="cargo-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
+                                    <span class="selected-text">Todos</span>
+                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
+                                </div>
+                                <div class="custom-dropdown-menu" id="cargo-compare-tipo-menu">
+                                    <ul class="custom-dropdown-list" id="cargo-compare-tipo-list">
+                                        <!-- Dinámico por JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+                            <button id="btn-cargo-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                <i data-lucide="chevrons-down"></i>
+                            </button>
+                            <button id="btn-cargo-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                <i data-lucide="chevrons-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Comparación Jerárquica de Cargos -->
+                    <div class="table-card">
+                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <h3 class="table-title">Desglose Comparativo por Cargo</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier Cargo para expandir o contraer el desglose de conceptos detallado.</p>
+                        </div>
+                        <div class="table-wrapper" style="max-height: 600px;">
+                            <table class="custom-table compare-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cargo</th>
+                                        <th>Naturaleza</th>
+                                        <th>Concepto</th>
+                                        <th>-</th>
+                                        <th id="cargo-compare-header-p1" style="text-align: right; width: 110px;">Periodo 1</th>
+                                        <th id="cargo-compare-header-p2" style="text-align: right; width: 110px;">Periodo 2</th>
+                                        <th style="text-align: right; width: 100px;">Variación</th>
+                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th style="width: 140px;">Análisis</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cargo-compare-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 5: IMPORTADOR EXCEL -->
+                <div id="tab-importer" class="tab-content">
+                    <div class="chart-card" style="padding: 40px;">
+                        <h2 style="font-weight:600; margin-bottom: 8px;">Cargar Nuevos Datos de Nómina</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 0.95rem;">Puedes arrastrar y soltar un archivo Excel (.xlsx o .xls) con el mismo formato original para analizar nueva información sin salir de la página.</p>
+                        
+                        <!-- Configuración de carpeta local -->
+                        <div class="folder-config-card" id="folder-config-card" style="margin-bottom: 30px; padding: 24px; background: rgba(108,0,211,0.03); border: 1px dashed rgba(108,0,211,0.2); border-radius: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
+                                <div>
+                                    <h3 style="font-weight:600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                                        <i data-lucide="folder" style="color: var(--primary); width: 20px; height: 20px;"></i>
+                                        Configuración de Carpeta de Origen
+                                    </h3>
+                                    <p style="font-size: 0.85rem; color: var(--text-secondary);" id="folder-status-text">No se ha configurado ninguna carpeta de origen.</p>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-secondary" id="btn-select-folder">
+                                        <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i>
+                                        Configurar Carpeta
+                                    </button>
+                                    <button class="btn btn-primary" id="btn-import-selected" style="display: none;">
+                                        <i data-lucide="play" style="width: 16px; height: 16px;"></i>
+                                        Importar Seleccionados
+                                    </button>
+                                    <button class="btn btn-secondary" id="btn-refresh-folder" style="display: none; padding: 7px 10px;">
+                                        <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="folder-files-container" style="display: none; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px;">
+                                <h4 style="font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Archivos de Nómina Detectados</span>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;" id="folder-files-summary">0 archivos seleccionados</span>
+                                </h4>
+                                <div style="max-height: 250px; overflow-y: auto; background: #FFF; border: 1px solid var(--border-color); border-radius: 10px;">
+                                    <table class="custom-table" style="font-size: 0.82rem; margin: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; padding: 8px 12px;"><input type="checkbox" id="chk-select-all-files" checked></th>
+                                                <th style="padding: 8px 12px;">Nombre de Archivo</th>
+                                                <th style="width: 100px; padding: 8px 12px; text-align: right;">Tamaño</th>
+                                                <th style="width: 120px; padding: 8px 12px; text-align: center;">Estado</th>
+                                                <th style="width: 100px; padding: 8px 12px; text-align: right;">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="folder-files-tbody">
+                                            <!-- Listado de archivos dinámico -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input oculto para carga de archivos -->
+                        <input type="file" id="excel-file-input" style="display: none;" accept=".xlsx, .xls">
+                        
+                        <!-- Drop Zone -->
+                        <div id="import-drop-zone" class="import-area">
+                            <div class="import-icon">
+                                <i data-lucide="upload-cloud"></i>
+                            </div>
+                            <h3 class="import-title">Arrastra tu archivo de Excel aquí</h3>
+                            <p class="import-desc">o haz clic para explorar tus carpetas locales</p>
+                            <span class="btn btn-secondary">Buscar Archivo</span>
+                        </div>
+                        
+                        <!-- Caja de confirmacion de exito -->
+                        <div id="file-info-box" class="file-info">
+                            <i data-lucide="check-circle-2"></i>
+                            <span id="file-info-text"></span>
+                        </div>
+
+                        <!-- Ayuda de formato -->
+                        <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                            <h4 style="font-weight: 600; margin-bottom: 12px; font-size: 0.9rem;">Estructura requerida de columnas en la primera hoja:</h4>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">CEDULA</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">APELLIDOS</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">NOMBRES</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">CONCEPTO</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">TOTAL 2</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">MES</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">AÑO</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">TIPO</span>
+                                <span class="tag-item" style="background: rgba(255,255,255,0.03); border-color: var(--border-color); color: var(--text-secondary);">NATURALEZA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- Ventana Modal de Filtrado Centralizado -->
+    <div id="filter-modal-overlay" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3 id="filter-modal-title">Filtrar Opciones</h3>
+                <button id="btn-close-filter-modal" class="btn-close" type="button" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-search-wrapper">
+                <input type="text" id="filter-modal-search" placeholder="Buscar..." class="modal-search-input">
+            </div>
+            <div class="modal-body">
+                <div id="filter-modal-options-list" class="options-list">
+                    <!-- Opciones cargadas dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-filter-modal-clear" class="btn btn-secondary" type="button">Limpiar</button>
+                <button id="btn-filter-modal-accept" class="btn btn-primary" type="button">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Librerías de Terceros vía CDN -->
+    <!-- 1. SheetJS para procesamiento de Excel local -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 2. Chart.js para visualización interactiva de gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 3. Lucide Icons para iconos modernos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Datos Pre-Cargados -->
+    <script src="data.js"></script>
+    <!-- Código Lógico de la Aplicación -->
+    <script src="app.js"></script>
+</body>
+</html>
