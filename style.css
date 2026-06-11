@@ -1780,3 +1780,75 @@ table * {
     }
 }
 
+/* ============================================================
+   RESPONSIVE LAYOUT OPTIMIZATIONS (JUNE 2026 UPDATE)
+   ============================================================ */
+
+/* Force table-wrapper to scroll horizontally when needed */
+.table-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    display: block;
+}
+
+@media (max-width: 840px) {
+    /* Stack employee tab charts and details table vertically */
+    #tab-employee .overview-charts {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Compress grid-controls filter block on mobile */
+    .grid-controls {
+        padding: 12px 16px !important;
+        border-radius: 16px !important;
+        margin-bottom: 16px !important;
+        gap: 8px !important;
+    }
+    .grid-controls > div {
+        gap: 8px !important;
+        min-height: 36px !important;
+    }
+    .grid-controls > div > div:first-child {
+        width: 70px !important;
+        font-size: 0.82rem !important;
+    }
+    .grid-controls .filter-lupa-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    /* Horizontal scroll for selected tags in mobile filters */
+    .multi-select-container {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        max-height: 48px !important;
+        padding: 4px 6px !important;
+        gap: 6px !important;
+        scrollbar-width: none;
+    }
+    .multi-select-container::-webkit-scrollbar {
+        display: none;
+    }
+    .tag-item {
+        padding: 3px 8px !important;
+        font-size: 0.72rem !important;
+        flex-shrink: 0 !important;
+    }
+    
+    /* Make tables scrollable and compact on mobile */
+    .custom-table {
+        width: 100% !important;
+        min-width: 500px !important; /* Force min-width to prevent column squishing and cut-offs */
+    }
+    .custom-table th, 
+    .custom-table td {
+        padding: 6px 8px !important;
+        font-size: 0.75rem !important;
+    }
+}
+
+

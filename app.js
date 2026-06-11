@@ -2188,7 +2188,7 @@ function renderConceptCecoChart(conceptData) {
                     const { ctx, data } = chart;
                     ctx.save();
                     ctx.font = '500 10px Outfit, sans-serif';
-                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillStyle = '#1F2937';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     
@@ -2300,7 +2300,7 @@ function renderConceptCargoChart(conceptData) {
                     const { ctx, data } = chart;
                     ctx.save();
                     ctx.font = '500 10px Outfit, sans-serif';
-                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillStyle = '#1F2937';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     
