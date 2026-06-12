@@ -4102,6 +4102,7 @@ function parseExcelFile(arrayBuffer, fileName) {
     const kDCC = getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
     const kCg = getColKey(['NOMBRE CARGO', 'CARGO']);
     const kPa = getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
+    const kCant = getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.']);
     
     if (!kCed || !kCon || !kTot) {
         throw new Error('No se encontraron las columnas mínimas requeridas (Cédula, Concepto y Valor).');
@@ -4154,6 +4155,16 @@ function parseExcelFile(arrayBuffer, fileName) {
             } else {
                 const cleaned = rawVal.toString().replace(/[^\d.-]/g, '');
                 valNum = parseFloat(cleaned) || 0.0;
+            }
+        }
+        
+        let cantNum = 0.0;
+        if (kCant && row[kCant] !== null && row[kCant] !== undefined) {
+            if (typeof row[kCant] === 'number') {
+                cantNum = row[kCant];
+            } else {
+                const cleaned = row[kCant].toString().replace(/[^\d.-]/g, '');
+                cantNum = parseFloat(cleaned) || 0.0;
             }
         }
         
@@ -4232,6 +4243,7 @@ function parseExcelFile(arrayBuffer, fileName) {
             n: fullName,
             co: row[kCon] ? row[kCon].toString().trim().toUpperCase() : "N/A",
             v: Math.round(valNum * 100) / 100,
+            cant: Math.round(cantNum * 100) / 100,
             m: mes,
             a: anio,
             t: tipo,
@@ -4258,7 +4270,7 @@ function findHeaderRowIndex(sheet) {
                 const valStr = cell.v.toString().toUpperCase().trim();
                 if (valStr.includes('CEDULA') || valStr.includes('IDENTIFICAC') || valStr.includes('DOCUMENTO') ||
                     valStr.includes('CONCEPTO') || valStr.includes('VALOR') || valStr.includes('TOTAL') || 
-                    valStr.includes('IMPORTE') || valStr.includes('NATURALEZA') || valStr.includes('NOMBRES')) {
+                    valStr.includes('IMPORTE') || valStr.includes('NATURALEZA') || valStr.includes('NOMBRES') || valStr.includes('CANTIDAD') || valStr.includes('CANT.')) {
                     matches++;
                 }
             }
@@ -4277,8 +4289,15 @@ function aggregateRecords(records) {
         if (agg[key]) {
             agg[key].v += r.v;
             agg[key].v = Math.round(agg[key].v * 100) / 100;
+            if (r.cant !== undefined && r.cant !== null) {
+                agg[key].cant = (agg[key].cant || 0) + r.cant;
+                agg[key].cant = Math.round(agg[key].cant * 100) / 100;
+            }
         } else {
             agg[key] = { ...r };
+            if (agg[key].cant === undefined || agg[key].cant === null) {
+                agg[key].cant = r.cant || 0;
+            }
         }
     });
     return Object.values(agg);
@@ -4661,6 +4680,10 @@ function renderPeriodComparison() {
     const tbody = document.getElementById('period-compare-tbody');
     const headerP1 = document.getElementById('period-header-p1');
     const headerP2 = document.getElementById('period-header-p2');
+    const headerCantP1 = document.getElementById('period-header-cant-p1');
+    const headerCantP2 = document.getElementById('period-header-cant-p2');
+    const p1Label = getPeriodLabel(state.comparePeriod1) || 'P1';
+    const p2Label = getPeriodLabel(state.comparePeriod2) || 'P2';
     
     if (!tbody) return;
     
@@ -4669,13 +4692,15 @@ function renderPeriodComparison() {
     updateSearchSelectorLabels();
     
     // Actualizar cabeceras de columnas
-    if (headerP1) headerP1.innerText = getPeriodLabel(state.comparePeriod1) || 'Periodo 1';
-    if (headerP2) headerP2.innerText = getPeriodLabel(state.comparePeriod2) || 'Periodo 2';
+    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
+    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
+    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
+    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
 
     tbody.innerHTML = '';
     
     if (!state.comparePeriod1 || !state.comparePeriod2) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
         return;
     }
     
@@ -4693,7 +4718,7 @@ function renderPeriodComparison() {
     });
     
     if (filteredPeople.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron colaboradores que coincidan con los filtros seleccionados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No se encontraron colaboradores que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -4712,16 +4737,20 @@ function renderPeriodComparison() {
         
         // Mapear conceptos en cada periodo
         const p1Concepts = {};
+        const p1ConceptsCant = {};
         const p2Concepts = {};
+        const p2ConceptsCant = {};
         const allConceptsMeta = {}; // Guardar naturaleza y tipo de cada concepto
         
         p1Rows.forEach(r => {
             p1Concepts[r.co] = r.v;
+            p1ConceptsCant[r.co] = r.cant || 0;
             allConceptsMeta[r.co] = { na: r.na, t: r.t };
         });
         
         p2Rows.forEach(r => {
             p2Concepts[r.co] = r.v;
+            p2ConceptsCant[r.co] = r.cant || 0;
             allConceptsMeta[r.co] = { na: r.na, t: r.t };
         });
         
@@ -4752,7 +4781,9 @@ function renderPeriodComparison() {
         uniqueConceptsList.forEach(co => {
             const meta = allConceptsMeta[co];
             const val1 = p1Concepts[co] || 0;
+            const cant1 = p1ConceptsCant[co] || 0;
             const val2 = p2Concepts[co] || 0;
+            const cant2 = p2ConceptsCant[co] || 0;
             const diff = val2 - val1;
             
             if (totals[meta.na]) {
@@ -4765,7 +4796,9 @@ function renderPeriodComparison() {
                 na: meta.na,
                 t: meta.t,
                 val1: val1,
+                cant1: cant1,
                 val2: val2,
+                cant2: cant2,
                 diff: diff
             });
         });
@@ -4795,7 +4828,9 @@ function renderPeriodComparison() {
             <td>${cedula}</td>
             <td>-</td>
             <td>-</td>
+            <td style="text-align: right; font-weight: normal; color: var(--text-muted);">-</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(netP1)}</td>
+            <td style="text-align: right; font-weight: normal; color: var(--text-muted);">-</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(netP2)}</td>
             <td style="text-align: right;">${formatVariationHTML(netDiff)}</td>
             <td style="text-align: right;">${formatVariationHTML(netPct, true)}</td>
@@ -4832,7 +4867,9 @@ function renderPeriodComparison() {
                     <td>${cedula}</td>
                     <td><span class="badge badge-${nat.toLowerCase()}">${nat}</span></td>
                     <td>${c.co}</td>
+                    <td style="text-align: right;">${c.val1 !== 0 && c.cant1 ? c.cant1 : '-'}</td>
                     <td style="text-align: right;">${c.val1 !== 0 ? currencyFormatter.format(c.val1) : '-'}</td>
+                    <td style="text-align: right;">${c.val2 !== 0 && c.cant2 ? c.cant2 : '-'}</td>
                     <td style="text-align: right;">${c.val2 !== 0 ? currencyFormatter.format(c.val2) : '-'}</td>
                     <td style="text-align: right;">${formatVariationHTML(c.diff)}</td>
                     <td style="text-align: right;">${formatVariationHTML(cPct, true)}</td>
@@ -4853,7 +4890,9 @@ function renderPeriodComparison() {
                 <td>${cedula}</td>
                 <td>-</td>
                 <td style="font-weight: normal;">Total ${nat}</td>
+                <td style="text-align: right; font-weight: normal; color: var(--text-muted);">-</td>
                 <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(totals[nat].p1)}</td>
+                <td style="text-align: right; font-weight: normal; color: var(--text-muted);">-</td>
                 <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(totals[nat].p2)}</td>
                 <td style="text-align: right;">${formatVariationHTML(natDiff)}</td>
                 <td style="text-align: right;">${formatVariationHTML(natPct, true)}</td>
