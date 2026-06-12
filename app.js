@@ -3275,11 +3275,11 @@ function renderCompareChart() {
                     position: 'top',
                     labels: {
                         color: '#6B7280',
-                        font: { family: 'Outfit', size: 11 },
-                        padding: 16,
+                        font: { family: 'Outfit', size: window.innerWidth <= 768 ? 8 : 9 },
+                        padding: window.innerWidth <= 768 ? 6 : 10,
                         usePointStyle: true,
                         pointStyle: 'circle',
-                        boxWidth: 6
+                        boxWidth: window.innerWidth <= 768 ? 3 : 4
                     }
                 },
                 tooltip: {
