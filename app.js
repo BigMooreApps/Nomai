@@ -6384,7 +6384,8 @@ function calculateManagerialInsights() {
     const dataP1 = filterDataByPeriod(p1);
     const dataP2 = filterDataByPeriod(p2);
 
-    const allConcepts = [...new Set(state.data.map(d => d.co))];
+    const payrollData = state.data || [];
+    const allConcepts = [...new Set(payrollData.map(d => d.co))];
     const selectedConcepts = state.conceptCompareSelectedConcepts || [];
     const filteredConcepts = allConcepts.filter(co => {
         if (selectedConcepts.length === 0) return true;
@@ -6556,37 +6557,38 @@ function calculateManagerialInsights() {
 }
 
 function generateManagerialReport() {
-    const p1 = state.conceptComparePeriod1;
-    const p2 = state.conceptComparePeriod2;
+    // 1. Mostrar pantalla de progreso step-by-step
+    const progressOverlay = document.createElement('div');
+    progressOverlay.id = 'report-progress-overlay';
+    progressOverlay.style.position = 'fixed';
+    progressOverlay.style.top = '0';
+    progressOverlay.style.left = '0';
+    progressOverlay.style.width = '100vw';
+    progressOverlay.style.height = '100vh';
+    progressOverlay.style.background = 'rgba(15, 23, 42, 0.9)';
+    progressOverlay.style.backdropFilter = 'blur(10px)';
+    progressOverlay.style.zIndex = '100000';
+    progressOverlay.style.display = 'flex';
+    progressOverlay.style.justifyContent = 'center';
+    progressOverlay.style.alignItems = 'center';
+    progressOverlay.style.color = 'white';
+    progressOverlay.style.fontFamily = "'Outfit', sans-serif";
     
-    if (!p1 || !p2) {
-        alert("Por favor selecciona los periodos (P1 y P2) antes de generar el informe.");
-        return;
-    }
-    
-    // Crear y mostrar overlay de carga
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.style.position = 'fixed';
-    loadingOverlay.style.top = '0';
-    loadingOverlay.style.left = '0';
-    loadingOverlay.style.width = '100vw';
-    loadingOverlay.style.height = '100vh';
-    loadingOverlay.style.background = 'rgba(15, 23, 42, 0.85)';
-    loadingOverlay.style.display = 'flex';
-    loadingOverlay.style.flexDirection = 'column';
-    loadingOverlay.style.justifyContent = 'center';
-    loadingOverlay.style.alignItems = 'center';
-    loadingOverlay.style.zIndex = '99999';
-    loadingOverlay.style.color = 'white';
-    loadingOverlay.style.fontFamily = 'sans-serif';
-    loadingOverlay.innerHTML = `
-        <div style="background: rgba(30, 27, 75, 0.95); padding: 30px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; align-items: center; max-width: 400px; text-align: center; backdrop-filter: blur(10px); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <div class="spin-animation" style="border: 4px solid rgba(255, 255, 255, 0.1); border-top: 4px solid #a855f7; border-radius: 50%; width: 45px; height: 45px; margin-bottom: 20px;"></div>
-            <h3 style="margin: 0 0 10px 0; font-size: 1.2rem; font-weight: 600;">Generando Previsualizacion</h3>
-            <p id="pdf-progress-text" style="margin: 0; font-size: 0.85rem; color: #cbd5e1; line-height: 1.5;">Procesando metricas e insights...</p>
+    progressOverlay.innerHTML = `
+        <div style="background: rgba(30, 27, 75, 0.95); border: 1px solid rgba(255,255,255,0.15); padding: 40px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; align-items: center; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+                <div class="spin-animation" style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #a855f7; border-radius: 50%; width: 30px; height: 30px;"></div>
+                <h3 style="margin: 0; font-size: 1.3rem; font-weight: 600;">Creador de Informe NomAI</h3>
+            </div>
+            <div id="progress-steps-list" style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem; color: #cbd5e1;">
+            </div>
+            <div id="progress-error-box" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 15px; border-radius: 8px; color: #fca5a5; font-size: 0.85rem; font-family: monospace; overflow-y: auto; white-space: pre-wrap; max-height: 150px;">
+            </div>
+            <div id="progress-action-bar" style="display: none; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <button id="btn-close-progress" class="btn btn-secondary" style="padding: 6px 16px; border-radius: 20px;">Cerrar</button>
+            </div>
         </div>
     `;
-    document.body.appendChild(loadingOverlay);
     
     if (!document.getElementById('report-spin-style')) {
         const style = document.createElement('style');
@@ -6598,435 +6600,518 @@ function generateManagerialReport() {
         document.head.appendChild(style);
     }
     
-    setTimeout(() => {
-        const insights = calculateManagerialInsights();
-        if (!insights) {
-            alert("No se pudieron calcular los insights. Verifica los filtros seleccionados.");
-            loadingOverlay.remove();
-            return;
+    document.body.appendChild(progressOverlay);
+    
+    function updateProgressStep(stepId, status, text, errorMsg = '') {
+        const list = document.getElementById('progress-steps-list');
+        if (!list) return;
+        
+        let stepRow = document.getElementById('step-' + stepId);
+        if (!stepRow) {
+            stepRow = document.createElement('div');
+            stepRow.id = 'step-' + stepId;
+            stepRow.style.display = 'flex';
+            stepRow.style.alignItems = 'center';
+            stepRow.style.gap = '10px';
+            list.appendChild(stepRow);
         }
         
-        const logoImg = document.querySelector('.logo-img-expanded');
-        let logoBase64 = '';
-        if (logoImg) {
-            try {
-                const canvas = document.createElement("canvas");
-                canvas.width = logoImg.naturalWidth || logoImg.width;
-                canvas.height = logoImg.naturalHeight || logoImg.height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(logoImg, 0, 0);
-                logoBase64 = canvas.toDataURL("image/png");
-            } catch (e) {
-                console.error("Error al convertir logo a base64:", e);
+        let icon = '';
+        let color = '#cbd5e1';
+        if (status === 'pending') {
+            icon = '<span style="color: #cbd5e1; font-weight: bold;">[ ]</span>';
+        } else if (status === 'processing') {
+            icon = '<div class="spin-animation" style="border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #a855f7; border-radius: 50%; width: 12px; height: 12px; display: inline-block;"></div>';
+            color = '#a855f7';
+        } else if (status === 'success') {
+            icon = '<span style="color: #10b981; font-weight: bold;">[âœ“]</span>';
+            color = '#10b981';
+        } else if (status === 'error') {
+            icon = '<span style="color: #ef4444; font-weight: bold;">[âœ—]</span>';
+            color = '#ef4444';
+        }
+        
+        stepRow.innerHTML = `${icon} <span style="color: ${color};">${text}</span>`;
+        
+        if (status === 'error') {
+            const spin = progressOverlay.querySelector('.spin-animation');
+            if (spin) spin.style.animation = 'none'; // Detener giro principal
+            
+            if (errorMsg) {
+                const errBox = document.getElementById('progress-error-box');
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = errorMsg;
+                }
+            }
+            const actionBar = document.getElementById('progress-action-bar');
+            if (actionBar) {
+                actionBar.style.display = 'flex';
+                const closeBtn = document.getElementById('btn-close-progress');
+                if (closeBtn) {
+                    closeBtn.onclick = () => progressOverlay.remove();
+                }
+            }
+        }
+    }
+    
+    // Registrar pasos iniciales
+    updateProgressStep('1-validate', 'pending', 'Validando periodos y filtros...');
+    updateProgressStep('2-insights', 'pending', 'Calculando insights gerenciales...');
+    updateProgressStep('3-logo', 'pending', 'Cargando logo corporativo de NomAI...');
+    updateProgressStep('4-template', 'pending', 'Construyendo maqueta del reporte...');
+    updateProgressStep('5-charts', 'pending', 'Renderizando graficos de analisis...');
+    updateProgressStep('6-show', 'pending', 'Abriendo previsualizacion en pantalla...');
+    
+    setTimeout(() => {
+        try {
+            // Paso 1: Validacion
+            updateProgressStep('1-validate', 'processing', 'Validando periodos y filtros...');
+            const p1 = state.conceptComparePeriod1;
+            const p2 = state.conceptComparePeriod2;
+            
+            if (!p1 || !p2) {
+                throw new Error("Por favor selecciona los periodos (P1 y P2) en la tabla antes de continuar.");
+            }
+            updateProgressStep('1-validate', 'success', 'Periodos validados correctamente.');
+            
+            // Paso 2: Insights
+            updateProgressStep('2-insights', 'processing', 'Calculando insights gerenciales...');
+            const insights = calculateManagerialInsights();
+            if (!insights) {
+                throw new Error("No se pudieron calcular los insights. Verifica los filtros seleccionados.");
+            }
+            updateProgressStep('2-insights', 'success', 'Insights gerenciales calculados.');
+            
+            // Paso 3: Logo
+            updateProgressStep('3-logo', 'processing', 'Cargando logo corporativo de NomAI...');
+            const logoImg = document.querySelector('.logo-img-expanded');
+            let logoBase64 = '';
+            if (logoImg) {
+                try {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = logoImg.naturalWidth || logoImg.width;
+                    canvas.height = logoImg.naturalHeight || logoImg.height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(logoImg, 0, 0);
+                    logoBase64 = canvas.toDataURL("image/png");
+                } catch (e) {
+                    console.error("Error al convertir logo a base64:", e);
+                    logoBase64 = 'logo-expanded.png';
+                }
+            } else {
                 logoBase64 = 'logo-expanded.png';
             }
-        } else {
-            logoBase64 = 'logo-expanded.png';
-        }
-        
-        const formatPercentage = (val) => (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
-        
-        // Remover modal existente si lo hay
-        const existingPreview = document.getElementById('report-preview-overlay');
-        if (existingPreview) existingPreview.remove();
-        
-        const previewOverlay = document.createElement('div');
-        previewOverlay.id = 'report-preview-overlay';
-        previewOverlay.style.position = 'fixed';
-        previewOverlay.style.top = '0';
-        previewOverlay.style.left = '0';
-        previewOverlay.style.width = '100vw';
-        previewOverlay.style.height = '100vh';
-        previewOverlay.style.background = 'rgba(15, 23, 42, 0.75)';
-        previewOverlay.style.backdropFilter = 'blur(10px)';
-        previewOverlay.style.zIndex = '9999';
-        previewOverlay.style.display = 'flex';
-        previewOverlay.style.flexDirection = 'column';
-        previewOverlay.style.fontFamily = "'Outfit', sans-serif";
-        
-        previewOverlay.innerHTML = `
-            <style>
-                .report-preview-header {
-                    background: rgba(30, 27, 75, 0.95);
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-                    padding: 15px 30px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    flex-shrink: 0;
-                    color: white;
-                }
-                .report-preview-body {
-                    flex-grow: 1;
-                    overflow-y: auto;
-                    padding: 30px 20px;
-                    background: #0f172a;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }
-                .report-page-sheet {
-                    width: 210mm;
-                    min-height: 279mm; /* Letter size */
-                    background: white;
-                    color: #1e1b4b;
-                    padding: 20mm;
-                    margin-bottom: 40px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-                    box-sizing: border-box;
-                    border-radius: 8px;
-                    position: relative;
-                }
-                .report-page-sheet table th, .report-page-sheet table td {
-                    border-bottom: 1px solid #e5e7eb;
-                }
-                @media (max-width: 768px) {
-                    .report-page-sheet {
-                        width: 100%;
-                        min-height: auto;
-                        padding: 15px;
-                        margin-bottom: 20px;
-                    }
+            updateProgressStep('3-logo', 'success', 'Logo cargado exitosamente.');
+            
+            // Paso 4: Construyendo maqueta
+            updateProgressStep('4-template', 'processing', 'Construyendo maqueta del reporte...');
+            const formatPercentage = (val) => (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+            
+            // Remover modal existente si lo hay
+            const existingPreview = document.getElementById('report-preview-overlay');
+            if (existingPreview) existingPreview.remove();
+            
+            const previewOverlay = document.createElement('div');
+            previewOverlay.id = 'report-preview-overlay';
+            previewOverlay.style.position = 'fixed';
+            previewOverlay.style.top = '0';
+            previewOverlay.style.left = '0';
+            previewOverlay.style.width = '100vw';
+            previewOverlay.style.height = '100vh';
+            previewOverlay.style.background = 'rgba(15, 23, 42, 0.75)';
+            previewOverlay.style.backdropFilter = 'blur(10px)';
+            previewOverlay.style.zIndex = '9999';
+            previewOverlay.style.display = 'flex';
+            previewOverlay.style.flexDirection = 'column';
+            previewOverlay.style.fontFamily = "'Outfit', sans-serif";
+            
+            previewOverlay.innerHTML = `
+                <style>
                     .report-preview-header {
-                        padding: 10px 15px;
+                        background: rgba(30, 27, 75, 0.95);
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+                        padding: 15px 30px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        flex-shrink: 0;
+                        color: white;
                     }
-                    .report-preview-title {
-                        font-size: 1rem;
+                    .report-preview-body {
+                        flex-grow: 1;
+                        overflow-y: auto;
+                        padding: 30px 20px;
+                        background: #0f172a;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                     }
-                }
-            </style>
-            
-            <div class="report-preview-header">
-                <div>
-                    <h2 class="report-preview-title" style="margin: 0; font-size: 1.2rem; font-weight: 600; color: white;">Previsualizacion de Informe Gerencial NomAI</h2>
-                    <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #cbd5e1;">Periodos: ${getPeriodLabel(insights.p1)} vs ${getPeriodLabel(insights.p2)}</p>
-                </div>
-                <div>
-                    <button id="btn-close-report-preview" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; font-weight: 500;">
-                        <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cerrar Informe
-                    </button>
-                </div>
-            </div>
-            
-            <div class="report-preview-body">
-                <!-- Page 1: Portada -->
-                <div class="report-page-sheet">
-                    <!-- Header Portada -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #6C00D3; padding-bottom: 15px;">
-                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 35px;" />
-                        <div style="text-align: right; font-size: 9pt; color: #6b7280; font-weight: 500;">REPORTES CORPORATIVOS</div>
+                    .report-page-sheet {
+                        width: 210mm;
+                        min-height: 279mm; /* Letter size */
+                        background: white;
+                        color: #1e1b4b;
+                        padding: 20mm;
+                        margin-bottom: 40px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                        box-sizing: border-box;
+                        border-radius: 8px;
+                        position: relative;
+                    }
+                    .report-page-sheet table th, .report-page-sheet table td {
+                        border-bottom: 1px solid #e5e7eb;
+                    }
+                    @media (max-width: 768px) {
+                        .report-page-sheet {
+                            width: 100%;
+                            min-height: auto;
+                            padding: 15px;
+                            margin-bottom: 20px;
+                        }
+                        .report-preview-header {
+                            padding: 10px 15px;
+                        }
+                        .report-preview-title {
+                            font-size: 1rem;
+                        }
+                    }
+                </style>
+                
+                <div class="report-preview-header">
+                    <div>
+                        <h2 class="report-preview-title" style="margin: 0; font-size: 1.2rem; font-weight: 600; color: white;">Previsualizacion de Informe Gerencial NomAI</h2>
+                        <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #cbd5e1;">Periodos: ${getPeriodLabel(insights.p1)} vs ${getPeriodLabel(insights.p2)}</p>
                     </div>
-
-                    <!-- Cuerpo Portada -->
-                    <div style="margin-top: 40px; min-height: 170mm; display: flex; flex-direction: column; justify-content: center;">
-                        <span style="display: inline-block; width: fit-content; background: rgba(108, 0, 211, 0.08); color: #6C00D3; padding: 5px 12px; border-radius: 20px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">Analisis Financiero de Nomina</span>
-                        <h1 style="font-size: 26pt; font-weight: 800; line-height: 1.2; color: #1e1b4b; margin: 0 0 15px 0;">INFORME GERENCIAL DE VARIACIONES</h1>
-                        <h2 style="font-size: 16pt; font-weight: 500; color: #4b5563; margin: 0 0 30px 0; border-left: 4px solid #6C00D3; padding-left: 15px;">Variaciones de Conceptos de Nomina</h2>
-
-                        <!-- Metadatos de la Comparacion -->
-                        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Periodo Base (P1)</div>
-                                <div style="font-size: 11pt; font-weight: 600; color: #1f2937;">${getPeriodLabel(insights.p1)}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Periodo Comparado (P2)</div>
-                                <div style="font-size: 11pt; font-weight: 600; color: #1f2937;">${getPeriodLabel(insights.p2)}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Filtros de Tipo de Nomina</div>
-                                <div style="font-size: 10pt; font-weight: 500; color: #1f2937;">${state.selectedTipoNomina && state.selectedTipoNomina.length > 0 ? state.selectedTipoNomina.join(', ') : 'Todos'}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Fecha de Emision</div>
-                                <div style="font-size: 10pt; font-weight: 500; color: #1f2937;">${new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</div>
-                            </div>
-                        </div>
-
-                        <!-- Resumen Ejecutivo -->
-                        <div style="margin-top: 10px;">
-                            <h3 style="font-size: 13pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px;">Resumen Ejecutivo</h3>
-                            <p style="font-size: 10pt; color: #374151; text-align: justify; line-height: 1.6; margin: 0 0 10px 0;">
-                                El presente informe provee un analisis gerencial de las variaciones identificadas en la nomina al comparar el periodo <strong>${getPeriodLabel(insights.p1)}</strong> con el periodo <strong>${getPeriodLabel(insights.p2)}</strong>. 
-                                El gasto neto total por concepto para esta seleccion paso de <strong>${currencyFormatter.format(insights.totals.netP1)}</strong> a <strong>${currencyFormatter.format(insights.totals.netP2)}</strong>, lo que representa una variacion neta de <strong>${currencyFormatter.format(insights.totals.netDiff)}</strong> (${formatPercentage(insights.totals.netPct)}).
-                            </p>
-                            <p style="font-size: 10pt; color: #374151; text-align: justify; line-height: 1.6; margin: 0;">
-                                Este comportamiento financiero esta determinado principalmente por un cambio en los devengos totales del <strong>${formatPercentage(insights.totals.devengosPct)}</strong> (${currencyFormatter.format(insights.totals.devengosDiff)}) y una variacion en los descuentos totales del <strong>${formatPercentage(insights.totals.descuentosPct)}</strong> (${currencyFormatter.format(insights.totals.descuentosDiff)}). A continuacion se detallan los principales drivers y el desglose de estas variaciones.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Footer Portada -->
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                        <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                        <div>Confidencial - Pagina 1 de 4</div>
+                    <div>
+                        <button id="btn-close-report-preview" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; font-weight: 500;">
+                            <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cerrar Informe
+                        </button>
                     </div>
                 </div>
-
-                <!-- Page 2: Analisis Macroeconomico y Graficos -->
-                <div class="report-page-sheet">
-                    <!-- Header comun -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
-                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
-                        <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
-                    </div>
-
-                    <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">1. Analisis Macroeconomico</h3>
-                    <p style="font-size: 9.5pt; color: #4b5563; margin-bottom: 20px; line-height: 1.4;">
-                        Resumen comparativo de la estructura general de la nomina para los conceptos analizados. Los devengos representan las percepciones brutas de los colaboradores, mientras que los descuentos corresponden a deducciones legales o internas.
-                    </p>
-
-                    <!-- Tabla comparativa macro -->
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 9.5pt;">
-                        <thead>
-                            <tr style="background: #6C00D3; color: white;">
-                                <th style="padding: 10px; text-align: left; font-weight: 600; border-top-left-radius: 6px; border-bottom-left-radius: 6px;">Estructura de Nomina</th>
-                                <th style="padding: 10px; text-align: right; font-weight: 600;">P1: ${getPeriodLabel(insights.p1)}</th>
-                                <th style="padding: 10px; text-align: right; font-weight: 600;">P2: ${getPeriodLabel(insights.p2)}</th>
-                                <th style="padding: 10px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                <th style="padding: 10px; text-align: right; font-weight: 600; border-top-right-radius: 6px; border-bottom-right-radius: 6px;">Variacion (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr style="border-bottom: 1px solid #e5e7eb;">
-                                <td style="padding: 10px; font-weight: 500;">(+) Devengos Totales</td>
-                                <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.devengosP1)}</td>
-                                <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.devengosP2)}</td>
-                                <td style="padding: 10px; text-align: right; font-weight: 500; color: ${insights.totals.devengosDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.devengosDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.devengosDiff)}</td>
-                                <td style="padding: 10px; text-align: right; font-weight: 600; color: ${insights.totals.devengosDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.devengosDiff >= 0 ? '+' : ''}${insights.totals.devengosPct.toFixed(2)}%</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid #e5e7eb;">
-                                <td style="padding: 10px; font-weight: 500;">(-) Descuentos Totales</td>
-                                <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.descuentosP1)}</td>
-                                <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.descuentosP2)}</td>
-                                <td style="padding: 10px; text-align: right; font-weight: 500; color: ${insights.totals.descuentosDiff >= 0 ? '#ef4444' : '#10b981'};">${insights.totals.descuentosDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.descuentosDiff)}</td>
-                                <td style="padding: 10px; text-align: right; font-weight: 600; color: ${insights.totals.descuentosDiff >= 0 ? '#ef4444' : '#10b981'};">${insights.totals.descuentosDiff >= 0 ? '+' : ''}${insights.totals.descuentosPct.toFixed(2)}%</td>
-                            </tr>
-                            <tr style="background: #f9fafb; font-weight: bold; border-bottom: 2px solid #e5e7eb;">
-                                <td style="padding: 12px 10px; color: #6C00D3;">(=) Gasto Neto Consolidado</td>
-                                <td style="padding: 12px 10px; text-align: right;">${currencyFormatter.format(insights.totals.netP1)}</td>
-                                <td style="padding: 12px 10px; text-align: right;">${currencyFormatter.format(insights.totals.netP2)}</td>
-                                <td style="padding: 12px 10px; text-align: right; color: ${insights.totals.netDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.netDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.netDiff)}</td>
-                                <td style="padding: 12px 10px; text-align: right; color: ${insights.totals.netDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.netDiff >= 0 ? '+' : ''}${insights.totals.netPct.toFixed(2)}%</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <!-- Graficos de Comparacion -->
-                    <div style="margin-top: 15px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; align-items: center;">
-                        <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
-                            <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0; text-transform: uppercase;">Comparacion Estructural de Periodos</h4>
-                            <canvas id="chart-macro-comparison" width="310" height="170" style="margin: 0 auto;"></canvas>
-                        </div>
-                        <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
-                            <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0; text-transform: uppercase;">Composicion P2</h4>
-                            <canvas id="chart-macro-pie" width="230" height="170" style="margin: 0 auto;"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Footer Pagina 2 -->
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 35px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                        <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                        <div>Confidencial - Pagina 2 de 4</div>
-                    </div>
-                </div>
-
-                <!-- Page 3: Principales Variaciones e Insights -->
-                <div class="report-page-sheet">
-                    <!-- Header comun -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
-                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
-                        <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
-                    </div>
-
-                    <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">2. Drivers Principales de Variacion</h3>
-                    
-                    <!-- Bloque de Insights Principales -->
-                    <div style="margin-bottom: 20px;">
-                        <div style="background: rgba(108, 0, 211, 0.03); border-left: 4px solid #6C00D3; border-radius: 0 8px 8px 0; padding: 12px; margin-bottom: 12px; font-size: 9.5pt;">
-                            <strong style="color: #6C00D3; display: block; margin-bottom: 4px;">Principales Incrementos de Costo (Drivers de Alza)</strong>
-                            ${insights.topIncreases.length > 0 ? `
-                                <ul style="margin: 0; padding-left: 20px; line-height: 1.4; color: #374151;">
-                                    ${insights.topIncreases.map(inc => `
-                                        <li>El concepto <strong>${inc.co}</strong> (${inc.na}) aumento en <strong>${currencyFormatter.format(inc.diff)}</strong> (+${inc.pct.toFixed(1)}%).</li>
-                                    `).join('')}
-                                </ul>
-                            ` : '<span style="color:#6b7280;">No se registraron incrementos significativos de costo.</span>'}
+                
+                <div class="report-preview-body">
+                    <!-- Page 1: Portada -->
+                    <div class="report-page-sheet">
+                        <!-- Header Portada -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #6C00D3; padding-bottom: 15px;">
+                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 35px;" />
+                            <div style="text-align: right; font-size: 9pt; color: #6b7280; font-weight: 500;">REPORTES CORPORATIVOS</div>
                         </div>
 
-                        <div style="background: rgba(239, 68, 68, 0.03); border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0; padding: 12px; margin-bottom: 12px; font-size: 9.5pt;">
-                            <strong style="color: #ef4444; display: block; margin-bottom: 4px;">Principales Reducciones de Costo o Retenciones</strong>
-                            ${insights.topReductions.length > 0 ? `
-                                <ul style="margin: 0; padding-left: 20px; line-height: 1.4; color: #374151;">
-                                    ${insights.topReductions.map(red => `
-                                        <li>El concepto <strong>${red.co}</strong> (${red.na}) disminuyo en <strong>${currencyFormatter.format(Math.abs(red.diff))}</strong> (${red.pct.toFixed(1)}%).</li>
-                                    `).join('')}
-                                </ul>
-                            ` : '<span style="color:#6b7280;">No se registraron reducciones significativas.</span>'}
-                        </div>
+                        <!-- Cuerpo Portada -->
+                        <div style="margin-top: 40px; min-height: 170mm; display: flex; flex-direction: column; justify-content: center;">
+                            <span style="display: inline-block; width: fit-content; background: rgba(108, 0, 211, 0.08); color: #6C00D3; padding: 5px 12px; border-radius: 20px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">Analisis Financiero de Nomina</span>
+                            <h1 style="font-size: 26pt; font-weight: 800; line-height: 1.2; color: #1e1b4b; margin: 0 0 15px 0;">INFORME GERENCIAL DE VARIACIONES</h1>
+                            <h2 style="font-size: 16pt; font-weight: 500; color: #4b5563; margin: 0 0 30px 0; border-left: 4px solid #6C00D3; padding-left: 15px;">Variaciones de Conceptos de Nomina</h2>
 
-                        <!-- Conceptos nuevos y descontinuados -->
-                        ${insights.newConcepts.length > 0 || insights.inactiveConcepts.length > 0 ? `
-                            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 9pt;">
-                                <strong style="color: #1e1b4b; display: block; margin-bottom: 6px; text-transform: uppercase; font-size: 8.5pt;">Matriz de Conceptos: Cambios Estructurales</strong>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div>
-                                        <span style="font-weight: 600; color: #10b981; font-size: 8.5pt;">Nuevos Conceptos (P2):</span>
-                                        ${insights.newConcepts.length > 0 ? `
-                                            <ul style="margin: 4px 0 0 0; padding-left: 15px; color: #4b5563;">
-                                                ${insights.newConcepts.slice(0, 3).map(nc => `<li><strong>${nc.co}</strong>: ${currencyFormatter.format(nc.v2)}</li>`).join('')}
-                                            </ul>
-                                        ` : '<div style="color:#9ca3af; margin-top:2px;">Ninguno</div>'}
-                                    </div>
-                                    <div>
-                                        <span style="font-weight: 600; color: #ef4444; font-size: 8.5pt;">Conceptos Inactivos (P1):</span>
-                                        ${insights.inactiveConcepts.length > 0 ? `
-                                            <ul style="margin: 4px 0 0 0; padding-left: 15px; color: #4b5563;">
-                                                ${insights.inactiveConcepts.slice(0, 3).map(ic => `<li><strong>${ic.co}</strong>: ${currencyFormatter.format(ic.v1)}</li>`).join('')}
-                                            </ul>
-                                        ` : '<div style="color:#9ca3af; margin-top:2px;">Ninguno</div>'}
-                                    </div>
+                            <!-- Metadatos de la Comparacion -->
+                            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Periodo Base (P1)</div>
+                                    <div style="font-size: 11pt; font-weight: 600; color: #1f2937;">${getPeriodLabel(insights.p1)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Periodo Comparado (P2)</div>
+                                    <div style="font-size: 11pt; font-weight: 600; color: #1f2937;">${getPeriodLabel(insights.p2)}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Filtros de Tipo de Nomina</div>
+                                    <div style="font-size: 10pt; font-weight: 500; color: #1f2937;">${state.selectedTipoNomina && state.selectedTipoNomina.length > 0 ? state.selectedTipoNomina.join(', ') : 'Todos'}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Fecha de Emision</div>
+                                    <div style="font-size: 10pt; font-weight: 500; color: #1f2937;">${new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</div>
                                 </div>
                             </div>
-                        ` : ''}
-                    </div>
 
-                    <!-- Grafico de Variacion por Concepto (Top 10) -->
-                    <div style="margin-top: 15px;">
-                        <h4 style="font-size: 11pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase;">Top Variaciones de Conceptos (Impacto de Variacion Absoluta)</h4>
-                        <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
-                            <canvas id="chart-top-concept-variations" width="560" height="190" style="margin: 0 auto;"></canvas>
+                            <!-- Resumen Ejecutivo -->
+                            <div style="margin-top: 10px;">
+                                <h3 style="font-size: 13pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px;">Resumen Ejecutivo</h3>
+                                <p style="font-size: 10pt; color: #374151; text-align: justify; line-height: 1.6; margin: 0 0 10px 0;">
+                                    El presente informe provee un analisis gerencial de las variaciones identificadas en la nomina al comparar el periodo <strong>${getPeriodLabel(insights.p1)}</strong> con el periodo <strong>${getPeriodLabel(insights.p2)}</strong>. 
+                                    El gasto neto total por concepto para esta seleccion paso de <strong>${currencyFormatter.format(insights.totals.netP1)}</strong> a <strong>${currencyFormatter.format(insights.totals.netP2)}</strong>, lo que representa una variacion neta de <strong>${currencyFormatter.format(insights.totals.netDiff)}</strong> (${formatPercentage(insights.totals.netPct)}).
+                                </p>
+                                <p style="font-size: 10pt; color: #374151; text-align: justify; line-height: 1.6; margin: 0;">
+                                    Este comportamiento financiero esta determinado principalmente por un cambio en los devengos totales del <strong>${formatPercentage(insights.totals.devengosPct)}</strong> (${currencyFormatter.format(insights.totals.devengosDiff)}) y una variacion en los descuentos totales del <strong>${formatPercentage(insights.totals.descuentosPct)}</strong> (${currencyFormatter.format(insights.totals.descuentosDiff)}). A continuacion se detallan los principales drivers y el desglose de estas variaciones.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Footer Portada -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
+                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
+                            <div>Confidencial - Pagina 1 de 4</div>
                         </div>
                     </div>
 
-                    <!-- Footer Pagina 3 -->
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 35px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                        <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                        <div>Confidencial - Pagina 3 de 4</div>
-                    </div>
-                </div>
-
-                <!-- Page 4: Impacto en Colaboradores e Impacto Estructural -->
-                <div class="report-page-sheet">
-                    <!-- Header comun -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
-                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
-                        <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
-                    </div>
-
-                    <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">3. Distribucion Estructural y Casos Atipicos</h3>
-
-                    <!-- Centros de costo y cargos -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                        <div>
-                            <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top Centros de Costo (Aumento de Gasto)</h4>
-                            <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
-                                <thead>
-                                    <tr style="background: #f3f4f6; text-align: left;">
-                                        <th style="padding: 6px; font-weight: 600;">Centro de Costo</th>
-                                        <th style="padding: 6px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${insights.topCecoIncreases.length > 0 ? insights.topCecoIncreases.map(cc => `
-                                        <tr style="border-bottom: 1px solid #e5e7eb;">
-                                            <td style="padding: 6px; font-weight: 500; color: #374151;">${cc.cc}</td>
-                                            <td style="padding: 6px; text-align: right; font-weight: 600; color: #10b981;">+${currencyFormatter.format(cc.diff)}</td>
-                                        </tr>
-                                    `).join('') : '<tr><td colspan="2" style="padding:6px; color:#9ca3af; text-align:center;">Sin variaciones</td></tr>'}
-                                </tbody>
-                            </table>
+                    <!-- Page 2: Analisis Macroeconomico y Graficos -->
+                    <div class="report-page-sheet">
+                        <!-- Header comun -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
+                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
+                            <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
                         </div>
 
-                        <div>
-                            <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top Cargos (Aumento de Devengo)</h4>
-                            <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
-                                <thead>
-                                    <tr style="background: #f3f4f6; text-align: left;">
-                                        <th style="padding: 6px; font-weight: 600;">Cargo</th>
-                                        <th style="padding: 6px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${insights.topCargoIncreases.length > 0 ? insights.topCargoIncreases.map(cg => `
-                                        <tr style="border-bottom: 1px solid #e5e7eb;">
-                                            <td style="padding: 6px; font-weight: 500; color: #374151;">${cg.cg}</td>
-                                            <td style="padding: 6px; text-align: right; font-weight: 600; color: #10b981;">+${currencyFormatter.format(cg.diff)}</td>
-                                        </tr>
-                                    `).join('') : '<tr><td colspan="2" style="padding:6px; color:#9ca3af; text-align:center;">Sin variaciones</td></tr>'}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Colaboradores con mayor variacion (Casos Atipicos) -->
-                    <div style="margin-bottom: 25px;">
-                        <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top 5 Desviaciones Atipicas de Salario Neto Individual</h4>
-                        <p style="font-size: 8.5pt; color: #6b7280; margin-bottom: 8px;">
-                            Colaboradores individuales cuya retribucion neta experimento las variaciones absolutas mas pronunciadas entre los dos periodos para los conceptos analizados.
+                        <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">1. Analisis Macroeconomico</h3>
+                        <p style="font-size: 9.5pt; color: #4b5563; margin-bottom: 20px; line-height: 1.4;">
+                            Resumen comparativo de la estructura general de la nomina para los conceptos analizados. Los devengos representan las percepciones brutas de los colaboradores, mientras que los descuentos corresponden a deducciones legales o internas.
                         </p>
-                        <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+
+                        <!-- Tabla comparativa macro -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 9.5pt;">
                             <thead>
-                                <tr style="background: #6c00d3; color: white; text-align: left;">
-                                    <th style="padding: 8px; font-weight: 600;">Colaborador</th>
-                                    <th style="padding: 8px; font-weight: 600;">Identificacion</th>
-                                    <th style="padding: 8px; text-align: right; font-weight: 600;">Neto P1</th>
-                                    <th style="padding: 8px; text-align: right; font-weight: 600;">Neto P2</th>
-                                    <th style="padding: 8px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                    <th style="padding: 8px; text-align: right; font-weight: 600;">Variacion (%)</th>
+                                <tr style="background: #6C00D3; color: white;">
+                                    <th style="padding: 10px; text-align: left; font-weight: 600; border-top-left-radius: 6px; border-bottom-left-radius: 6px;">Estructura de Nomina</th>
+                                    <th style="padding: 10px; text-align: right; font-weight: 600;">P1: ${getPeriodLabel(insights.p1)}</th>
+                                    <th style="padding: 10px; text-align: right; font-weight: 600;">P2: ${getPeriodLabel(insights.p2)}</th>
+                                    <th style="padding: 10px; text-align: right; font-weight: 600;">Variacion ($)</th>
+                                    <th style="padding: 10px; text-align: right; font-weight: 600; border-top-right-radius: 6px; border-bottom-right-radius: 6px;">Variacion (%)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${insights.topEmpImpacts.length > 0 ? insights.topEmpImpacts.map(emp => `
-                                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                                        <td style="padding: 8px; font-weight: 500; color: #374151;">${emp.name}</td>
-                                        <td style="padding: 8px; color: #6b7280;">${emp.c}</td>
-                                        <td style="padding: 8px; text-align: right;">${currencyFormatter.format(emp.v1)}</td>
-                                        <td style="padding: 8px; text-align: right;">${currencyFormatter.format(emp.v2)}</td>
-                                        <td style="padding: 8px; text-align: right; font-weight: 600; color: ${emp.diff >= 0 ? '#10b981' : '#ef4444'};">${emp.diff >= 0 ? '+' : ''}${currencyFormatter.format(emp.diff)}</td>
-                                        <td style="padding: 8px; text-align: right; font-weight: 600; color: ${emp.diff >= 0 ? '#10b981' : '#ef4444'};">${emp.diff >= 0 ? '+' : ''}${emp.pct.toFixed(1)}%</td>
-                                    </tr>
-                                `).join('') : '<tr><td colspan="6" style="padding:10px; color:#9ca3af; text-align:center;">No se registraron variaciones individuales.</td></tr>'}
+                                <tr style="border-bottom: 1px solid #e5e7eb;">
+                                    <td style="padding: 10px; font-weight: 500;">(+) Devengos Totales</td>
+                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.devengosP1)}</td>
+                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.devengosP2)}</td>
+                                    <td style="padding: 10px; text-align: right; font-weight: 500; color: ${insights.totals.devengosDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.devengosDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.devengosDiff)}</td>
+                                    <td style="padding: 10px; text-align: right; font-weight: 600; color: ${insights.totals.devengosDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.devengosDiff >= 0 ? '+' : ''}${insights.totals.devengosPct.toFixed(2)}%</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #e5e7eb;">
+                                    <td style="padding: 10px; font-weight: 500;">(-) Descuentos Totales</td>
+                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.descuentosP1)}</td>
+                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.descuentosP2)}</td>
+                                    <td style="padding: 10px; text-align: right; font-weight: 500; color: ${insights.totals.descuentosDiff >= 0 ? '#ef4444' : '#10b981'};">${insights.totals.descuentosDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.descuentosDiff)}</td>
+                                    <td style="padding: 10px; text-align: right; font-weight: 600; color: ${insights.totals.descuentosDiff >= 0 ? '#ef4444' : '#10b981'};">${insights.totals.descuentosDiff >= 0 ? '+' : ''}${insights.totals.descuentosPct.toFixed(2)}%</td>
+                                </tr>
+                                <tr style="background: #f9fafb; font-weight: bold; border-bottom: 2px solid #e5e7eb;">
+                                    <td style="padding: 12px 10px; color: #6C00D3;">(=) Gasto Neto Consolidado</td>
+                                    <td style="padding: 12px 10px; text-align: right;">${currencyFormatter.format(insights.totals.netP1)}</td>
+                                    <td style="padding: 12px 10px; text-align: right;">${currencyFormatter.format(insights.totals.netP2)}</td>
+                                    <td style="padding: 12px 10px; text-align: right; color: ${insights.totals.netDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.netDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.netDiff)}</td>
+                                    <td style="padding: 12px 10px; text-align: right; color: ${insights.totals.netDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.netDiff >= 0 ? '+' : ''}${insights.totals.netPct.toFixed(2)}%</td>
+                                </tr>
                             </tbody>
                         </table>
-                    </div>
 
-                    <!-- Conclusiones y Plan de Accion -->
-                    <div>
-                        <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase;">Conclusiones y Recomendaciones Gerenciales</h4>
-                        <ul style="margin: 0; padding-left: 20px; font-size: 9pt; color: #374151; line-height: 1.4;">
-                            <li>Se observa una variacion neta de la nomina del <strong>${formatPercentage(insights.totals.netPct)}</strong> en los conceptos consolidados. Se aconseja monitorear que esta variacion se alinee con los objetivos de presupuesto trimestral.</li>
-                            ${insights.topIncreases.length > 0 ? `<li>El incremento principal fue liderado por el concepto <strong>${insights.topIncreases[0].co}</strong>. Se recomienda auditar si este incremento se debe a factores estacionales, horas extras o ajustes programados.</li>` : ''}
-                            ${insights.topCecoIncreases.length > 0 ? `<li>El Centro de Costo <strong>${insights.topCecoIncreases[0].cc}</strong> presenta el mayor crecimiento de gasto. Es procedente revisar la eficiencia operativa en dicha unidad administrativa.</li>` : ''}
-                            <li>Los colaboradores con desviaciones superiores al 30% en su neto (como se lista en la tabla de Casos Atipicos) deben ser revisados individualmente por el equipo de recursos humanos para garantizar que no existan errores de captura en el sistema.</li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Firmas -->
-                    <div style="margin-top: 30px; display: flex; justify-content: space-around; text-align: center; font-size: 8.5pt; color: #4b5563;">
-                        <div style="width: 200px; border-top: 1px solid #9ca3af; padding-top: 8px;">
-                            <strong>Elaborado por:</strong><br>
-                            Analista de Nomina - NomAI
+                        <!-- Graficos de Comparacion -->
+                        <div style="margin-top: 15px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; align-items: center;">
+                            <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
+                                <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0; text-transform: uppercase;">Comparacion Estructural de Periodos</h4>
+                                <canvas id="chart-macro-comparison" width="310" height="170" style="margin: 0 auto;"></canvas>
+                            </div>
+                            <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
+                                <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0; text-transform: uppercase;">Composicion P2</h4>
+                                <canvas id="chart-macro-pie" width="230" height="170" style="margin: 0 auto;"></canvas>
+                            </div>
                         </div>
-                        <div style="width: 200px; border-top: 1px solid #9ca3af; padding-top: 8px;">
-                            <strong>Revisado y Aprobado por:</strong><br>
-                            Gerente de Finanzas / Recursos Humanos
+
+                        <!-- Footer Pagina 2 -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 35px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
+                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
+                            <div>Confidencial - Pagina 2 de 4</div>
                         </div>
                     </div>
 
-                    <!-- Footer Pagina 4 -->
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                        <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                        <div>Confidencial - Pagina 4 de 4</div>
+                    <!-- Page 3: Principales Variaciones e Insights -->
+                    <div class="report-page-sheet">
+                        <!-- Header comun -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
+                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
+                            <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
+                        </div>
+
+                        <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">2. Drivers Principales de Variacion</h3>
+                        
+                        <!-- Bloque de Insights Principales -->
+                        <div style="margin-bottom: 20px;">
+                            <div style="background: rgba(108, 0, 211, 0.03); border-left: 4px solid #6C00D3; border-radius: 0 8px 8px 0; padding: 12px; margin-bottom: 12px; font-size: 9.5pt;">
+                                <strong style="color: #6C00D3; display: block; margin-bottom: 4px;">Principales Incrementos de Costo (Drivers de Alza)</strong>
+                                ${insights.topIncreases.length > 0 ? `
+                                    <ul style="margin: 0; padding-left: 20px; line-height: 1.4; color: #374151;">
+                                        ${insights.topIncreases.map(inc => `
+                                            <li>El concepto <strong>${inc.co}</strong> (${inc.na}) aumento en <strong>${currencyFormatter.format(inc.diff)}</strong> (+${inc.pct.toFixed(1)}%).</li>
+                                        `).join('')}
+                                    </ul>
+                                ` : '<span style="color:#6b7280;">No se registraron incrementos significativos de costo.</span>'}
+                            </div>
+
+                            <div style="background: rgba(239, 68, 68, 0.03); border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0; padding: 12px; margin-bottom: 12px; font-size: 9.5pt;">
+                                <strong style="color: #ef4444; display: block; margin-bottom: 4px;">Principales Reducciones de Costo o Retenciones</strong>
+                                ${insights.topReductions.length > 0 ? `
+                                    <ul style="margin: 0; padding-left: 20px; line-height: 1.4; color: #374151;">
+                                        ${insights.topReductions.map(red => `
+                                            <li>El concepto <strong>${red.co}</strong> (${red.na}) disminuyo en <strong>${currencyFormatter.format(Math.abs(red.diff))}</strong> (${red.pct.toFixed(1)}%).</li>
+                                        `).join('')}
+                                    </ul>
+                                ` : '<span style="color:#6b7280;">No se registraron reducciones significativas.</span>'}
+                            </div>
+
+                            <!-- Conceptos nuevos y descontinuados -->
+                            ${insights.newConcepts.length > 0 || insights.inactiveConcepts.length > 0 ? `
+                                <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 9pt;">
+                                    <strong style="color: #1e1b4b; display: block; margin-bottom: 6px; text-transform: uppercase; font-size: 8.5pt;">Matriz de Conceptos: Cambios Estructurales</strong>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <span style="font-weight: 600; color: #10b981; font-size: 8.5pt;">Nuevos Conceptos (P2):</span>
+                                            ${insights.newConcepts.length > 0 ? `
+                                                <ul style="margin: 4px 0 0 0; padding-left: 15px; color: #4b5563;">
+                                                    ${insights.newConcepts.slice(0, 3).map(nc => `<li><strong>${nc.co}</strong>: ${currencyFormatter.format(nc.v2)}</li>`).join('')}
+                                                </ul>
+                                            ` : '<div style="color:#9ca3af; margin-top:2px;">Ninguno</div>'}
+                                        </div>
+                                        <div>
+                                            <span style="font-weight: 600; color: #ef4444; font-size: 8.5pt;">Conceptos Inactivos (P1):</span>
+                                            ${insights.inactiveConcepts.length > 0 ? `
+                                                <ul style="margin: 4px 0 0 0; padding-left: 15px; color: #4b5563;">
+                                                    ${insights.inactiveConcepts.slice(0, 3).map(ic => `<li><strong>${ic.co}</strong>: ${currencyFormatter.format(ic.v1)}</li>`).join('')}
+                                                </ul>
+                                            ` : '<div style="color:#9ca3af; margin-top:2px;">Ninguno</div>'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Grafico de Variacion por Concepto (Top 10) -->
+                        <div style="margin-top: 15px;">
+                            <h4 style="font-size: 11pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase;">Top Variaciones de Conceptos (Impacto de Variacion Absoluta)</h4>
+                            <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
+                                <canvas id="chart-top-concept-variations" width="560" height="190" style="margin: 0 auto;"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Footer Pagina 3 -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 35px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
+                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
+                            <div>Confidencial - Pagina 3 de 4</div>
+                        </div>
+                    </div>
+
+                    <!-- Page 4: Impacto en Colaboradores e Impacto Estructural -->
+                    <div class="report-page-sheet">
+                        <!-- Header comun -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
+                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
+                            <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
+                        </div>
+
+                        <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">3. Distribucion Estructural y Casos Atipicos</h3>
+
+                        <!-- Centros de costo y cargos -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <div>
+                                <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top Centros de Costo (Aumento de Gasto)</h4>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                                    <thead>
+                                        <tr style="background: #f3f4f6; text-align: left;">
+                                            <th style="padding: 6px; font-weight: 600;">Centro de Costo</th>
+                                            <th style="padding: 6px; text-align: right; font-weight: 600;">Variacion ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${insights.topCecoIncreases.length > 0 ? insights.topCecoIncreases.map(cc => `
+                                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                                <td style="padding: 6px; font-weight: 500; color: #374151;">${cc.cc}</td>
+                                                <td style="padding: 6px; text-align: right; font-weight: 600; color: #10b981;">+${currencyFormatter.format(cc.diff)}</td>
+                                            </tr>
+                                        `).join('') : '<tr><td colspan="2" style="padding:6px; color:#9ca3af; text-align:center;">Sin variaciones</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div>
+                                <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top Cargos (Aumento de Devengo)</h4>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                                    <thead>
+                                        <tr style="background: #f3f4f6; text-align: left;">
+                                            <th style="padding: 6px; font-weight: 600;">Cargo</th>
+                                            <th style="padding: 6px; text-align: right; font-weight: 600;">Variacion ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${insights.topCargoIncreases.length > 0 ? insights.topCargoIncreases.map(cg => `
+                                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                                <td style="padding: 6px; font-weight: 500; color: #374151;">${cg.cg}</td>
+                                                <td style="padding: 6px; text-align: right; font-weight: 600; color: #10b981;">+${currencyFormatter.format(cg.diff)}</td>
+                                            </tr>
+                                        `).join('') : '<tr><td colspan="2" style="padding:6px; color:#9ca3af; text-align:center;">Sin variaciones</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Colaboradores con mayor variacion (Casos Atipicos) -->
+                        <div style="margin-bottom: 25px;">
+                            <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top 5 Desviaciones Atipicas de Salario Neto Individual</h4>
+                            <p style="font-size: 8.5pt; color: #6b7280; margin-bottom: 8px;">
+                                Colaboradores individuales cuya retribucion neta experimento las variaciones absolutas mas pronunciadas entre los dos periodos para los conceptos analizados.
+                            </p>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                                <thead>
+                                    <tr style="background: #6c00d3; color: white; text-align: left;">
+                                        <th style="padding: 8px; font-weight: 600;">Colaborador</th>
+                                        <th style="padding: 8px; font-weight: 600;">Identificacion</th>
+                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Neto P1</th>
+                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Neto P2</th>
+                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Variacion ($)</th>
+                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Variacion (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${insights.topEmpImpacts.length > 0 ? insights.topEmpImpacts.map(emp => `
+                                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                                            <td style="padding: 8px; font-weight: 500; color: #374151;">${emp.name}</td>
+                                            <td style="padding: 8px; color: #6b7280;">${emp.c}</td>
+                                            <td style="padding: 8px; text-align: right;">${currencyFormatter.format(emp.v1)}</td>
+                                            <td style="padding: 8px; text-align: right;">${currencyFormatter.format(emp.v2)}</td>
+                                            <td style="padding: 8px; text-align: right; font-weight: 600; color: ${emp.diff >= 0 ? '#10b981' : '#ef4444'};">${emp.diff >= 0 ? '+' : ''}${currencyFormatter.format(emp.diff)}</td>
+                                            <td style="padding: 8px; text-align: right; font-weight: 600; color: ${emp.diff >= 0 ? '#10b981' : '#ef4444'};">${emp.diff >= 0 ? '+' : ''}${emp.pct.toFixed(1)}%</td>
+                                        </tr>
+                                    `).join('') : '<tr><td colspan="6" style="padding:10px; color:#9ca3af; text-align:center;">No se registraron variaciones individuales.</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Conclusiones y Plan de Action -->
+                        <div>
+                            <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase;">Conclusiones y Recomendaciones Gerenciales</h4>
+                            <ul style="margin: 0; padding-left: 20px; font-size: 9pt; color: #374151; line-height: 1.4;">
+                                <li>Se observa una variacion neta de la nomina del <strong>${formatPercentage(insights.totals.netPct)}</strong> en los conceptos consolidados. Se aconseja monitorear que esta variacion se alinee con los objetivos de presupuesto trimestral.</li>
+                                ${insights.topIncreases.length > 0 ? `<li>El incremento principal fue liderado por el concepto <strong>${insights.topIncreases[0].co}</strong>. Se recomienda auditar si este incremento se debe a factores estacionales, horas extras o ajustes programados.</li>` : ''}
+                                ${insights.topCecoIncreases.length > 0 ? `<li>El Centro de Costo <strong>${insights.topCecoIncreases[0].cc}</strong> presenta el mayor crecimiento de gasto. Es procedente revisar la eficiencia operativa en dicha unidad administrativa.</li>` : ''}
+                                <li>Los colaboradores con desviaciones superiores al 30% en su neto (como se lista en la tabla de Casos Atipicos) deben ser revisados individualmente por el equipo de recursos humanos para garantizar que no existan errores de captura en el sistema.</li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Firmas -->
+                        <div style="margin-top: 30px; display: flex; justify-content: space-around; text-align: center; font-size: 8.5pt; color: #4b5563;">
+                            <div style="width: 200px; border-top: 1px solid #9ca3af; padding-top: 8px;">
+                                <strong>Elaborado por:</strong><br>
+                                Analista de Nomina - NomAI
+                            </div>
+                            <div style="width: 200px; border-top: 1px solid #9ca3af; padding-top: 8px;">
+                                <strong>Revisado y Aprobado por:</strong><br>
+                                Gerente de Finanzas / Recursos Humanos
+                            </div>
+                        </div>
+
+                        <!-- Footer Pagina 4 -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
+                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
+                            <div>Confidencial - Pagina 4 de 4</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        
-        document.body.appendChild(previewOverlay);
-        
-        // Dibujar graficos de analisis
-        try {
+            `;
+            
+            updateProgressStep('4-template', 'success', 'Maqueta del reporte construida.');
+            
+            // Paso 5: Dibujar graficos
+            updateProgressStep('5-charts', 'processing', 'Renderizando graficos de analisis...');
+            document.body.appendChild(previewOverlay);
+            
+            // Dibujar graficos de analisis
             new Chart(previewOverlay.querySelector('#chart-macro-comparison'), {
                 type: 'bar',
                 data: {
@@ -7137,20 +7222,39 @@ function generateManagerialReport() {
                     }
                 }
             });
+            updateProgressStep('5-charts', 'success', 'Graficos renderizados correctamente.');
+            
+            // Paso 6: Mostrar previsualizacion
+            updateProgressStep('6-show', 'processing', 'Abriendo previsualizacion en pantalla...');
+            
+            // Vincular boton cerrar
+            previewOverlay.querySelector('#btn-close-report-preview').addEventListener('click', () => {
+                previewOverlay.remove();
+            });
+            
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            updateProgressStep('6-show', 'success', 'Previsualizacion iniciada exitosamente.');
+            
+            // Quitar overlay de progreso despues de una fraccion de segundo
+            setTimeout(() => {
+                progressOverlay.remove();
+            }, 600);
+            
         } catch (err) {
-            console.error("Error al dibujar graficos en previsualizacion:", err);
+            console.error("Error al procesar el informe gerencial:", err);
+            // Identificar que paso fallo y marcarlo con error
+            const steps = ['1-validate', '2-insights', '3-logo', '4-template', '5-charts', '6-show'];
+            for (let s of steps) {
+                const row = document.getElementById('step-' + s);
+                if (row && row.innerHTML.includes('spin-animation')) {
+                    updateProgressStep(s, 'error', 'Error en este paso.', err.message + "\nStack: " + err.stack);
+                    break;
+                }
+            }
+            // Si ninguno estaba en proceso, marcar el primero
+            updateProgressStep('1-validate', 'error', 'Fallo de ejecucion.', err.message + "\nStack: " + err.stack);
         }
-        
-        // Vincular boton cerrar
-        previewOverlay.querySelector('#btn-close-report-preview').addEventListener('click', () => {
-            previewOverlay.remove();
-        });
-        
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
-        
-        // Quitar overlay de carga
-        loadingOverlay.remove();
-    }, 300);
+    }, 400);
 }
