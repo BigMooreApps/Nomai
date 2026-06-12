@@ -130,7 +130,7 @@ body {
     width: 100%;
 }
 .logo-img-expanded {
-    height: 60px;
+    height: 78px;
     width: auto;
     max-width: 100%;
     object-fit: contain;
@@ -139,7 +139,7 @@ body {
 .logo-img-collapsed {
     max-width: 100%;
     height: auto;
-    max-height: 48px;
+    max-height: 62px;
     display: block;
     border-radius: 8px;
 }
