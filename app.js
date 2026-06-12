@@ -2208,13 +2208,16 @@ function renderConceptCecoChart(conceptData) {
                     if (total === 0) return;
                     
                     const meta = chart.getDatasetMeta(0);
+                    const chartWidth = chart.width || 300;
+                    // En móvil (gráfico angosto) empujar etiquetas más hacia afuera
+                    const radiusFactor = chartWidth < 280 ? 0.82 : 0.68;
                     meta.data.forEach((element, index) => {
                         const value = dataset.data[index];
                         const percentage = ((value / total) * 100).toFixed(1) + '%';
                         const { x, y, startAngle, endAngle, innerRadius, outerRadius } = element;
                         if (endAngle - startAngle > 0.18) {
                             const avgAngle = startAngle + (endAngle - startAngle) / 2;
-                            const r = innerRadius + (outerRadius - innerRadius) * 0.55;
+                            const r = innerRadius + (outerRadius - innerRadius) * radiusFactor;
                             const labelX = x + Math.cos(avgAngle) * r;
                             const labelY = y + Math.sin(avgAngle) * r;
                             ctx.fillText(percentage, labelX, labelY);
@@ -2320,13 +2323,16 @@ function renderConceptCargoChart(conceptData) {
                     if (total === 0) return;
                     
                     const meta = chart.getDatasetMeta(0);
+                    const chartWidth = chart.width || 300;
+                    // En móvil (gráfico angosto) empujar etiquetas más hacia afuera
+                    const radiusFactor = chartWidth < 280 ? 0.82 : 0.68;
                     meta.data.forEach((element, index) => {
                         const value = dataset.data[index];
                         const percentage = ((value / total) * 100).toFixed(1) + '%';
                         const { x, y, startAngle, endAngle, innerRadius, outerRadius } = element;
                         if (endAngle - startAngle > 0.18) {
                             const avgAngle = startAngle + (endAngle - startAngle) / 2;
-                            const r = innerRadius + (outerRadius - innerRadius) * 0.55;
+                            const r = innerRadius + (outerRadius - innerRadius) * radiusFactor;
                             const labelX = x + Math.cos(avgAngle) * r;
                             const labelY = y + Math.sin(avgAngle) * r;
                             ctx.fillText(percentage, labelX, labelY);
