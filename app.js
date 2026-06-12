@@ -3273,7 +3273,13 @@ function renderCompareChart() {
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { color: '#6B7280', font: { family: 'Outfit', size: 11 }, boxWidth: 12, padding: 16 }
+                    labels: {
+                        color: '#6B7280',
+                        font: { family: 'Outfit', size: 11 },
+                        padding: 16,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
                 },
                 tooltip: {
                     backgroundColor: '#FFFFFF',
