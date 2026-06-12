@@ -1745,6 +1745,10 @@ table * {
         width: 100%;
         justify-content: center;
     }
+    .table-card {
+        padding: 10px !important;
+        border-radius: 10px !important;
+    }
 }
 
 /* ──────────────────────────────
@@ -1855,12 +1859,17 @@ table * {
     /* Make tables scrollable and compact on mobile */
     .custom-table {
         width: 100% !important;
-        min-width: 500px !important; /* Force min-width to prevent column squishing and cut-offs */
+        min-width: auto !important;
+        table-layout: auto !important;
     }
     .custom-table th, 
     .custom-table td {
-        padding: 6px 8px !important;
-        font-size: 0.75rem !important;
+        padding: 4px 5px !important;
+        font-size: 0.66rem !important;
+        letter-spacing: -0.2px !important;
+    }
+    .custom-table th {
+        font-size: 0.62rem !important;
     }
 
     /* Compress top global filter toolbar on mobile */
