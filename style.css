@@ -1860,50 +1860,56 @@ table * {
     display: none !important;
 }
 
-/* Redesign the comparison grid controls to display inline/horizontally */
-#tab-comparison .grid-controls {
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
+/* Redesign the comparison grid controls to display inline/horizontally on desktop and grid on mobile */
+.comparison-filter-layout {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 16px !important;
+    padding: 14px 20px !important;
     align-items: center !important;
-    gap: 20px 28px !important; /* 20px vertical gap for wrapped rows, 28px horizontal gap */
-    padding: 14px 24px !important;
     min-height: auto !important;
 }
 
-#tab-comparison .grid-controls > div {
-    width: auto !important;
-    min-height: auto !important;
+.comparison-filter-item {
+    display: flex !important;
+    align-items: center !important;
     gap: 8px !important;
-    display: inline-flex !important;
-    align-items: center !important;
+    width: 100% !important;
 }
 
-#tab-comparison .grid-controls > div > div:first-child {
-    width: auto !important;
-    flex-shrink: 0 !important;
+.comparison-filter-label {
+    font-weight: 500 !important;
     font-size: 0.90rem !important;
+    color: var(--text-secondary) !important;
+    flex-shrink: 0 !important;
+    width: 72px !important;
+}
+
+.comparison-filter-layout .filter-lupa-btn {
+    width: 32px !important;
+    height: 32px !important;
+}
+
+.comparison-filter-layout .filter-lupa-btn svg,
+.comparison-filter-layout .filter-lupa-btn i {
+    width: 14px !important;
+    height: 14px !important;
 }
 
 @media (max-width: 768px) {
-    #tab-comparison .grid-controls {
-        display: grid !important;
+    .comparison-filter-layout {
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 12px 16px !important; /* 12px vertical, 16px horizontal gap on mobile */
-        padding: 12px 16px !important;
+        gap: 10px 14px !important;
+        padding: 10px 14px !important;
         border-radius: 16px !important;
-        align-items: center !important;
     }
-    #tab-comparison .grid-controls > div {
-        width: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-        min-height: auto !important;
-    }
-    #tab-comparison .grid-controls > div > div:first-child {
+    .comparison-filter-label {
         font-size: 0.82rem !important;
-        width: 72px !important;
-        flex-shrink: 0 !important;
+        width: 65px !important;
+    }
+    .comparison-filter-layout .filter-lupa-btn {
+        width: 30px !important;
+        height: 30px !important;
     }
 }
 
