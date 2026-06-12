@@ -2586,7 +2586,7 @@ function getFilterOptions(type) {
             state.data.forEach(d => { if (d.tn) set.add(d.tn); });
             return Array.from(set).sort().map(t => ({
                 value: t,
-                label: TIPO_NOMINA_LABELS[t] ? `${TIPO_NOMINA_LABELS[t]} (${t})` : t,
+                label: t,
                 sublabel: ''
             }));
         }
@@ -4527,7 +4527,7 @@ function updateSearchSelectorLabels() {
                 el.innerHTML = `<i data-lucide="tag"></i> Tipo: Todos`;
             } else if (count === 1) {
                 const val = state.selectedTipoNomina[0];
-                el.innerHTML = `<i data-lucide="tag"></i> Tipo: ${TIPO_NOMINA_LABELS[val] || val}`;
+                el.innerHTML = `<i data-lucide="tag"></i> Tipo: ${val}`;
             } else {
                 el.innerHTML = `<i data-lucide="tag"></i> Tipos: ${count}`;
             }
