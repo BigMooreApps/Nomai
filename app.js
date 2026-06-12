@@ -3278,7 +3278,8 @@ function renderCompareChart() {
                         font: { family: 'Outfit', size: 11 },
                         padding: 16,
                         usePointStyle: true,
-                        pointStyle: 'circle'
+                        pointStyle: 'circle',
+                        boxWidth: 6
                     }
                 },
                 tooltip: {
