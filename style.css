@@ -135,8 +135,9 @@ body {
     display: block;
 }
 .logo-img-collapsed {
-    height: 36px;
-    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 32px;
     display: block;
     border-radius: 8px;
 }
@@ -148,6 +149,8 @@ body {
 .sidebar.collapsed .logo-collapsed {
     display: block;
     margin: 0 auto;
+    width: 100%;
+    padding: 0 8px;
 }
 .sidebar.collapsed .logo-container {
     justify-content: center;
