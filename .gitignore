@@ -12,3 +12,6 @@ Desktop.ini
 *.sln
 *.sw?
 .DS_Store
+
+# Browser profile data
+edge-profile/
