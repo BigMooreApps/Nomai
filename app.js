@@ -3246,7 +3246,7 @@ function renderCompareChart() {
         const color = colorPalette[idx % colorPalette.length];
         
         return {
-            label: peopleMap[cedula] || cedula,
+            label: '  ' + (peopleMap[cedula] || cedula),
             data: dataValues,
             borderColor: color,
             backgroundColor: color + '15', // Opacidad del 8%
@@ -3291,7 +3291,7 @@ function renderCompareChart() {
                     padding: 10,
                     callbacks: {
                         label: function(context) {
-                            return `  ${context.dataset.label}: ${currencyFormatter.format(context.raw)}`;
+                            return `  ${context.dataset.label.trim()}: ${currencyFormatter.format(context.raw)}`;
                         }
                     }
                 }
