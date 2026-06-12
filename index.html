@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Nómina e Ingresos Netos</title>
     <!-- CSS Estilos Personalizados -->
-    <link rel="stylesheet" href="style.css?v=20260612_4">
+    <link rel="stylesheet" href="style.css?v=20260612_5">
 </head>
 <body>
     <div class="app-container">
@@ -422,8 +422,8 @@
                 <!-- PESTAÑA 3: ANÁLISIS POR CONCEPTO -->
                 <div id="tab-concept" class="tab-content">
                     <div class="grid-controls">
-                        <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-secondary);">Seleccionar Concepto:</div>
-                        <div class="searchable-select">
+                        <div class="comparison-filter-label clickable-filter-label" id="btn-open-filter-concept-label" title="Buscar Concepto" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="layers"></i> Concepto</div>
+                        <div class="searchable-select" style="display: none !important;">
                             <input type="text" id="concept-search-input" class="search-input" placeholder="Buscar concepto de nómina...">
                             <div id="concept-dropdown-list" class="dropdown-list">
                                 <!-- Elementos dinámicos -->

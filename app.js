@@ -2586,6 +2586,11 @@ function getFilterOptions(type) {
             state.data.forEach(d => set.add(d.co));
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
         }
+        case 'concept_single': {
+            const set = new Set();
+            state.data.forEach(d => set.add(d.co));
+            return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
+        }
         case 'cargos': {
             const set = new Set();
             state.data.forEach(d => { if (d.cg) set.add(d.cg); });
@@ -2613,6 +2618,7 @@ function getCurrentSelectionForType(type) {
         case 'employees': return state.compareEmployees;
         case 'employee_single': return state.selectedEmployeeCedula ? [state.selectedEmployeeCedula] : [];
         case 'concepts':  return state.compareConcepts;
+        case 'concept_single': return state.selectedConceptName ? [state.selectedConceptName] : [];
         case 'cargos':    return state.compareCargos;
         case 'cecos':     return state.compareCecos;
         default:          return [];
@@ -2645,6 +2651,11 @@ function applyModalSelection(type) {
             }
             break;
         case 'concepts':  state.compareConcepts  = arr; break;
+        case 'concept_single':
+            if (arr.length > 0) {
+                state.selectedConceptName = arr[0];
+            }
+            break;
         case 'cargos':
             state.compareCargos = arr;
             if (arr.length > 0) state.compareEmployees = []; // Cargo toma prioridad
@@ -2679,9 +2690,14 @@ function renderModalOptions(allOptions, query) {
     }
 
     filtered.forEach(option => {
-        const isSelected = filterModalState.currentFilterType === 'employee_single'
-            ? state.selectedEmployeeCedula === option.value
-            : filterModalState.modalTempSelected.has(option.value);
+        let isSelected = false;
+        if (filterModalState.currentFilterType === 'employee_single') {
+            isSelected = state.selectedEmployeeCedula === option.value;
+        } else if (filterModalState.currentFilterType === 'concept_single') {
+            isSelected = state.selectedConceptName === option.value;
+        } else {
+            isSelected = filterModalState.modalTempSelected.has(option.value);
+        }
         const item = document.createElement('div');
         item.className = `options-list-item${isSelected ? ' selected' : ''}`;
         item.setAttribute('data-value', option.value);
@@ -2695,6 +2711,12 @@ function renderModalOptions(allOptions, query) {
         item.addEventListener('click', () => {
             if (filterModalState.currentFilterType === 'employee_single') {
                 state.selectedEmployeeCedula = option.value;
+                closeFilterModal();
+                renderActiveTab();
+                return;
+            }
+            if (filterModalState.currentFilterType === 'concept_single') {
+                state.selectedConceptName = option.value;
                 closeFilterModal();
                 renderActiveTab();
                 return;
@@ -2735,7 +2757,8 @@ function openFilterModal(type) {
         concepts:  '🔍 Filtrar Conceptos',
         cargos:    '🔍 Filtrar por Cargo',
         cecos:     '🔍 Filtrar Centros de Costo',
-        employee_single: '👤 Seleccionar Colaborador'
+        employee_single: '👤 Seleccionar Colaborador',
+        concept_single: '🔍 Seleccionar Concepto'
     };
     titleEl.textContent = titles[type] || 'Filtrar Opciones';
 
@@ -2829,7 +2852,8 @@ function initFilterModal() {
         { btnId: 'btn-open-filter-concepts',       type: 'concepts'  },
         { btnId: 'btn-open-filter-cargos',         type: 'cargos'    },
         { btnId: 'btn-open-filter-cecos',          type: 'cecos'     },
-        { btnId: 'btn-open-filter-employee-label',  type: 'employee_single' }
+        { btnId: 'btn-open-filter-employee-label',  type: 'employee_single' },
+        { btnId: 'btn-open-filter-concept-label',   type: 'concept_single' }
     ];
 
 
