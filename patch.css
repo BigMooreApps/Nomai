@@ -52,7 +52,7 @@
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(108,0,211,0.1);
-    padding: 12px 28px;
+    padding: 6px 20px; /* Reduced vertical padding */
     position: sticky; top: 0; z-index: 40;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     box-shadow: 0 4px 20px rgba(0,0,0,0.03);
@@ -64,6 +64,10 @@
     gap: 12px;
     flex-wrap: wrap;
 }
+.filter-toolbar-inner > div,
+.filter-toolbar-inner > div > div {
+    min-height: 32px !important; /* Force a more compact height */
+}
 .filter-group {
     display: flex;
     align-items: center;
@@ -71,18 +75,31 @@
 }
 .filter-group.hidden { display: none !important; }
 .filter-divider {
-    width: 1px; height: 20px;
+    width: 1px; height: 16px;
     background: var(--border-color);
 }
 .filter-group-label {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 0.78rem;
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.68rem; /* Smaller font-size */
     color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
-.filter-group-label i { width: 13px; height: 13px; }
+.filter-group-label i,
+.filter-group-label svg {
+    width: 11px !important;
+    height: 11px !important; /* Smaller icon size */
+}
+.filter-toolbar .filter-lupa-btn {
+    width: 26px !important;
+    height: 26px !important; /* Smaller search button */
+}
+.filter-toolbar .filter-lupa-btn svg,
+.filter-toolbar .filter-lupa-btn i {
+    width: 11px !important;
+    height: 11px !important; /* Smaller magnifying glass icon */
+}
 
 /* Custom Dropdown */
 .custom-dropdown { position: relative; user-select: none; }
