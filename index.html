@@ -614,21 +614,23 @@
                         <div class="comparison-filter-item">
                             <div class="comparison-filter-label clickable-filter-label" id="period-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
-                        <div style="margin-left: auto; display: flex; gap: 8px;">
-                            <button id="btn-period-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
-                                <i data-lucide="chevrons-down"></i>
-                            </button>
-                            <button id="btn-period-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
-                                <i data-lucide="chevrons-up"></i>
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Tabla de Comparación Jerárquica -->
                     <div class="table-card">
-                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                            <h3 class="table-title">Desglose Comparativo de Nómina</h3>
-                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier colaborador para expandir o contraer su desglose de conceptos detallado.</p>
+                        <div class="table-header" style="flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                            <div>
+                                <h3 class="table-title">Desglose Comparativo de Nómina</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Haz clic en la fila morada de cualquier colaborador para expandir o contraer su desglose.</p>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                                <button id="btn-period-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                    <i data-lucide="chevrons-down"></i>
+                                </button>
+                                <button id="btn-period-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                    <i data-lucide="chevrons-up"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="table-wrapper" style="max-height: 600px;">
                             <table class="custom-table compare-table">
@@ -668,21 +670,23 @@
                         <div class="comparison-filter-item">
                             <div class="comparison-filter-label clickable-filter-label" id="concept-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
-                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-                            <button id="btn-concept-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
-                                <i data-lucide="chevrons-down"></i>
-                            </button>
-                            <button id="btn-concept-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
-                                <i data-lucide="chevrons-up"></i>
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Tabla de Comparación Jerárquica de Conceptos -->
                     <div class="table-card">
-                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                            <h3 class="table-title">Desglose Comparativo por Concepto</h3>
-                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier concepto para expandir o contraer el listado de colaboradores desglosados.</p>
+                        <div class="table-header" style="flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                            <div>
+                                <h3 class="table-title">Desglose Comparativo por Concepto</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Haz clic en la fila morada de cualquier concepto para expandir o contraer el listado de colaboradores.</p>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                                <button id="btn-concept-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                    <i data-lucide="chevrons-down"></i>
+                                </button>
+                                <button id="btn-concept-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                    <i data-lucide="chevrons-up"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="table-wrapper" style="max-height: 600px;">
                             <table class="custom-table compare-table">
@@ -722,21 +726,23 @@
                         <div class="comparison-filter-item">
                             <div class="comparison-filter-label clickable-filter-label" id="ceco-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
-                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-                            <button id="btn-ceco-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
-                                <i data-lucide="chevrons-down"></i>
-                            </button>
-                            <button id="btn-ceco-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
-                                <i data-lucide="chevrons-up"></i>
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Tabla de Comparación Jerárquica de Centros de Costo -->
                     <div class="table-card">
-                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                            <h3 class="table-title">Desglose Comparativo por Centro de Costo</h3>
-                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier Centro de Costo para expandir o contraer el desglose de conceptos detallado.</p>
+                        <div class="table-header" style="flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                            <div>
+                                <h3 class="table-title">Desglose Comparativo por Centro de Costo</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Haz clic en la fila morada de cualquier Centro de Costo para expandir o contraer el desglose.</p>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                                <button id="btn-ceco-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                    <i data-lucide="chevrons-down"></i>
+                                </button>
+                                <button id="btn-ceco-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                    <i data-lucide="chevrons-up"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="table-wrapper" style="max-height: 600px;">
                             <table class="custom-table compare-table">
@@ -776,21 +782,23 @@
                         <div class="comparison-filter-item">
                             <div class="comparison-filter-label clickable-filter-label" id="cargo-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
-                        <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-                            <button id="btn-cargo-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
-                                <i data-lucide="chevrons-down"></i>
-                            </button>
-                            <button id="btn-cargo-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
-                                <i data-lucide="chevrons-up"></i>
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Tabla de Comparación Jerárquica de Cargos -->
                     <div class="table-card">
-                        <div class="table-header" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-                            <h3 class="table-title">Desglose Comparativo por Cargo</h3>
-                            <p style="font-size: 0.8rem; color: var(--text-muted);">Haz clic en la fila morada de cualquier Cargo para expandir o contraer el desglose de conceptos detallado.</p>
+                        <div class="table-header" style="flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                            <div>
+                                <h3 class="table-title">Desglose Comparativo por Cargo</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Haz clic en la fila morada de cualquier Cargo para expandir o contraer el desglose de conceptos.</p>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                                <button id="btn-cargo-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
+                                    <i data-lucide="chevrons-down"></i>
+                                </button>
+                                <button id="btn-cargo-compare-collapse" class="btn-icon" title="Colapsar todo" aria-label="Colapsar todo">
+                                    <i data-lucide="chevrons-up"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="table-wrapper" style="max-height: 600px;">
                             <table class="custom-table compare-table">
