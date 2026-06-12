@@ -1959,5 +1959,19 @@ table * {
     }
 }
 
+/* Clickable filter label hover effects and formatting */
+.clickable-filter-label {
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: color 0.2s ease-in-out, transform 0.15s ease-in-out, opacity 0.2s ease-in-out !important;
+}
+.clickable-filter-label:hover {
+    color: var(--primary) !important;
+    opacity: 0.85;
+}
+.clickable-filter-label:active {
+    transform: scale(0.97);
+}
+
 
 

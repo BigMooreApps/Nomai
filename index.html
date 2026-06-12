@@ -150,30 +150,21 @@
                     <div id="date-filters-group" class="filter-group" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                         <!-- Años Filter -->
                         <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
-                            <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="calendar"></i> Años:</span>
-                            <button class="filter-lupa-btn" id="btn-open-filter-years" title="Buscar Años" type="button">
-                                <i data-lucide="search"></i>
-                            </button>
+                            <span class="filter-group-label clickable-filter-label" id="btn-open-filter-years" style="flex-shrink:0;" title="Buscar Años"><i data-lucide="calendar"></i> Años</span>
                         </div>
 
                         <div class="filter-divider"></div>
 
                         <!-- Meses Filter -->
                         <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
-                            <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="calendar-days"></i> Meses:</span>
-                            <button class="filter-lupa-btn" id="btn-open-filter-months" title="Buscar Meses" type="button">
-                                <i data-lucide="search"></i>
-                            </button>
+                            <span class="filter-group-label clickable-filter-label" id="btn-open-filter-months" style="flex-shrink:0;" title="Buscar Meses"><i data-lucide="calendar-days"></i> Meses</span>
                         </div>
 
                         <div class="filter-divider"></div>
 
                         <!-- Quincenas Filter -->
                         <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
-                            <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="calendar-range"></i> Quincenas:</span>
-                            <button class="filter-lupa-btn" id="btn-open-filter-quincenas" title="Buscar Quincenas" type="button">
-                                <i data-lucide="search"></i>
-                            </button>
+                            <span class="filter-group-label clickable-filter-label" id="btn-open-filter-quincenas" style="flex-shrink:0;" title="Buscar Quincenas"><i data-lucide="calendar-range"></i> Quincenas</span>
                         </div>
                     </div>
 
@@ -181,10 +172,7 @@
 
                     <!-- Tipo Filter -->
                     <div style="display: flex; gap: 8px; align-items: center; min-height: 40px;">
-                        <span class="filter-group-label" style="flex-shrink:0;"><i data-lucide="tag"></i> Tipo:</span>
-                        <button class="filter-lupa-btn" id="btn-open-filter-types" title="Buscar Tipos de Nómina" type="button">
-                            <i data-lucide="search"></i>
-                        </button>
+                        <span class="filter-group-label clickable-filter-label" id="btn-open-filter-types" style="flex-shrink:0;" title="Buscar Tipos de Nómina"><i data-lucide="tag"></i> Tipo</span>
                     </div>
                     
                     <button id="btn-clear-filters" class="btn btn-secondary" style="margin-left: auto; padding: 6px 12px; font-size: 0.8rem; height: 32px; flex-shrink: 0;" title="Limpiar Filtros">
@@ -564,28 +552,16 @@
                 <div id="tab-comparison" class="tab-content">
                     <div class="grid-controls comparison-filter-layout" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; padding: 12px 16px; align-items: center; min-height: auto; width: 100%; box-sizing: border-box;">
                         <div class="comparison-filter-item" style="display: flex; align-items: center; gap: 8px; width: 100%; min-height: auto;">
-                            <div class="comparison-filter-label" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; width: 68px;">Personas:</div>
-                            <button class="filter-lupa-btn" id="btn-open-filter-employees" title="Buscar Personas" type="button" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-                            </button>
+                            <div class="comparison-filter-label clickable-filter-label" id="btn-open-filter-employees" title="Buscar Personas" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; cursor: pointer;">Personas</div>
                         </div>
                         <div class="comparison-filter-item" style="display: flex; align-items: center; gap: 8px; width: 100%; min-height: auto;">
-                            <div class="comparison-filter-label" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; width: 68px;">Concepto:</div>
-                            <button class="filter-lupa-btn" id="btn-open-filter-concepts" title="Buscar Conceptos" type="button" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-                            </button>
+                            <div class="comparison-filter-label clickable-filter-label" id="btn-open-filter-concepts" title="Buscar Conceptos" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; cursor: pointer;">Concepto</div>
                         </div>
                         <div class="comparison-filter-item" style="display: flex; align-items: center; gap: 8px; width: 100%; min-height: auto;">
-                            <div class="comparison-filter-label" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; width: 68px;">Cargo:</div>
-                            <button class="filter-lupa-btn" id="btn-open-filter-cargos" title="Buscar Cargos" type="button" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-                            </button>
+                            <div class="comparison-filter-label clickable-filter-label" id="btn-open-filter-cargos" title="Buscar Cargos" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; cursor: pointer;">Cargo</div>
                         </div>
                         <div class="comparison-filter-item" style="display: flex; align-items: center; gap: 8px; width: 100%; min-height: auto;">
-                            <div class="comparison-filter-label" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; width: 68px;">Ceco:</div>
-                            <button class="filter-lupa-btn" id="btn-open-filter-cecos" title="Buscar Centros de Costo" type="button" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-lucide="search" style="width: 14px; height: 14px;"></i>
-                            </button>
+                            <div class="comparison-filter-label clickable-filter-label" id="btn-open-filter-cecos" title="Buscar Centros de Costo" style="font-weight: 500; font-size: 0.85rem; color: var(--text-secondary); flex-shrink: 0; cursor: pointer;">Ceco</div>
                         </div>
                     </div>
 
