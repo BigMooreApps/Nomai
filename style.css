@@ -16,7 +16,7 @@
     /* Fondos */
     --bg-main:        #F5F6FA;
     --bg-card:        #FFFFFF;
-    --bg-sidebar:     #6C00D3;
+    --bg-sidebar:     #6A02CE;
 
     /* Textos */
     --text-primary:   #1A1D2E;
@@ -120,39 +120,38 @@ body {
     border-bottom: 1px solid rgba(255,255,255,0.10);
     margin-bottom: 8px;
 }
-.logo-icon {
-    width: 36px; height: 36px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    border: 1px solid rgba(255,255,255,0.22);
-}
-.logo-letter {
-    font-weight: 800;
-    font-size: 1.1rem;
-    color: #FFFFFF;
-    line-height: 1;
-}
-.logo-text {
-    transition: opacity var(--t-sidebar);
-    overflow: hidden;
-    white-space: nowrap;
-}
-.sidebar.collapsed .logo-text { opacity: 0; width: 0; }
-.logo-text-inner {
+/* Logo images styling */
+.logo-expanded {
     display: block;
-    font-weight: 700;
-    font-size: 1.05rem;
-    color: #FFFFFF;
-    line-height: 1.1;
+    width: 100%;
 }
-.logo-text-sub {
+.logo-collapsed {
+    display: none;
+    width: 100%;
+}
+.logo-img-expanded {
+    height: 40px;
+    width: auto;
     display: block;
-    font-size: 0.68rem;
-    color: rgba(255,255,255,0.55);
-    font-weight: 400;
-    letter-spacing: 0.3px;
+}
+.logo-img-collapsed {
+    height: 36px;
+    width: auto;
+    display: block;
+    border-radius: 8px;
+}
+
+/* Sidebar collapsed state (desktop) */
+.sidebar.collapsed .logo-expanded {
+    display: none;
+}
+.sidebar.collapsed .logo-collapsed {
+    display: block;
+    margin: 0 auto;
+}
+.sidebar.collapsed .logo-container {
+    justify-content: center;
+    padding: 0 0 24px 0;
 }
 
 /* Nav */
@@ -1567,7 +1566,6 @@ table * {
     }
 
     /* Mostrar texto de logo y enlaces siempre en menú móvil */
-    .sidebar.collapsed .logo-text,
     .sidebar.collapsed .nav-link span,
     .sidebar.collapsed .dropdown-chevron {
         opacity: 1 !important;
@@ -1577,6 +1575,16 @@ table * {
     }
     .sidebar.collapsed .dropdown-chevron {
         display: block !important;
+    }
+    .sidebar.collapsed .logo-expanded {
+        display: block !important;
+    }
+    .sidebar.collapsed .logo-collapsed {
+        display: none !important;
+    }
+    .sidebar.collapsed .logo-container {
+        justify-content: flex-start !important;
+        padding: 0 18px 24px !important;
     }
 
     /* Encabezado compacto */
