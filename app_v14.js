@@ -4102,7 +4102,7 @@ function parseExcelFile(arrayBuffer, fileName) {
     const kDCC = getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
     const kCg = getColKey(['NOMBRE CARGO', 'CARGO']);
     const kPa = getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
-    const kCant = getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.']);
+    const kCant = getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA']);
     
     if (!kCed || !kCon || !kTot) {
         throw new Error('No se encontraron las columnas mínimas requeridas (Cédula, Concepto y Valor).');
