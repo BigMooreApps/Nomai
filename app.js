@@ -1235,6 +1235,16 @@ function initEmployeeSearch() {
     const input = document.getElementById('employee-search-input');
     const list = document.getElementById('employee-dropdown-list');
     if (!input || !list) return;
+
+    const labelBtn = document.getElementById('btn-open-filter-employee-label');
+    if (labelBtn && !labelBtn.dataset.listenerBound) {
+        labelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            input.focus();
+            list.classList.add('show');
+        });
+        labelBtn.dataset.listenerBound = 'true';
+    }
     
     const people = getUniquePeopleSorted();
     
