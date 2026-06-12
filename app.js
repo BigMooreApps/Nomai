@@ -2508,6 +2508,47 @@ function renderComparisonView() {
     
     // 3. Renderizar Matriz / Heatmap
     renderHeatmapMatrix();
+
+    // 4. Actualizar botones/chips de filtros con los contadores correspondientes
+    updateComparisonFilterButtons();
+}
+
+function updateComparisonFilterButtons() {
+    // Employees
+    const empVal = document.getElementById('val-filter-employees');
+    if (empVal) {
+        const count = state.compareEmployees.length;
+        empVal.textContent = count === 0 ? 'Todas' : (count === 1 ? '1 Persona' : `${count} Personas`);
+        empVal.style.background = count === 0 ? 'rgba(0,0,0,0.06)' : 'rgba(108,0,211,0.12)';
+        empVal.style.color = count === 0 ? 'var(--text-muted)' : 'var(--primary)';
+    }
+
+    // Concepts
+    const conceptVal = document.getElementById('val-filter-concepts');
+    if (conceptVal) {
+        const count = state.compareConcepts.length;
+        conceptVal.textContent = count === 0 ? 'Todos' : (count === 1 ? '1 Concepto' : `${count} Conceptos`);
+        conceptVal.style.background = count === 0 ? 'rgba(0,0,0,0.06)' : 'rgba(16, 185, 129, 0.12)';
+        conceptVal.style.color = count === 0 ? 'var(--text-muted)' : '#10B981';
+    }
+
+    // Cargos
+    const cargoVal = document.getElementById('val-filter-cargos');
+    if (cargoVal) {
+        const count = state.compareCargos.length;
+        cargoVal.textContent = count === 0 ? 'Todos' : (count === 1 ? '1 Cargo' : `${count} Cargos`);
+        cargoVal.style.background = count === 0 ? 'rgba(0,0,0,0.06)' : 'rgba(59, 130, 246, 0.12)';
+        cargoVal.style.color = count === 0 ? 'var(--text-muted)' : '#3B82F6';
+    }
+
+    // Cecos
+    const cecoVal = document.getElementById('val-filter-cecos');
+    if (cecoVal) {
+        const count = state.compareCecos.length;
+        cecoVal.textContent = count === 0 ? 'Todos' : (count === 1 ? '1 Ceco' : `${count} Cecos`);
+        cecoVal.style.background = count === 0 ? 'rgba(0,0,0,0.06)' : 'rgba(168, 85, 247, 0.12)';
+        cecoVal.style.color = count === 0 ? 'var(--text-muted)' : '#A855F7';
+    }
 }
 
 // ==========================================
