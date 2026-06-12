@@ -137,10 +137,10 @@ body {
     display: block;
 }
 .logo-img-collapsed {
-    max-width: 100%;
-    height: auto;
-    max-height: 62px;
+    height: 40px;
+    width: auto;
     display: block;
+    margin: 0 auto;
     border-radius: 8px;
 }
 
@@ -150,9 +150,7 @@ body {
 }
 .sidebar.collapsed .logo-collapsed {
     display: block;
-    margin: 0 auto;
     width: 100%;
-    padding: 0 8px;
 }
 .sidebar.collapsed .logo-container {
     justify-content: center;
