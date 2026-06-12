@@ -5233,19 +5233,27 @@ function renderConceptComparison() {
     const headerP2 = document.getElementById('concept-period-header-p2');
     
     if (!tbody) return;
+    const headerCantP1 = document.getElementById('concept-period-header-cant-p1');
+    const headerCantP2 = document.getElementById('concept-period-header-cant-p2');
+    const p1Label = getPeriodLabel(state.conceptComparePeriod1) || 'P1';
+    const p2Label = getPeriodLabel(state.conceptComparePeriod2) || 'P2';
+    
+    if (!tbody) return;
     
     // Actualizar etiquetas visuales de los filtros
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
     // Actualizar cabeceras de columnas
-    if (headerP1) headerP1.innerText = getPeriodLabel(state.conceptComparePeriod1) || 'Periodo 1';
-    if (headerP2) headerP2.innerText = getPeriodLabel(state.conceptComparePeriod2) || 'Periodo 2';
+    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
+    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
+    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
+    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
 
     tbody.innerHTML = '';
     
     if (!state.conceptComparePeriod1 || !state.conceptComparePeriod2) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
         return;
     }
     
@@ -5264,7 +5272,7 @@ function renderConceptComparison() {
     });
     
     if (filteredConcepts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron conceptos que coincidan con los filtros seleccionados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No se encontraron conceptos que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -5288,13 +5296,16 @@ function renderConceptComparison() {
         
         // Mapear valor de cada empleado por cédula
         const p1Employees = {};
+        const p1EmployeesCant = {};
         const p2Employees = {};
+        const p2EmployeesCant = {};
         const allEmployeesInConcept = new Set();
         let conceptNature = 'DEVENGO'; // Predeterminado
         let conceptType = 'Otros';
         
         p1Rows.forEach(r => {
             p1Employees[r.c] = r.v;
+            p1EmployeesCant[r.c] = r.cant || 0;
             allEmployeesInConcept.add(r.c);
             conceptNature = r.na;
             conceptType = r.t;
@@ -5302,6 +5313,7 @@ function renderConceptComparison() {
         
         p2Rows.forEach(r => {
             p2Employees[r.c] = r.v;
+            p2EmployeesCant[r.c] = r.cant || 0;
             allEmployeesInConcept.add(r.c);
             conceptNature = r.na;
             conceptType = r.t;
@@ -5309,10 +5321,18 @@ function renderConceptComparison() {
         
         // Calcular sumas agregadas
         let totalP1 = 0;
+        let totalP1Cant = 0;
         let totalP2 = 0;
+        let totalP2Cant = 0;
         
-        Object.keys(p1Employees).forEach(c => totalP1 += p1Employees[c]);
-        Object.keys(p2Employees).forEach(c => totalP2 += p2Employees[c]);
+        Object.keys(p1Employees).forEach(c => {
+            totalP1 += p1Employees[c];
+            totalP1Cant += p1EmployeesCant[c] || 0;
+        });
+        Object.keys(p2Employees).forEach(c => {
+            totalP2 += p2Employees[c];
+            totalP2Cant += p2EmployeesCant[c] || 0;
+        });
         
         const conceptDiff = totalP2 - totalP1;
         const conceptPct = totalP1 !== 0 ? (conceptDiff / Math.abs(totalP1)) * 100 : (conceptDiff > 0 ? 100.0 : (conceptDiff < 0 ? -100.0 : 0));
@@ -5320,7 +5340,9 @@ function renderConceptComparison() {
         const employeeBreakdown = [];
         allEmployeesInConcept.forEach(c => {
             const ev1 = p1Employees[c] || 0;
+            const ecant1 = p1EmployeesCant[c] || 0;
             const ev2 = p2Employees[c] || 0;
+            const ecant2 = p2EmployeesCant[c] || 0;
             const ediff = ev2 - ev1;
             const epct = ev1 !== 0 ? (ediff / Math.abs(ev1)) * 100 : (ediff > 0 ? 100.0 : (ediff < 0 ? -100.0 : 0));
             
@@ -5328,7 +5350,9 @@ function renderConceptComparison() {
                 cedula: c,
                 name: employeeNames[c] || 'Desconocido',
                 v1: ev1,
+                cant1: ecant1,
                 v2: ev2,
+                cant2: ecant2,
                 diff: ediff,
                 pct: epct
             });
@@ -5342,7 +5366,9 @@ function renderConceptComparison() {
             na: conceptNature,
             t: conceptType,
             v1: totalP1,
+            cant1: totalP1Cant,
             v2: totalP2,
+            cant2: totalP2Cant,
             diff: conceptDiff,
             pct: conceptPct,
             employees: employeeBreakdown
@@ -5359,7 +5385,7 @@ function renderConceptComparison() {
     });
     
     if (conceptDataList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No hay transacciones registradas para este rango de periodos</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No hay transacciones registradas para este rango de periodos</td></tr>';
         return;
     }
     
@@ -5383,7 +5409,9 @@ function renderConceptComparison() {
             <td><span class="badge badge-${item.na.toLowerCase()}">${item.na}</span></td>
             <td>-</td>
             <td>-</td>
+            <td style="text-align: right; font-weight: normal;">${item.v1 !== 0 && item.cant1 ? item.cant1 : '-'}</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(item.v1)}</td>
+            <td style="text-align: right; font-weight: normal;">${item.v2 !== 0 && item.cant2 ? item.cant2 : '-'}</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(item.v2)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.diff)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.pct, true)}</td>
@@ -5409,7 +5437,9 @@ function renderConceptComparison() {
                 <td>-</td>
                 <td style="font-weight: normal; padding-left: 20px;">${emp.name}</td>
                 <td style="color: var(--text-secondary);">${emp.cedula}</td>
+                <td style="text-align: right;">${emp.v1 !== 0 && emp.cant1 ? emp.cant1 : '-'}</td>
                 <td style="text-align: right;">${emp.v1 !== 0 ? currencyFormatter.format(emp.v1) : '-'}</td>
+                <td style="text-align: right;">${emp.v2 !== 0 && emp.cant2 ? emp.cant2 : '-'}</td>
                 <td style="text-align: right;">${emp.v2 !== 0 ? currencyFormatter.format(emp.v2) : '-'}</td>
                 <td style="text-align: right;">${formatVariationHTML(emp.diff)}</td>
                 <td style="text-align: right;">${formatVariationHTML(emp.pct, true)}</td>
@@ -5502,19 +5532,27 @@ function renderCecoComparison() {
     const headerP1 = document.getElementById('ceco-compare-header-p1');
     const headerP2 = document.getElementById('ceco-compare-header-p2');
     if (!tbody) return;
+    const headerCantP1 = document.getElementById('ceco-compare-header-cant-p1');
+    const headerCantP2 = document.getElementById('ceco-compare-header-cant-p2');
+    const p1Label = getPeriodLabel(state.cecoComparePeriod1) || 'P1';
+    const p2Label = getPeriodLabel(state.cecoComparePeriod2) || 'P2';
+    
+    if (!tbody) return;
     
     // Actualizar etiquetas visuales de los filtros
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
     // Actualizar cabeceras de columnas
-    if (headerP1) headerP1.innerText = getPeriodLabel(state.cecoComparePeriod1) || 'Periodo 1';
-    if (headerP2) headerP2.innerText = getPeriodLabel(state.cecoComparePeriod2) || 'Periodo 2';
+    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
+    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
+    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
+    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
     
     tbody.innerHTML = '';
     
     if (!state.cecoComparePeriod1 || !state.cecoComparePeriod2) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
         return;
     }
     
@@ -5532,7 +5570,7 @@ function renderCecoComparison() {
     }).sort();
     
     if (filteredCecos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron centros de costo que coincidan con los filtros seleccionados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No se encontraron centros de costo que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -5542,11 +5580,15 @@ function renderCecoComparison() {
         if (p1RowsCeco.length === 0 && p2RowsCeco.length === 0) return;
         
         // Totales del CECO
-        const cecoTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
-        p1RowsCeco.forEach(r => { if (cecoTotals[r.na]) cecoTotals[r.na].p1 += r.v; });
-        p2RowsCeco.forEach(r => { if (cecoTotals[r.na]) cecoTotals[r.na].p2 += r.v; });
+        const cecoTotals = { DEVENGO: {p1:0,p2:0,c1:0,c2:0}, DESCUENTO: {p1:0,p2:0,c1:0,c2:0} };
+        p1RowsCeco.forEach(r => { if (cecoTotals[r.na]) { cecoTotals[r.na].p1 += r.v; cecoTotals[r.na].c1 += (r.cant || 0); } });
+        p2RowsCeco.forEach(r => { if (cecoTotals[r.na]) { cecoTotals[r.na].p2 += r.v; cecoTotals[r.na].c2 += (r.cant || 0); } });
+        
         const cecoNetP1 = cecoTotals.DEVENGO.p1 + cecoTotals.DESCUENTO.p1;
         const cecoNetP2 = cecoTotals.DEVENGO.p2 + cecoTotals.DESCUENTO.p2;
+        const cecoCantP1 = cecoTotals.DEVENGO.c1 + cecoTotals.DESCUENTO.c1;
+        const cecoCantP2 = cecoTotals.DEVENGO.c2 + cecoTotals.DESCUENTO.c2;
+        
         const cecoNetDiff = cecoNetP2 - cecoNetP1;
         const cecoNetPct = cecoNetP1 !== 0 ? (cecoNetDiff / Math.abs(cecoNetP1)) * 100 : (cecoNetDiff > 0 ? 100 : (cecoNetDiff < 0 ? -100 : 0));
         const cecoSafe = cecoKey.replace(/[^a-zA-Z0-9]/g, '_');
@@ -5558,7 +5600,9 @@ function renderCecoComparison() {
         cecoRow.innerHTML = `
             <td><i data-lucide="chevron-right" class="expand-chevron"></i><span>${cecoKey}</span></td>
             <td>-</td><td>-</td><td>-</td>
+            <td style="text-align:right; color:var(--text-muted);">-</td>
             <td style="text-align:right;">${currencyFormatter.format(cecoNetP1)}</td>
+            <td style="text-align:right; color:var(--text-muted);">-</td>
             <td style="text-align:right;">${currencyFormatter.format(cecoNetP2)}</td>
             <td style="text-align:right;">${formatVariationHTML(cecoNetDiff)}</td>
             <td style="text-align:right;">${formatVariationHTML(cecoNetPct, true)}</td>
@@ -5576,11 +5620,14 @@ function renderCecoComparison() {
             const persP1 = p1RowsCeco.filter(d => d.c === cedula);
             const persP2 = p2RowsCeco.filter(d => d.c === cedula);
             
-            const pTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
-            persP1.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p1 += r.v; });
-            persP2.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p2 += r.v; });
+            const pTotals = { DEVENGO: {p1:0,p2:0,c1:0,c2:0}, DESCUENTO: {p1:0,p2:0,c1:0,c2:0} };
+            persP1.forEach(r => { if (pTotals[r.na]) { pTotals[r.na].p1 += r.v; pTotals[r.na].c1 += (r.cant || 0); } });
+            persP2.forEach(r => { if (pTotals[r.na]) { pTotals[r.na].p2 += r.v; pTotals[r.na].c2 += (r.cant || 0); } });
             const pNetP1 = pTotals.DEVENGO.p1 + pTotals.DESCUENTO.p1;
             const pNetP2 = pTotals.DEVENGO.p2 + pTotals.DESCUENTO.p2;
+            const pCantP1 = pTotals.DEVENGO.c1 + pTotals.DESCUENTO.c1;
+            const pCantP2 = pTotals.DEVENGO.c2 + pTotals.DESCUENTO.c2;
+            
             const pNetDiff = pNetP2 - pNetP1;
             const pNetPct = pNetP1 !== 0 ? (pNetDiff / Math.abs(pNetP1)) * 100 : (pNetDiff > 0 ? 100 : (pNetDiff < 0 ? -100 : 0));
             const personSafe = `${cecoSafe}_${cedula.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -5593,7 +5640,9 @@ function renderCecoComparison() {
                 <td style="padding-left:24px;"><i data-lucide="chevron-right" class="expand-chevron"></i><span>${personName}</span></td>
                 <td style="font-size:0.8rem; color:var(--text-muted);">${cedula}</td>
                 <td>-</td><td>-</td>
+                <td style="text-align:right; color:var(--text-muted);">-</td>
                 <td style="text-align:right;">${currencyFormatter.format(pNetP1)}</td>
+                <td style="text-align:right; color:var(--text-muted);">-</td>
                 <td style="text-align:right;">${currencyFormatter.format(pNetP2)}</td>
                 <td style="text-align:right;">${formatVariationHTML(pNetDiff)}</td>
                 <td style="text-align:right;">${formatVariationHTML(pNetPct, true)}</td>
@@ -5603,9 +5652,9 @@ function renderCecoComparison() {
             
             // NIVEL 3: Conceptos del trabajador en este CECO
             const pConceptsMeta = {};
-            const pC1 = {}, pC2 = {};
-            persP1.forEach(r => { pC1[r.co] = (pC1[r.co]||0) + r.v; pConceptsMeta[r.co] = {na: r.na}; });
-            persP2.forEach(r => { pC2[r.co] = (pC2[r.co]||0) + r.v; pConceptsMeta[r.co] = {na: r.na}; });
+            const pC1 = {}, pC2 = {}, pC1Cant = {}, pC2Cant = {};
+            persP1.forEach(r => { pC1[r.co] = (pC1[r.co]||0) + r.v; pC1Cant[r.co] = (pC1Cant[r.co]||0) + (r.cant || 0); pConceptsMeta[r.co] = {na: r.na}; });
+            persP2.forEach(r => { pC2[r.co] = (pC2[r.co]||0) + r.v; pC2Cant[r.co] = (pC2Cant[r.co]||0) + (r.cant || 0); pConceptsMeta[r.co] = {na: r.na}; });
             const natOrder = { 'DEVENGO': 1, 'DESCUENTO': 2 };
             const personConcepts = Object.keys(pConceptsMeta).sort((a, b) => {
                 const oA = natOrder[pConceptsMeta[a].na]||99, oB = natOrder[pConceptsMeta[b].na]||99;
@@ -5613,6 +5662,7 @@ function renderCecoComparison() {
             });
             personConcepts.forEach(co => {
                 const v1 = pC1[co]||0, v2 = pC2[co]||0, diff = v2-v1;
+                const cant1 = pC1Cant[co]||0, cant2 = pC2Cant[co]||0;
                 const cPct = v1 !== 0 ? (diff/Math.abs(v1))*100 : (diff>0?100:(diff<0?-100:0));
                 const na = pConceptsMeta[co].na;
                 const conRow = document.createElement('tr');
@@ -5621,7 +5671,9 @@ function renderCecoComparison() {
                     <td></td><td></td>
                     <td><span class="badge badge-${na.toLowerCase()}">${na}</span></td>
                     <td>${co}</td>
+                    <td style="text-align:right;">${v1!==0 && cant1 ? cant1 : '-'}</td>
                     <td style="text-align:right;">${v1!==0?currencyFormatter.format(v1):'-'}</td>
+                    <td style="text-align:right;">${v2!==0 && cant2 ? cant2 : '-'}</td>
                     <td style="text-align:right;">${v2!==0?currencyFormatter.format(v2):'-'}</td>
                     <td style="text-align:right;">${formatVariationHTML(diff)}</td>
                     <td style="text-align:right;">${formatVariationHTML(cPct,true)}</td>
@@ -5705,19 +5757,25 @@ function renderCargoComparison() {
     const headerP1 = document.getElementById('cargo-compare-header-p1');
     const headerP2 = document.getElementById('cargo-compare-header-p2');
     if (!tbody) return;
+    const headerCantP1 = document.getElementById('cargo-compare-header-cant-p1');
+    const headerCantP2 = document.getElementById('cargo-compare-header-cant-p2');
+    const p1Label = getPeriodLabel(state.cargoComparePeriod1) || 'P1';
+    const p2Label = getPeriodLabel(state.cargoComparePeriod2) || 'P2';
     
     // Actualizar etiquetas visuales de los filtros
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
     // Actualizar cabeceras de columnas
-    if (headerP1) headerP1.innerText = getPeriodLabel(state.cargoComparePeriod1) || 'Periodo 1';
-    if (headerP2) headerP2.innerText = getPeriodLabel(state.cargoComparePeriod2) || 'Periodo 2';
+    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
+    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
+    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
+    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
     
     tbody.innerHTML = '';
     
     if (!state.cargoComparePeriod1 || !state.cargoComparePeriod2) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">Selecciona los periodos arriba</td></tr>';
         return;
     }
     
@@ -5735,7 +5793,7 @@ function renderCargoComparison() {
     }).sort();
     
     if (filteredCargos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron cargos que coincidan con los filtros seleccionados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No se encontraron cargos que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -5744,11 +5802,13 @@ function renderCargoComparison() {
         const p2RowsCargo = dataP2.filter(d => d.cg === cargo);
         if (p1RowsCargo.length === 0 && p2RowsCargo.length === 0) return;
         
-        const cargoTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
-        p1RowsCargo.forEach(r => { if (cargoTotals[r.na]) cargoTotals[r.na].p1 += r.v; });
-        p2RowsCargo.forEach(r => { if (cargoTotals[r.na]) cargoTotals[r.na].p2 += r.v; });
+        const cargoTotals = { DEVENGO: {p1:0,p2:0,c1:0,c2:0}, DESCUENTO: {p1:0,p2:0,c1:0,c2:0} };
+        p1RowsCargo.forEach(r => { if (cargoTotals[r.na]) { cargoTotals[r.na].p1 += r.v; cargoTotals[r.na].c1 += (r.cant || 0); } });
+        p2RowsCargo.forEach(r => { if (cargoTotals[r.na]) { cargoTotals[r.na].p2 += r.v; cargoTotals[r.na].c2 += (r.cant || 0); } });
         const cargoNetP1 = cargoTotals.DEVENGO.p1 + cargoTotals.DESCUENTO.p1;
         const cargoNetP2 = cargoTotals.DEVENGO.p2 + cargoTotals.DESCUENTO.p2;
+        const cargoCantP1 = cargoTotals.DEVENGO.c1 + cargoTotals.DESCUENTO.c1;
+        const cargoCantP2 = cargoTotals.DEVENGO.c2 + cargoTotals.DESCUENTO.c2;
         const cargoNetDiff = cargoNetP2 - cargoNetP1;
         const cargoNetPct = cargoNetP1 !== 0 ? (cargoNetDiff / Math.abs(cargoNetP1)) * 100 : (cargoNetDiff > 0 ? 100 : (cargoNetDiff < 0 ? -100 : 0));
         const cargoSafe = cargo.replace(/[^a-zA-Z0-9]/g, '_');
@@ -5760,7 +5820,9 @@ function renderCargoComparison() {
         cargoRow.innerHTML = `
             <td><i data-lucide="chevron-right" class="expand-chevron"></i><span>${cargo}</span></td>
             <td>-</td><td>-</td><td>-</td>
+            <td style="text-align:right; color:var(--text-muted);">-</td>
             <td style="text-align:right;">${currencyFormatter.format(cargoNetP1)}</td>
+            <td style="text-align:right; color:var(--text-muted);">-</td>
             <td style="text-align:right;">${currencyFormatter.format(cargoNetP2)}</td>
             <td style="text-align:right;">${formatVariationHTML(cargoNetDiff)}</td>
             <td style="text-align:right;">${formatVariationHTML(cargoNetPct, true)}</td>
@@ -5778,11 +5840,13 @@ function renderCargoComparison() {
             const persP1 = p1RowsCargo.filter(d => d.c === cedula);
             const persP2 = p2RowsCargo.filter(d => d.c === cedula);
             
-            const pTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
-            persP1.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p1 += r.v; });
-            persP2.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p2 += r.v; });
+            const pTotals = { DEVENGO: {p1:0,p2:0,c1:0,c2:0}, DESCUENTO: {p1:0,p2:0,c1:0,c2:0} };
+            persP1.forEach(r => { if (pTotals[r.na]) { pTotals[r.na].p1 += r.v; pTotals[r.na].c1 += (r.cant || 0); } });
+            persP2.forEach(r => { if (pTotals[r.na]) { pTotals[r.na].p2 += r.v; pTotals[r.na].c2 += (r.cant || 0); } });
             const pNetP1 = pTotals.DEVENGO.p1 + pTotals.DESCUENTO.p1;
             const pNetP2 = pTotals.DEVENGO.p2 + pTotals.DESCUENTO.p2;
+            const pCantP1 = pTotals.DEVENGO.c1 + pTotals.DESCUENTO.c1;
+            const pCantP2 = pTotals.DEVENGO.c2 + pTotals.DESCUENTO.c2;
             const pNetDiff = pNetP2 - pNetP1;
             const pNetPct = pNetP1 !== 0 ? (pNetDiff / Math.abs(pNetP1)) * 100 : (pNetDiff > 0 ? 100 : (pNetDiff < 0 ? -100 : 0));
             const personSafe = `${cargoSafe}_${cedula.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -5795,7 +5859,9 @@ function renderCargoComparison() {
                 <td style="padding-left:24px;"><i data-lucide="chevron-right" class="expand-chevron"></i><span>${personName}</span></td>
                 <td style="font-size:0.8rem; color:var(--text-muted);">${cedula}</td>
                 <td>-</td><td>-</td>
+                <td style="text-align:right; color:var(--text-muted);">-</td>
                 <td style="text-align:right;">${currencyFormatter.format(pNetP1)}</td>
+                <td style="text-align:right; color:var(--text-muted);">-</td>
                 <td style="text-align:right;">${currencyFormatter.format(pNetP2)}</td>
                 <td style="text-align:right;">${formatVariationHTML(pNetDiff)}</td>
                 <td style="text-align:right;">${formatVariationHTML(pNetPct, true)}</td>
@@ -5805,9 +5871,9 @@ function renderCargoComparison() {
             
             // NIVEL 3: Conceptos del trabajador
             const pConceptsMeta = {};
-            const pC1 = {}, pC2 = {};
-            persP1.forEach(r => { pC1[r.co] = (pC1[r.co]||0) + r.v; pConceptsMeta[r.co] = {na: r.na}; });
-            persP2.forEach(r => { pC2[r.co] = (pC2[r.co]||0) + r.v; pConceptsMeta[r.co] = {na: r.na}; });
+            const pC1 = {}, pC2 = {}, pC1Cant = {}, pC2Cant = {};
+            persP1.forEach(r => { pC1[r.co] = (pC1[r.co]||0) + r.v; pC1Cant[r.co] = (pC1Cant[r.co]||0) + (r.cant || 0); pConceptsMeta[r.co] = {na: r.na}; });
+            persP2.forEach(r => { pC2[r.co] = (pC2[r.co]||0) + r.v; pC2Cant[r.co] = (pC2Cant[r.co]||0) + (r.cant || 0); pConceptsMeta[r.co] = {na: r.na}; });
             const natOrder = { 'DEVENGO': 1, 'DESCUENTO': 2 };
             const personConcepts = Object.keys(pConceptsMeta).sort((a, b) => {
                 const oA = natOrder[pConceptsMeta[a].na]||99, oB = natOrder[pConceptsMeta[b].na]||99;
@@ -5815,6 +5881,7 @@ function renderCargoComparison() {
             });
             personConcepts.forEach(co => {
                 const v1 = pC1[co]||0, v2 = pC2[co]||0, diff = v2-v1;
+                const cant1 = pC1Cant[co]||0, cant2 = pC2Cant[co]||0;
                 const cPct = v1 !== 0 ? (diff/Math.abs(v1))*100 : (diff>0?100:(diff<0?-100:0));
                 const na = pConceptsMeta[co].na;
                 const conRow = document.createElement('tr');
@@ -5823,7 +5890,9 @@ function renderCargoComparison() {
                     <td></td><td></td>
                     <td><span class="badge badge-${na.toLowerCase()}">${na}</span></td>
                     <td>${co}</td>
+                    <td style="text-align:right;">${v1!==0 && cant1 ? cant1 : '-'}</td>
                     <td style="text-align:right;">${v1!==0?currencyFormatter.format(v1):'-'}</td>
+                    <td style="text-align:right;">${v2!==0 && cant2 ? cant2 : '-'}</td>
                     <td style="text-align:right;">${v2!==0?currencyFormatter.format(v2):'-'}</td>
                     <td style="text-align:right;">${formatVariationHTML(diff)}</td>
                     <td style="text-align:right;">${formatVariationHTML(cPct,true)}</td>
