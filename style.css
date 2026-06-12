@@ -132,6 +132,8 @@ body {
 .logo-img-expanded {
     height: 40px;
     width: auto;
+    max-width: 100%;
+    object-fit: contain;
     display: block;
 }
 .logo-img-collapsed {
