@@ -1236,15 +1236,7 @@ function initEmployeeSearch() {
     const list = document.getElementById('employee-dropdown-list');
     if (!input || !list) return;
 
-    const labelBtn = document.getElementById('btn-open-filter-employee-label');
-    if (labelBtn && !labelBtn.dataset.listenerBound) {
-        labelBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            input.focus();
-            list.classList.add('show');
-        });
-        labelBtn.dataset.listenerBound = 'true';
-    }
+
     
     const people = getUniquePeopleSorted();
     
@@ -2582,6 +2574,13 @@ function getFilterOptions(type) {
                 sublabel: `Cédula: ${p.cedula}`
             }));
         }
+        case 'employee_single': {
+            return getUniquePeopleSorted().map(p => ({
+                value: p.cedula,
+                label: p.name,
+                sublabel: `Cédula: ${p.cedula}`
+            }));
+        }
         case 'concepts': {
             const set = new Set();
             state.data.forEach(d => set.add(d.co));
@@ -2612,6 +2611,7 @@ function getCurrentSelectionForType(type) {
         case 'quincenas':  return state.selectedQuincenas;
         case 'types':     return Array.isArray(state.selectedTipoNomina) ? state.selectedTipoNomina : [];
         case 'employees': return state.compareEmployees;
+        case 'employee_single': return state.selectedEmployeeCedula ? [state.selectedEmployeeCedula] : [];
         case 'concepts':  return state.compareConcepts;
         case 'cargos':    return state.compareCargos;
         case 'cecos':     return state.compareCecos;
@@ -2639,6 +2639,11 @@ function applyModalSelection(type) {
             state.selectedTipoNomina = arr.filter(v => v !== 'all');
             break;
         case 'employees': state.compareEmployees = arr; break;
+        case 'employee_single':
+            if (arr.length > 0) {
+                state.selectedEmployeeCedula = arr[0];
+            }
+            break;
         case 'concepts':  state.compareConcepts  = arr; break;
         case 'cargos':
             state.compareCargos = arr;
@@ -2674,7 +2679,9 @@ function renderModalOptions(allOptions, query) {
     }
 
     filtered.forEach(option => {
-        const isSelected = filterModalState.modalTempSelected.has(option.value);
+        const isSelected = filterModalState.currentFilterType === 'employee_single'
+            ? state.selectedEmployeeCedula === option.value
+            : filterModalState.modalTempSelected.has(option.value);
         const item = document.createElement('div');
         item.className = `options-list-item${isSelected ? ' selected' : ''}`;
         item.setAttribute('data-value', option.value);
@@ -2686,6 +2693,12 @@ function renderModalOptions(allOptions, query) {
             </div>
         `;
         item.addEventListener('click', () => {
+            if (filterModalState.currentFilterType === 'employee_single') {
+                state.selectedEmployeeCedula = option.value;
+                closeFilterModal();
+                renderActiveTab();
+                return;
+            }
             if (filterModalState.modalTempSelected.has(option.value)) {
                 filterModalState.modalTempSelected.delete(option.value);
             } else {
@@ -2721,7 +2734,8 @@ function openFilterModal(type) {
         employees: '🔍 Filtrar Personas',
         concepts:  '🔍 Filtrar Conceptos',
         cargos:    '🔍 Filtrar por Cargo',
-        cecos:     '🔍 Filtrar Centros de Costo'
+        cecos:     '🔍 Filtrar Centros de Costo',
+        employee_single: '👤 Seleccionar Colaborador'
     };
     titleEl.textContent = titles[type] || 'Filtrar Opciones';
 
@@ -2814,7 +2828,8 @@ function initFilterModal() {
         { btnId: 'btn-open-filter-employees',      type: 'employees' },
         { btnId: 'btn-open-filter-concepts',       type: 'concepts'  },
         { btnId: 'btn-open-filter-cargos',         type: 'cargos'    },
-        { btnId: 'btn-open-filter-cecos',          type: 'cecos'     }
+        { btnId: 'btn-open-filter-cecos',          type: 'cecos'     },
+        { btnId: 'btn-open-filter-employee-label',  type: 'employee_single' }
     ];
 
 
