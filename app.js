@@ -860,7 +860,7 @@ function renderOverviewNatureChart(dev, desc) {
                     callbacks: {
                         label: function(context) {
                             const val = context.raw;
-                            const total = dev + desc + ben;
+                            const total = dev + desc;
                             const pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
                             return `  ${context.label}: ${currencyFormatter.format(val)} (${pct})`;
                         }
@@ -3573,6 +3573,21 @@ function handleExcelFile(file) {
             state.compareConcepts = [];
             state.compareCecos = [];
             state.compareCargos = [];
+            // Resetear periodos de comparación para que se reinicialicen con los nuevos datos
+            state.comparePeriod1 = '';
+            state.comparePeriod2 = '';
+            state.conceptComparePeriod1 = '';
+            state.conceptComparePeriod2 = '';
+            state.cecoComparePeriod1 = '';
+            state.cecoComparePeriod2 = '';
+            state.cargoComparePeriod1 = '';
+            state.cargoComparePeriod2 = '';
+            // Resetear filtros de los comparadores masivos
+            state.periodCompareSelectedEmployees = [];
+            state.conceptCompareSelectedConcepts = [];
+            state.cecoCompareSelectedCecos = [];
+            state.cargoCompareSelectedCargos = [];
+            state.selectedTipoNomina = [];
             
             processData();
             
@@ -3979,6 +3994,21 @@ async function handleImportSelected() {
     state.selectedEmployeeCedula = '';
     state.selectedConceptName = '';
     state.compareEmployees = [];
+    // Resetear periodos de comparación para que se reinicialicen con los nuevos datos
+    state.comparePeriod1 = '';
+    state.comparePeriod2 = '';
+    state.conceptComparePeriod1 = '';
+    state.conceptComparePeriod2 = '';
+    state.cecoComparePeriod1 = '';
+    state.cecoComparePeriod2 = '';
+    state.cargoComparePeriod1 = '';
+    state.cargoComparePeriod2 = '';
+    // Resetear filtros de los comparadores masivos
+    state.periodCompareSelectedEmployees = [];
+    state.conceptCompareSelectedConcepts = [];
+    state.cecoCompareSelectedCecos = [];
+    state.cargoCompareSelectedCargos = [];
+    state.selectedTipoNomina = [];
     
     processData();
     
