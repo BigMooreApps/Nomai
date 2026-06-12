@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Logica del Dashboard de Nomina y Netos
  * Utiliza Chart.js para graficos, SheetJS para importacion de Excel y Lucide para iconos.
  */
@@ -6624,10 +6624,10 @@ function generateManagerialReport() {
             icon = '<div class="spin-animation" style="border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #a855f7; border-radius: 50%; width: 12px; height: 12px; display: inline-block;"></div>';
             color = '#a855f7';
         } else if (status === 'success') {
-            icon = '<span style="color: #10b981; font-weight: bold;">[âœ“]</span>';
+            icon = '<span style="color: #10b981; font-weight: bold;">[&#10004;]</span>';
             color = '#10b981';
         } else if (status === 'error') {
-            icon = '<span style="color: #ef4444; font-weight: bold;">[âœ—]</span>';
+            icon = '<span style="color: #ef4444; font-weight: bold;">[&#10006;]</span>';
             color = '#ef4444';
         }
         
