@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Nómina e Ingresos Netos</title>
     <!-- CSS Estilos Personalizados -->
-    <link rel="stylesheet" href="style.css?v=20260612_6">
+    <link rel="stylesheet" href="style.css?v=20260612_7">
 </head>
 <body>
     <div class="app-container">
@@ -601,40 +601,18 @@
 
                 <!-- PESTAÑA: COMPARAR PERIODOS -->
                 <div id="tab-period-compare" class="tab-content">
-                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
-                            <div class="select-wrapper">
-                                <select id="period-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                    <div class="grid-controls comparison-filter-layout" style="width: 100%; box-sizing: border-box;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="period-compare-p1-label" title="Seleccionar Periodo 1 (Base)"><i data-lucide="calendar"></i> P1: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
-                            <div class="select-wrapper">
-                                <select id="period-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="period-compare-p2-label" title="Seleccionar Periodo 2 (Comparado)"><i data-lucide="calendar"></i> P2: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Colaborador:</span>
-                            <input type="text" id="period-compare-search" class="search-input" placeholder="Nombre o cédula..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="period-compare-employees-label" title="Filtrar Colaborador"><i data-lucide="users"></i> Colaborador</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
-                            <div class="custom-dropdown" id="period-compare-tipo-dropdown">
-                                <div class="custom-dropdown-trigger" id="period-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
-                                    <span class="selected-text">Todos</span>
-                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
-                                </div>
-                                <div class="custom-dropdown-menu" id="period-compare-tipo-menu">
-                                    <ul class="custom-dropdown-list" id="period-compare-tipo-list">
-                                        <!-- Dinámico por JS -->
-                                    </ul>
-                                </div>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="period-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
                         <div style="margin-left: auto; display: flex; gap: 8px;">
                             <button id="btn-period-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
@@ -677,40 +655,18 @@
 
                 <!-- PESTAÑA: COMPARAR CONCEPTOS -->
                 <div id="tab-concept-compare" class="tab-content">
-                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
-                            <div class="select-wrapper">
-                                <select id="concept-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                    <div class="grid-controls comparison-filter-layout" style="width: 100%; box-sizing: border-box;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="concept-compare-p1-label" title="Seleccionar Periodo 1 (Base)"><i data-lucide="calendar"></i> P1: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
-                            <div class="select-wrapper">
-                                <select id="concept-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="concept-compare-p2-label" title="Seleccionar Periodo 2 (Comparado)"><i data-lucide="calendar"></i> P2: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Concepto:</span>
-                            <input type="text" id="concept-compare-search" class="search-input" placeholder="Nombre de concepto..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="concept-compare-concepts-label" title="Filtrar Concepto"><i data-lucide="briefcase"></i> Concepto: Todos</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
-                            <div class="custom-dropdown" id="concept-compare-tipo-dropdown">
-                                <div class="custom-dropdown-trigger" id="concept-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
-                                    <span class="selected-text">Todos</span>
-                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
-                                </div>
-                                <div class="custom-dropdown-menu" id="concept-compare-tipo-menu">
-                                    <ul class="custom-dropdown-list" id="concept-compare-tipo-list">
-                                        <!-- Dinámico por JS -->
-                                    </ul>
-                                </div>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="concept-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
                         <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
                             <button id="btn-concept-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
@@ -753,40 +709,18 @@
 
                 <!-- PESTAÑA: COMPARAR CENTROS DE COSTO -->
                 <div id="tab-ceco-compare" class="tab-content">
-                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center; overflow: visible;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
-                            <div class="select-wrapper">
-                                <select id="ceco-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                    <div class="grid-controls comparison-filter-layout" style="width: 100%; box-sizing: border-box;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="ceco-compare-p1-label" title="Seleccionar Periodo 1 (Base)"><i data-lucide="calendar"></i> P1: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
-                            <div class="select-wrapper">
-                                <select id="ceco-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="ceco-compare-p2-label" title="Seleccionar Periodo 2 (Comparado)"><i data-lucide="calendar"></i> P2: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Centro de Costo:</span>
-                            <input type="text" id="ceco-compare-search" class="search-input" placeholder="Nombre o código..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="ceco-compare-cecos-label" title="Filtrar Centro de Costo"><i data-lucide="building-2"></i> CECO: Todos</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
-                            <div class="custom-dropdown" id="ceco-compare-tipo-dropdown">
-                                <div class="custom-dropdown-trigger" id="ceco-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
-                                    <span class="selected-text">Todos</span>
-                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
-                                </div>
-                                <div class="custom-dropdown-menu" id="ceco-compare-tipo-menu">
-                                    <ul class="custom-dropdown-list" id="ceco-compare-tipo-list">
-                                        <!-- Dinámico por JS -->
-                                    </ul>
-                                </div>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="ceco-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
                         <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
                             <button id="btn-ceco-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">
@@ -829,40 +763,18 @@
 
                 <!-- PESTAÑA: COMPARAR CARGOS -->
                 <div id="tab-cargo-compare" class="tab-content">
-                    <div class="grid-controls" style="flex-wrap: wrap; gap: 16px; align-items: center; overflow: visible;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 1 (Base):</span>
-                            <div class="select-wrapper">
-                                <select id="cargo-compare-p1" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                    <div class="grid-controls comparison-filter-layout" style="width: 100%; box-sizing: border-box;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="cargo-compare-p1-label" title="Seleccionar Periodo 1 (Base)"><i data-lucide="calendar"></i> P1: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Periodo 2 (Comparado):</span>
-                            <div class="select-wrapper">
-                                <select id="cargo-compare-p2" class="custom-select" style="font-size: 0.85rem; padding: 6px 32px 6px 12px; height: 34px !important; line-height: 1.2 !important;">
-                                    <!-- Dinámico por JS -->
-                                </select>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="cargo-compare-p2-label" title="Seleccionar Periodo 2 (Comparado)"><i data-lucide="calendar"></i> P2: -</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Filtrar Cargo:</span>
-                            <input type="text" id="cargo-compare-search" class="search-input" placeholder="Nombre de cargo..." style="width: 200px; padding: 6px 12px; font-size: 0.85rem;">
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="cargo-compare-cargos-label" title="Filtrar Cargo"><i data-lucide="award"></i> Cargo: Todos</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-secondary);">Tipo:</span>
-                            <div class="custom-dropdown" id="cargo-compare-tipo-dropdown">
-                                <div class="custom-dropdown-trigger" id="cargo-compare-tipo-trigger" style="font-size: 0.85rem; padding: 6px 16px; min-height: 32px; min-width: 130px; box-sizing: border-box;">
-                                    <span class="selected-text">Todos</span>
-                                    <i data-lucide="chevron-down" class="dropdown-arrow"></i>
-                                </div>
-                                <div class="custom-dropdown-menu" id="cargo-compare-tipo-menu">
-                                    <ul class="custom-dropdown-list" id="cargo-compare-tipo-list">
-                                        <!-- Dinámico por JS -->
-                                    </ul>
-                                </div>
-                            </div>
+                        <div class="comparison-filter-item">
+                            <div class="comparison-filter-label clickable-filter-label" id="cargo-compare-tipo-label" title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
                         </div>
                         <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
                             <button id="btn-cargo-compare-expand" class="btn-icon" title="Expandir todo" aria-label="Expandir todo">

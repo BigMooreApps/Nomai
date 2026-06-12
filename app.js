@@ -82,24 +82,28 @@ const state = {
     comparePeriod2: '',     // Periodo 2 (Comparado)
     periodCompareSearchQuery: '',
     periodCompareExpanded: false,
+    periodCompareSelectedEmployees: [],
     
     // Vista Comparativa de Conceptos
     conceptComparePeriod1: '',
     conceptComparePeriod2: '',
     conceptCompareSearchQuery: '',
     conceptCompareExpanded: false,
+    conceptCompareSelectedConcepts: [],
     
     // Vista Comparativa de Centros de Costo
     cecoComparePeriod1: '',
     cecoComparePeriod2: '',
     cecoCompareSearchQuery: '',
     cecoCompareExpanded: false,
+    cecoCompareSelectedCecos: [],
     
     // Vista Comparativa de Cargos
     cargoComparePeriod1: '',
     cargoComparePeriod2: '',
     cargoCompareSearchQuery: '',
     cargoCompareExpanded: false,
+    cargoCompareSelectedCargos: [],
     
     // Configuración de carpeta local
     folderHandle: null,
@@ -138,6 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initCargoCompareSelectors();
     initFilterModal(); // Modal centralizado de filtros de Comparativas
     initEmployeeDetailFilters();
+    updatePeriodSelectorLabels();
+    updateSearchSelectorLabels();
     
     // Cerrar dropdowns personalizados al hacer click fuera
     document.addEventListener('click', (e) => {
@@ -560,6 +566,9 @@ function processData() {
         if (hasTnFilter && !tnSet.has(d.tn)) return false;
         return true;
     });
+    
+    updatePeriodSelectorLabels();
+    updateSearchSelectorLabels();
 }
 
 // Renderiza la pestaña seleccionada
@@ -2531,6 +2540,14 @@ const filterModalState = {
  */
 function getFilterOptions(type) {
     switch (type) {
+        case 'p1':
+        case 'p2': {
+            return getUniquePeriodsSorted().map(p => ({
+                value: p,
+                label: getPeriodLabel(p),
+                sublabel: ''
+            }));
+        }
         case 'years': {
             return getUniqueYears().map(y => ({
                 value: y.toString(),
@@ -2567,7 +2584,8 @@ function getFilterOptions(type) {
                 sublabel: ''
             }));
         }
-        case 'employees': {
+        case 'employees':
+        case 'period_compare_employees': {
             return getUniquePeopleSorted().map(p => ({
                 value: p.cedula,
                 label: p.name,
@@ -2581,7 +2599,8 @@ function getFilterOptions(type) {
                 sublabel: `Cédula: ${p.cedula}`
             }));
         }
-        case 'concepts': {
+        case 'concepts':
+        case 'concept_compare_concepts': {
             const set = new Set();
             state.data.forEach(d => set.add(d.co));
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
@@ -2591,12 +2610,14 @@ function getFilterOptions(type) {
             state.data.forEach(d => set.add(d.co));
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
         }
-        case 'cargos': {
+        case 'cargos':
+        case 'cargo_compare_cargos': {
             const set = new Set();
             state.data.forEach(d => { if (d.cg) set.add(d.cg); });
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
         }
-        case 'cecos': {
+        case 'cecos':
+        case 'ceco_compare_cecos': {
             const set = new Set();
             state.data.forEach(d => { if (d.cc && d.dcc) set.add(`${d.cc} - ${d.dcc}`); });
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
@@ -2611,16 +2632,36 @@ function getFilterOptions(type) {
  */
 function getCurrentSelectionForType(type) {
     switch (type) {
+        case 'p1': {
+            const tab = state.activeTab;
+            if (tab === 'period-compare') return state.comparePeriod1 ? [state.comparePeriod1] : [];
+            if (tab === 'concept-compare') return state.conceptComparePeriod1 ? [state.conceptComparePeriod1] : [];
+            if (tab === 'ceco-compare') return state.cecoComparePeriod1 ? [state.cecoComparePeriod1] : [];
+            if (tab === 'cargo-compare') return state.cargoComparePeriod1 ? [state.cargoComparePeriod1] : [];
+            return [];
+        }
+        case 'p2': {
+            const tab = state.activeTab;
+            if (tab === 'period-compare') return state.comparePeriod2 ? [state.comparePeriod2] : [];
+            if (tab === 'concept-compare') return state.conceptComparePeriod2 ? [state.conceptComparePeriod2] : [];
+            if (tab === 'ceco-compare') return state.cecoComparePeriod2 ? [state.cecoComparePeriod2] : [];
+            if (tab === 'cargo-compare') return state.cargoComparePeriod2 ? [state.cargoComparePeriod2] : [];
+            return [];
+        }
         case 'years':     return state.selectedYears.map(String);
         case 'months':    return state.selectedMonths;
         case 'quincenas':  return state.selectedQuincenas;
         case 'types':     return Array.isArray(state.selectedTipoNomina) ? state.selectedTipoNomina : [];
         case 'employees': return state.compareEmployees;
+        case 'period_compare_employees': return state.periodCompareSelectedEmployees || [];
         case 'employee_single': return state.selectedEmployeeCedula ? [state.selectedEmployeeCedula] : [];
         case 'concepts':  return state.compareConcepts;
+        case 'concept_compare_concepts': return state.conceptCompareSelectedConcepts || [];
         case 'concept_single': return state.selectedConceptName ? [state.selectedConceptName] : [];
         case 'cargos':    return state.compareCargos;
+        case 'cargo_compare_cargos': return state.cargoCompareSelectedCargos || [];
         case 'cecos':     return state.compareCecos;
+        case 'ceco_compare_cecos': return state.cecoCompareSelectedCecos || [];
         default:          return [];
     }
 }
@@ -2631,6 +2672,26 @@ function getCurrentSelectionForType(type) {
 function applyModalSelection(type) {
     const arr = Array.from(filterModalState.modalTempSelected);
     switch (type) {
+        case 'p1': {
+            const tab = state.activeTab;
+            if (arr.length > 0) {
+                if (tab === 'period-compare') state.comparePeriod1 = arr[0];
+                else if (tab === 'concept-compare') state.conceptComparePeriod1 = arr[0];
+                else if (tab === 'ceco-compare') state.cecoComparePeriod1 = arr[0];
+                else if (tab === 'cargo-compare') state.cargoComparePeriod1 = arr[0];
+            }
+            break;
+        }
+        case 'p2': {
+            const tab = state.activeTab;
+            if (arr.length > 0) {
+                if (tab === 'period-compare') state.comparePeriod2 = arr[0];
+                else if (tab === 'concept-compare') state.conceptComparePeriod2 = arr[0];
+                else if (tab === 'ceco-compare') state.cecoComparePeriod2 = arr[0];
+                else if (tab === 'cargo-compare') state.cargoComparePeriod2 = arr[0];
+            }
+            break;
+        }
         case 'years':
             state.selectedYears = arr.map(Number);
             break;
@@ -2645,12 +2706,14 @@ function applyModalSelection(type) {
             state.selectedTipoNomina = arr.filter(v => v !== 'all');
             break;
         case 'employees': state.compareEmployees = arr; break;
+        case 'period_compare_employees': state.periodCompareSelectedEmployees = arr; break;
         case 'employee_single':
             if (arr.length > 0) {
                 state.selectedEmployeeCedula = arr[0];
             }
             break;
         case 'concepts':  state.compareConcepts  = arr; break;
+        case 'concept_compare_concepts': state.conceptCompareSelectedConcepts = arr; break;
         case 'concept_single':
             if (arr.length > 0) {
                 state.selectedConceptName = arr[0];
@@ -2660,9 +2723,15 @@ function applyModalSelection(type) {
             state.compareCargos = arr;
             if (arr.length > 0) state.compareEmployees = []; // Cargo toma prioridad
             break;
+        case 'cargo_compare_cargos':
+            state.cargoCompareSelectedCargos = arr;
+            break;
         case 'cecos':
             state.compareCecos = arr;
             if (arr.length > 0) state.compareEmployees = []; // Ceco toma prioridad
+            break;
+        case 'ceco_compare_cecos':
+            state.cecoCompareSelectedCecos = arr;
             break;
     }
 }
@@ -2695,6 +2764,18 @@ function renderModalOptions(allOptions, query) {
             isSelected = state.selectedEmployeeCedula === option.value;
         } else if (filterModalState.currentFilterType === 'concept_single') {
             isSelected = state.selectedConceptName === option.value;
+        } else if (filterModalState.currentFilterType === 'p1') {
+            const tab = state.activeTab;
+            if (tab === 'period-compare') isSelected = state.comparePeriod1 === option.value;
+            else if (tab === 'concept-compare') isSelected = state.conceptComparePeriod1 === option.value;
+            else if (tab === 'ceco-compare') isSelected = state.cecoComparePeriod1 === option.value;
+            else if (tab === 'cargo-compare') isSelected = state.cargoComparePeriod1 === option.value;
+        } else if (filterModalState.currentFilterType === 'p2') {
+            const tab = state.activeTab;
+            if (tab === 'period-compare') isSelected = state.comparePeriod2 === option.value;
+            else if (tab === 'concept-compare') isSelected = state.conceptComparePeriod2 === option.value;
+            else if (tab === 'ceco-compare') isSelected = state.cecoComparePeriod2 === option.value;
+            else if (tab === 'cargo-compare') isSelected = state.cargoComparePeriod2 === option.value;
         } else {
             isSelected = filterModalState.modalTempSelected.has(option.value);
         }
@@ -2717,6 +2798,23 @@ function renderModalOptions(allOptions, query) {
             }
             if (filterModalState.currentFilterType === 'concept_single') {
                 state.selectedConceptName = option.value;
+                closeFilterModal();
+                renderActiveTab();
+                return;
+            }
+            if (filterModalState.currentFilterType === 'p1' || filterModalState.currentFilterType === 'p2') {
+                const tab = state.activeTab;
+                if (filterModalState.currentFilterType === 'p1') {
+                    if (tab === 'period-compare') state.comparePeriod1 = option.value;
+                    else if (tab === 'concept-compare') state.conceptComparePeriod1 = option.value;
+                    else if (tab === 'ceco-compare') state.cecoComparePeriod1 = option.value;
+                    else if (tab === 'cargo-compare') state.cargoComparePeriod1 = option.value;
+                } else {
+                    if (tab === 'period-compare') state.comparePeriod2 = option.value;
+                    else if (tab === 'concept-compare') state.conceptComparePeriod2 = option.value;
+                    else if (tab === 'ceco-compare') state.cecoComparePeriod2 = option.value;
+                    else if (tab === 'cargo-compare') state.cargoComparePeriod2 = option.value;
+                }
                 closeFilterModal();
                 renderActiveTab();
                 return;
@@ -2758,7 +2856,13 @@ function openFilterModal(type) {
         cargos:    '🔍 Filtrar por Cargo',
         cecos:     '🔍 Filtrar Centros de Costo',
         employee_single: '👤 Seleccionar Colaborador',
-        concept_single: '🔍 Seleccionar Concepto'
+        concept_single: '🔍 Seleccionar Concepto',
+        p1: '📅 Seleccionar Periodo 1 (Base)',
+        p2: '📅 Seleccionar Periodo 2 (Comparado)',
+        period_compare_employees: '👤 Filtrar Colaborador',
+        concept_compare_concepts: '🔍 Filtrar Concepto',
+        ceco_compare_cecos: '🏢 Filtrar Centro de Costo',
+        cargo_compare_cargos: '🎖️ Filtrar Cargo'
     };
     titleEl.textContent = titles[type] || 'Filtrar Opciones';
 
@@ -2853,11 +2957,32 @@ function initFilterModal() {
         { btnId: 'btn-open-filter-cargos',         type: 'cargos'    },
         { btnId: 'btn-open-filter-cecos',          type: 'cecos'     },
         { btnId: 'btn-open-filter-employee-label',  type: 'employee_single' },
-        { btnId: 'btn-open-filter-concept-label',   type: 'concept_single' }
+        { btnId: 'btn-open-filter-concept-label',   type: 'concept_single' },
+        
+        // Pestaña Análisis Masivo por Persona
+        { btnId: 'period-compare-p1-label',        type: 'p1' },
+        { btnId: 'period-compare-p2-label',        type: 'p2' },
+        { btnId: 'period-compare-employees-label', type: 'period_compare_employees' },
+        { btnId: 'period-compare-tipo-label',      type: 'types' },
+        
+        // Pestaña Análisis Masivo por Concepto
+        { btnId: 'concept-compare-p1-label',       type: 'p1' },
+        { btnId: 'concept-compare-p2-label',       type: 'p2' },
+        { btnId: 'concept-compare-concepts-label', type: 'concept_compare_concepts' },
+        { btnId: 'concept-compare-tipo-label',     type: 'types' },
+        
+        // Pestaña Análisis Masivo por CECO
+        { btnId: 'ceco-compare-p1-label',          type: 'p1' },
+        { btnId: 'ceco-compare-p2-label',          type: 'p2' },
+        { btnId: 'ceco-compare-cecos-label',       type: 'ceco_compare_cecos' },
+        { btnId: 'ceco-compare-tipo-label',        type: 'types' },
+        
+        // Pestaña Análisis Masivo por Cargo
+        { btnId: 'cargo-compare-p1-label',         type: 'p1' },
+        { btnId: 'cargo-compare-p2-label',         type: 'p2' },
+        { btnId: 'cargo-compare-cargos-label',     type: 'cargo_compare_cargos' },
+        { btnId: 'cargo-compare-tipo-label',        type: 'types' }
     ];
-
-
-
 
     filterButtonMap.forEach(({ btnId, type }) => {
         const btn = document.getElementById(btnId);
@@ -4256,94 +4381,165 @@ function syncCustomTipoDropdowns() {
     });
 }
 
+function getEmployeeNameByCedula(cedula) {
+    const people = getUniquePeopleSorted();
+    const p = people.find(item => item.cedula === cedula);
+    return p ? p.name : cedula;
+}
+
+function updatePeriodSelectorLabels() {
+    // Period Compare
+    const p1Period = document.getElementById('period-compare-p1-label');
+    const p2Period = document.getElementById('period-compare-p2-label');
+    if (p1Period) p1Period.innerHTML = `<i data-lucide="calendar"></i> P1: ${state.comparePeriod1 ? getPeriodLabel(state.comparePeriod1) : '-'}`;
+    if (p2Period) p2Period.innerHTML = `<i data-lucide="calendar"></i> P2: ${state.comparePeriod2 ? getPeriodLabel(state.comparePeriod2) : '-'}`;
+
+    // Concept Compare
+    const p1Concept = document.getElementById('concept-compare-p1-label');
+    const p2Concept = document.getElementById('concept-compare-p2-label');
+    if (p1Concept) p1Concept.innerHTML = `<i data-lucide="calendar"></i> P1: ${state.conceptComparePeriod1 ? getPeriodLabel(state.conceptComparePeriod1) : '-'}`;
+    if (p2Concept) p2Concept.innerHTML = `<i data-lucide="calendar"></i> P2: ${state.conceptComparePeriod2 ? getPeriodLabel(state.conceptComparePeriod2) : '-'}`;
+
+    // CECO Compare
+    const p1Ceco = document.getElementById('ceco-compare-p1-label');
+    const p2Ceco = document.getElementById('ceco-compare-p2-label');
+    if (p1Ceco) p1Ceco.innerHTML = `<i data-lucide="calendar"></i> P1: ${state.cecoComparePeriod1 ? getPeriodLabel(state.cecoComparePeriod1) : '-'}`;
+    if (p2Ceco) p2Ceco.innerHTML = `<i data-lucide="calendar"></i> P2: ${state.cecoComparePeriod2 ? getPeriodLabel(state.cecoComparePeriod2) : '-'}`;
+
+    // Cargo Compare
+    const p1Cargo = document.getElementById('cargo-compare-p1-label');
+    const p2Cargo = document.getElementById('cargo-compare-p2-label');
+    if (p1Cargo) p1Cargo.innerHTML = `<i data-lucide="calendar"></i> P1: ${state.cargoComparePeriod1 ? getPeriodLabel(state.cargoComparePeriod1) : '-'}`;
+    if (p2Cargo) p2Cargo.innerHTML = `<i data-lucide="calendar"></i> P2: ${state.cargoComparePeriod2 ? getPeriodLabel(state.cargoComparePeriod2) : '-'}`;
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+function updateSearchSelectorLabels() {
+    // Colaboradores
+    const empLabel = document.getElementById('period-compare-employees-label');
+    if (empLabel) {
+        const count = state.periodCompareSelectedEmployees ? state.periodCompareSelectedEmployees.length : 0;
+        if (count === 0) {
+            empLabel.innerHTML = `<i data-lucide="users"></i> Colaborador: Todos`;
+        } else if (count === 1) {
+            empLabel.innerHTML = `<i data-lucide="users"></i> Colaborador: ${getEmployeeNameByCedula(state.periodCompareSelectedEmployees[0])}`;
+        } else {
+            empLabel.innerHTML = `<i data-lucide="users"></i> Colaboradores: ${count}`;
+        }
+    }
+
+    // Conceptos
+    const conceptLabel = document.getElementById('concept-compare-concepts-label');
+    if (conceptLabel) {
+        const count = state.conceptCompareSelectedConcepts ? state.conceptCompareSelectedConcepts.length : 0;
+        if (count === 0) {
+            conceptLabel.innerHTML = `<i data-lucide="briefcase"></i> Concepto: Todos`;
+        } else if (count === 1) {
+            conceptLabel.innerHTML = `<i data-lucide="briefcase"></i> Concepto: ${state.conceptCompareSelectedConcepts[0]}`;
+        } else {
+            conceptLabel.innerHTML = `<i data-lucide="briefcase"></i> Conceptos: ${count}`;
+        }
+    }
+
+    // CECOs
+    const cecoLabel = document.getElementById('ceco-compare-cecos-label');
+    if (cecoLabel) {
+        const count = state.cecoCompareSelectedCecos ? state.cecoCompareSelectedCecos.length : 0;
+        if (count === 0) {
+            cecoLabel.innerHTML = `<i data-lucide="building-2"></i> CECO: Todos`;
+        } else if (count === 1) {
+            const shortName = state.cecoCompareSelectedCecos[0].split(' - ')[0];
+            cecoLabel.innerHTML = `<i data-lucide="building-2"></i> CECO: ${shortName}`;
+        } else {
+            cecoLabel.innerHTML = `<i data-lucide="building-2"></i> CECOs: ${count}`;
+        }
+    }
+
+    // Cargos
+    const cargoLabel = document.getElementById('cargo-compare-cargos-label');
+    if (cargoLabel) {
+        const count = state.cargoCompareSelectedCargos ? state.cargoCompareSelectedCargos.length : 0;
+        if (count === 0) {
+            cargoLabel.innerHTML = `<i data-lucide="award"></i> Cargo: Todos`;
+        } else if (count === 1) {
+            cargoLabel.innerHTML = `<i data-lucide="award"></i> Cargo: ${state.cargoCompareSelectedCargos[0]}`;
+        } else {
+            cargoLabel.innerHTML = `<i data-lucide="award"></i> Cargos: ${count}`;
+        }
+    }
+
+    // Tipo de Nómina para todos los 4 comparadores
+    const labels = [
+        'period-compare-tipo-label',
+        'concept-compare-tipo-label',
+        'ceco-compare-tipo-label',
+        'cargo-compare-tipo-label'
+    ];
+    labels.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const count = state.selectedTipoNomina ? state.selectedTipoNomina.length : 0;
+            if (count === 0) {
+                el.innerHTML = `<i data-lucide="tag"></i> Tipo: Todos`;
+            } else if (count === 1) {
+                const val = state.selectedTipoNomina[0];
+                el.innerHTML = `<i data-lucide="tag"></i> Tipo: ${TIPO_NOMINA_LABELS[val] || val}`;
+            } else {
+                el.innerHTML = `<i data-lucide="tag"></i> Tipos: ${count}`;
+            }
+        }
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
 // Inicializa selectores y eventos del comparador de periodos
 function initPeriodCompareSelectors() {
-    const p1Select = document.getElementById('period-compare-p1');
-    const p2Select = document.getElementById('period-compare-p2');
-    const searchInput = document.getElementById('period-compare-search');
     const btnExpand = document.getElementById('btn-period-compare-expand');
     const btnCollapse = document.getElementById('btn-period-compare-collapse');
     
-    if (!p1Select || !p2Select) return;
-    
     const periods = getUniquePeriodsSorted();
-    
-    // Si no hay suficientes periodos, deshabilitar vista
     if (periods.length === 0) return;
     
-    // Llenar selectores
-    p1Select.innerHTML = '';
-    p2Select.innerHTML = '';
-    
-    periods.forEach(p => {
-        p1Select.innerHTML += `<option value="${p}">${p}</option>`;
-        p2Select.innerHTML += `<option value="${p}">${p}</option>`;
-    });
-    
     // Valores predeterminados (P1 = penúltimo, P2 = último)
-    if (periods.length >= 2) {
-        state.comparePeriod1 = periods[periods.length - 2];
-        state.comparePeriod2 = periods[periods.length - 1];
-    } else {
-        state.comparePeriod1 = periods[0];
-        state.comparePeriod2 = periods[0];
+    if (!state.comparePeriod1) {
+        if (periods.length >= 2) {
+            state.comparePeriod1 = periods[periods.length - 2];
+            state.comparePeriod2 = periods[periods.length - 1];
+        } else {
+            state.comparePeriod1 = periods[0];
+            state.comparePeriod2 = periods[0];
+        }
     }
     
-    p1Select.value = state.comparePeriod1;
-    p2Select.value = state.comparePeriod2;
-    
-    if (!p1Select.dataset.listenerBound) {
-        // Escuchar eventos de cambio en selectores
-        p1Select.addEventListener('change', (e) => {
-            state.comparePeriod1 = e.target.value;
-            renderPeriodComparison();
-        });
-        
-        p2Select.addEventListener('change', (e) => {
-            state.comparePeriod2 = e.target.value;
-            renderPeriodComparison();
-        });
-
-        // Escuchar búsqueda en tiempo real
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                state.periodCompareSearchQuery = e.target.value.toLowerCase().trim();
-                renderPeriodComparison();
-            });
-        }
-        
-        // Botones de expandir/colapsar global
-        if (btnExpand) {
-            btnExpand.addEventListener('click', () => {
-                state.periodCompareExpanded = true;
-                document.querySelectorAll('.compare-table tbody tr.employee-row').forEach(row => {
-                    row.classList.add('expanded');
-                    const cedula = row.getAttribute('data-cedula');
-                    document.querySelectorAll(`.child-of-${cedula}`).forEach(child => {
-                        child.classList.remove('collapsed-row');
-                    });
+    if (btnExpand && !btnExpand.dataset.listenerBound) {
+        btnExpand.addEventListener('click', () => {
+            state.periodCompareExpanded = true;
+            document.querySelectorAll('.compare-table tbody tr.employee-row').forEach(row => {
+                row.classList.add('expanded');
+                const cedula = row.getAttribute('data-cedula');
+                document.querySelectorAll(`.child-of-${cedula}`).forEach(child => {
+                    child.classList.remove('collapsed-row');
                 });
             });
-        }
-        
-        if (btnCollapse) {
-            btnCollapse.addEventListener('click', () => {
-                state.periodCompareExpanded = false;
-                document.querySelectorAll('.compare-table tbody tr.employee-row').forEach(row => {
-                    row.classList.remove('expanded');
-                    const cedula = row.getAttribute('data-cedula');
-                    document.querySelectorAll(`.child-of-${cedula}`).forEach(child => {
-                        child.classList.add('collapsed-row');
-                    });
-                });
-            });
-        }
-        
-        p1Select.dataset.listenerBound = 'true';
+        });
+        btnExpand.dataset.listenerBound = 'true';
     }
-
-    // Inicializar dropdown personalizado de tipo de nómina
-    initCustomTipoDropdown('period-compare-tipo-dropdown', 'period-compare-tipo-list', 'period-compare-tipo-trigger', renderPeriodComparison);
+    
+    if (btnCollapse && !btnCollapse.dataset.listenerBound) {
+        btnCollapse.addEventListener('click', () => {
+            state.periodCompareExpanded = false;
+            document.querySelectorAll('.compare-table tbody tr.employee-row').forEach(row => {
+                row.classList.remove('expanded');
+                const cedula = row.getAttribute('data-cedula');
+                document.querySelectorAll(`.child-of-${cedula}`).forEach(child => {
+                    child.classList.add('collapsed-row');
+                });
+            });
+        });
+        btnCollapse.dataset.listenerBound = 'true';
+    }
 }
 
 // Formatea la variación monetaria con colores e iconos
@@ -4425,12 +4621,13 @@ function renderPeriodComparison() {
     
     if (!tbody) return;
     
+    // Actualizar etiquetas visuales de los filtros
+    updatePeriodSelectorLabels();
+    updateSearchSelectorLabels();
+    
     // Actualizar cabeceras de columnas
     if (headerP1) headerP1.innerText = getPeriodLabel(state.comparePeriod1) || 'Periodo 1';
     if (headerP2) headerP2.innerText = getPeriodLabel(state.comparePeriod2) || 'Periodo 2';
-    
-    // Sincronizar selector de tipo de nómina personalizado
-    syncCustomTipoDropdowns();
 
     tbody.innerHTML = '';
     
@@ -4445,15 +4642,15 @@ function renderPeriodComparison() {
     // 2. Obtener lista de personas a mostrar
     const people = getUniquePeopleSorted();
     
-    // Filtrar personas por búsqueda si aplica
-    const query = state.periodCompareSearchQuery;
+    // Filtrar personas por selección si aplica
+    const selectedCeds = state.periodCompareSelectedEmployees || [];
     const filteredPeople = people.filter(p => {
-        if (!query) return true;
-        return p.name.toLowerCase().includes(query) || p.cedula.includes(query);
+        if (selectedCeds.length === 0) return true;
+        return selectedCeds.includes(p.cedula);
     });
     
     if (filteredPeople.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">No se encontraron colaboradores que coincidan con la búsqueda</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron colaboradores que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -4893,91 +5090,50 @@ function showAnalysisModal(cedula, name, period1, period2) {
 
 // Inicializa selectores y eventos del comparador de conceptos
 function initConceptCompareSelectors() {
-    const p1Select = document.getElementById('concept-compare-p1');
-    const p2Select = document.getElementById('concept-compare-p2');
-    const searchInput = document.getElementById('concept-compare-search');
     const btnExpand = document.getElementById('btn-concept-compare-expand');
     const btnCollapse = document.getElementById('btn-concept-compare-collapse');
     
-    if (!p1Select || !p2Select) return;
-    
     const periods = getUniquePeriodsSorted();
-    
     if (periods.length === 0) return;
     
-    // Llenar selectores
-    p1Select.innerHTML = '';
-    p2Select.innerHTML = '';
-    
-    periods.forEach(p => {
-        p1Select.innerHTML += `<option value="${p}">${p}</option>`;
-        p2Select.innerHTML += `<option value="${p}">${p}</option>`;
-    });
-    
     // Valores predeterminados (P1 = penúltimo, P2 = último)
-    if (periods.length >= 2) {
-        state.conceptComparePeriod1 = periods[periods.length - 2];
-        state.conceptComparePeriod2 = periods[periods.length - 1];
-    } else {
-        state.conceptComparePeriod1 = periods[0];
-        state.conceptComparePeriod2 = periods[0];
+    if (!state.conceptComparePeriod1) {
+        if (periods.length >= 2) {
+            state.conceptComparePeriod1 = periods[periods.length - 2];
+            state.conceptComparePeriod2 = periods[periods.length - 1];
+        } else {
+            state.conceptComparePeriod1 = periods[0];
+            state.conceptComparePeriod2 = periods[0];
+        }
     }
     
-    p1Select.value = state.conceptComparePeriod1;
-    p2Select.value = state.conceptComparePeriod2;
-    
-    if (!p1Select.dataset.listenerBound) {
-        // Escuchar eventos de cambio
-        p1Select.addEventListener('change', (e) => {
-            state.conceptComparePeriod1 = e.target.value;
-            renderConceptComparison();
-        });
-        
-        p2Select.addEventListener('change', (e) => {
-            state.conceptComparePeriod2 = e.target.value;
-            renderConceptComparison();
-        });
-
-        // Escuchar búsqueda en tiempo real
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                state.conceptCompareSearchQuery = e.target.value.toLowerCase().trim();
-                renderConceptComparison();
-            });
-        }
-        
-        // Botones de expandir/colapsar global
-        if (btnExpand) {
-            btnExpand.addEventListener('click', () => {
-                state.conceptCompareExpanded = true;
-                document.querySelectorAll('#concept-compare-tbody tr.concept-top-row').forEach(row => {
-                    row.classList.add('expanded');
-                    const conceptSafe = row.getAttribute('data-concept-safe');
-                    document.querySelectorAll(`.child-of-${conceptSafe}`).forEach(child => {
-                        child.classList.remove('collapsed-row');
-                    });
+    if (btnExpand && !btnExpand.dataset.listenerBound) {
+        btnExpand.addEventListener('click', () => {
+            state.conceptCompareExpanded = true;
+            document.querySelectorAll('#concept-compare-tbody tr.concept-top-row').forEach(row => {
+                row.classList.add('expanded');
+                const conceptSafe = row.getAttribute('data-concept-safe');
+                document.querySelectorAll(`.child-of-${conceptSafe}`).forEach(child => {
+                    child.classList.remove('collapsed-row');
                 });
             });
-        }
-        
-        if (btnCollapse) {
-            btnCollapse.addEventListener('click', () => {
-                state.conceptCompareExpanded = false;
-                document.querySelectorAll('#concept-compare-tbody tr.concept-top-row').forEach(row => {
-                    row.classList.remove('expanded');
-                    const conceptSafe = row.getAttribute('data-concept-safe');
-                    document.querySelectorAll(`.child-of-${conceptSafe}`).forEach(child => {
-                        child.classList.add('collapsed-row');
-                    });
-                });
-            });
-        }
-        
-        p1Select.dataset.listenerBound = 'true';
+        });
+        btnExpand.dataset.listenerBound = 'true';
     }
-
-    // Inicializar dropdown personalizado de tipo de nómina
-    initCustomTipoDropdown('concept-compare-tipo-dropdown', 'concept-compare-tipo-list', 'concept-compare-tipo-trigger', renderConceptComparison);
+    
+    if (btnCollapse && !btnCollapse.dataset.listenerBound) {
+        btnCollapse.addEventListener('click', () => {
+            state.conceptCompareExpanded = false;
+            document.querySelectorAll('#concept-compare-tbody tr.concept-top-row').forEach(row => {
+                row.classList.remove('expanded');
+                const conceptSafe = row.getAttribute('data-concept-safe');
+                document.querySelectorAll(`.child-of-${conceptSafe}`).forEach(child => {
+                    child.classList.add('collapsed-row');
+                });
+            });
+        });
+        btnCollapse.dataset.listenerBound = 'true';
+    }
 }
 
 // Renderiza la tabla de comparación de conceptos jerárquica
@@ -4988,12 +5144,13 @@ function renderConceptComparison() {
     
     if (!tbody) return;
     
-    // Actualizar cabeceras de columnas
-    if (headerP1) headerP1.innerText = state.conceptComparePeriod1 || 'Periodo 1';
-    if (headerP2) headerP2.innerText = state.conceptComparePeriod2 || 'Periodo 2';
+    // Actualizar etiquetas visuales de los filtros
+    updatePeriodSelectorLabels();
+    updateSearchSelectorLabels();
     
-    // Sincronizar selector de tipo de nómina personalizado
-    syncCustomTipoDropdowns();
+    // Actualizar cabeceras de columnas
+    if (headerP1) headerP1.innerText = getPeriodLabel(state.conceptComparePeriod1) || 'Periodo 1';
+    if (headerP2) headerP2.innerText = getPeriodLabel(state.conceptComparePeriod2) || 'Periodo 2';
 
     tbody.innerHTML = '';
     
@@ -5003,30 +5160,21 @@ function renderConceptComparison() {
     }
     
     // 1. Filtrar registros para Periodo 1 y Periodo 2
-    const parts1 = state.conceptComparePeriod1.split(' - ');
-    const parts2 = state.conceptComparePeriod2.split(' - ');
-    const y1 = parseInt(parts1[0]);
-    const m1 = parts1[1];
-    const q1 = parts1[2];
-    const y2 = parseInt(parts2[0]);
-    const m2 = parts2[1];
-    const q2 = parts2[2];
-    
     const dataP1 = filterDataByPeriod(state.conceptComparePeriod1);
     const dataP2 = filterDataByPeriod(state.conceptComparePeriod2);
     
     // 2. Obtener lista única de todos los conceptos
     const allConcepts = [...new Set(state.data.map(d => d.co))];
     
-    // Filtrar conceptos por búsqueda
-    const query = state.conceptCompareSearchQuery;
+    // Filtrar conceptos por selección si aplica
+    const selectedConcepts = state.conceptCompareSelectedConcepts || [];
     const filteredConcepts = allConcepts.filter(co => {
-        if (!query) return true;
-        return co.toLowerCase().includes(query);
+        if (selectedConcepts.length === 0) return true;
+        return selectedConcepts.includes(co);
     });
     
     if (filteredConcepts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron conceptos que coincidan con la búsqueda</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron conceptos que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -5219,78 +5367,44 @@ function renderConceptComparison() {
 // ANÁLISIS MASIVO: CENTRO DE COSTO
 // ==========================================
 function initCecoCompareSelectors() {
-    const p1Select = document.getElementById('ceco-compare-p1');
-    const p2Select = document.getElementById('ceco-compare-p2');
-    const searchInput = document.getElementById('ceco-compare-search');
     const btnExpand = document.getElementById('btn-ceco-compare-expand');
     const btnCollapse = document.getElementById('btn-ceco-compare-collapse');
-    
-    if (!p1Select || !p2Select) return;
     
     const periods = getUniquePeriodsSorted();
     if (periods.length === 0) return;
     
-    p1Select.innerHTML = '';
-    p2Select.innerHTML = '';
-    
-    periods.forEach(p => {
-        p1Select.innerHTML += `<option value="${p}">${p}</option>`;
-        p2Select.innerHTML += `<option value="${p}">${p}</option>`;
-    });
-    
-    if (periods.length >= 2) {
-        state.cecoComparePeriod1 = periods[periods.length - 2];
-        state.cecoComparePeriod2 = periods[periods.length - 1];
-    } else {
-        state.cecoComparePeriod1 = periods[0];
-        state.cecoComparePeriod2 = periods[0];
+    if (!state.cecoComparePeriod1) {
+        if (periods.length >= 2) {
+            state.cecoComparePeriod1 = periods[periods.length - 2];
+            state.cecoComparePeriod2 = periods[periods.length - 1];
+        } else {
+            state.cecoComparePeriod1 = periods[0];
+            state.cecoComparePeriod2 = periods[0];
+        }
     }
     
-    p1Select.value = state.cecoComparePeriod1;
-    p2Select.value = state.cecoComparePeriod2;
-    
-    if (!p1Select.dataset.listenerBound) {
-        p1Select.addEventListener('change', (e) => {
-            state.cecoComparePeriod1 = e.target.value;
-            renderCecoComparison();
+    if (btnExpand && !btnExpand.dataset.listenerBound) {
+        btnExpand.addEventListener('click', () => {
+            state.cecoCompareExpanded = true;
+            document.querySelectorAll('#ceco-compare-tbody tr.employee-row').forEach(row => {
+                row.classList.add('expanded');
+                const key = row.getAttribute('data-row-key');
+                document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.remove('collapsed-row'));
+            });
         });
-        p2Select.addEventListener('change', (e) => {
-            state.cecoComparePeriod2 = e.target.value;
-            renderCecoComparison();
-        });
-        
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                state.cecoCompareSearchQuery = e.target.value.toLowerCase().trim();
-                renderCecoComparison();
-            });
-        }
-        
-        if (btnExpand) {
-            btnExpand.addEventListener('click', () => {
-                state.cecoCompareExpanded = true;
-                document.querySelectorAll('#ceco-compare-tbody tr.employee-row').forEach(row => {
-                    row.classList.add('expanded');
-                    const key = row.getAttribute('data-row-key');
-                    document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.remove('collapsed-row'));
-                });
-            });
-        }
-        if (btnCollapse) {
-            btnCollapse.addEventListener('click', () => {
-                state.cecoCompareExpanded = false;
-                document.querySelectorAll('#ceco-compare-tbody tr.employee-row').forEach(row => {
-                    row.classList.remove('expanded');
-                    const key = row.getAttribute('data-row-key');
-                    document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.add('collapsed-row'));
-                });
-            });
-        }
-        
-        p1Select.dataset.listenerBound = 'true';
+        btnExpand.dataset.listenerBound = 'true';
     }
-    
-    initCustomTipoDropdown('ceco-compare-tipo-dropdown', 'ceco-compare-tipo-list', 'ceco-compare-tipo-trigger', renderCecoComparison);
+    if (btnCollapse && !btnCollapse.dataset.listenerBound) {
+        btnCollapse.addEventListener('click', () => {
+            state.cecoCompareExpanded = false;
+            document.querySelectorAll('#ceco-compare-tbody tr.employee-row').forEach(row => {
+                row.classList.remove('expanded');
+                const key = row.getAttribute('data-row-key');
+                document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.add('collapsed-row'));
+            });
+        });
+        btnCollapse.dataset.listenerBound = 'true';
+    }
 }
 
 function renderCecoComparison() {
@@ -5299,10 +5413,14 @@ function renderCecoComparison() {
     const headerP2 = document.getElementById('ceco-compare-header-p2');
     if (!tbody) return;
     
+    // Actualizar etiquetas visuales de los filtros
+    updatePeriodSelectorLabels();
+    updateSearchSelectorLabels();
+    
+    // Actualizar cabeceras de columnas
     if (headerP1) headerP1.innerText = getPeriodLabel(state.cecoComparePeriod1) || 'Periodo 1';
     if (headerP2) headerP2.innerText = getPeriodLabel(state.cecoComparePeriod2) || 'Periodo 2';
     
-    syncCustomTipoDropdowns();
     tbody.innerHTML = '';
     
     if (!state.cecoComparePeriod1 || !state.cecoComparePeriod2) {
@@ -5316,11 +5434,15 @@ function renderCecoComparison() {
     const cecosSet = new Set();
     [...dataP1, ...dataP2].forEach(d => { if (d.cc && d.dcc) cecosSet.add(`${d.cc} - ${d.dcc}`); });
     
-    const query = state.cecoCompareSearchQuery;
-    const filteredCecos = [...cecosSet].filter(c => !query || c.toLowerCase().includes(query)).sort();
+    // Filtrar CECOs por selección si aplica
+    const selectedCecos = state.cecoCompareSelectedCecos || [];
+    const filteredCecos = [...cecosSet].filter(c => {
+        if (selectedCecos.length === 0) return true;
+        return selectedCecos.includes(c);
+    }).sort();
     
     if (filteredCecos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron centros de costo para este periodo</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron centros de costo que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
@@ -5448,78 +5570,44 @@ function renderCecoComparison() {
 // ANÁLISIS MASIVO: CARGOS
 // ==========================================
 function initCargoCompareSelectors() {
-    const p1Select = document.getElementById('cargo-compare-p1');
-    const p2Select = document.getElementById('cargo-compare-p2');
-    const searchInput = document.getElementById('cargo-compare-search');
     const btnExpand = document.getElementById('btn-cargo-compare-expand');
     const btnCollapse = document.getElementById('btn-cargo-compare-collapse');
-    
-    if (!p1Select || !p2Select) return;
     
     const periods = getUniquePeriodsSorted();
     if (periods.length === 0) return;
     
-    p1Select.innerHTML = '';
-    p2Select.innerHTML = '';
-    
-    periods.forEach(p => {
-        p1Select.innerHTML += `<option value="${p}">${p}</option>`;
-        p2Select.innerHTML += `<option value="${p}">${p}</option>`;
-    });
-    
-    if (periods.length >= 2) {
-        state.cargoComparePeriod1 = periods[periods.length - 2];
-        state.cargoComparePeriod2 = periods[periods.length - 1];
-    } else {
-        state.cargoComparePeriod1 = periods[0];
-        state.cargoComparePeriod2 = periods[0];
+    if (!state.cargoComparePeriod1) {
+        if (periods.length >= 2) {
+            state.cargoComparePeriod1 = periods[periods.length - 2];
+            state.cargoComparePeriod2 = periods[periods.length - 1];
+        } else {
+            state.cargoComparePeriod1 = periods[0];
+            state.cargoComparePeriod2 = periods[0];
+        }
     }
     
-    p1Select.value = state.cargoComparePeriod1;
-    p2Select.value = state.cargoComparePeriod2;
-    
-    if (!p1Select.dataset.listenerBound) {
-        p1Select.addEventListener('change', (e) => {
-            state.cargoComparePeriod1 = e.target.value;
-            renderCargoComparison();
+    if (btnExpand && !btnExpand.dataset.listenerBound) {
+        btnExpand.addEventListener('click', () => {
+            state.cargoCompareExpanded = true;
+            document.querySelectorAll('#cargo-compare-tbody tr.employee-row').forEach(row => {
+                row.classList.add('expanded');
+                const key = row.getAttribute('data-row-key');
+                document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.remove('collapsed-row'));
+            });
         });
-        p2Select.addEventListener('change', (e) => {
-            state.cargoComparePeriod2 = e.target.value;
-            renderCargoComparison();
-        });
-        
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                state.cargoCompareSearchQuery = e.target.value.toLowerCase().trim();
-                renderCargoComparison();
-            });
-        }
-        
-        if (btnExpand) {
-            btnExpand.addEventListener('click', () => {
-                state.cargoCompareExpanded = true;
-                document.querySelectorAll('#cargo-compare-tbody tr.employee-row').forEach(row => {
-                    row.classList.add('expanded');
-                    const key = row.getAttribute('data-row-key');
-                    document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.remove('collapsed-row'));
-                });
-            });
-        }
-        if (btnCollapse) {
-            btnCollapse.addEventListener('click', () => {
-                state.cargoCompareExpanded = false;
-                document.querySelectorAll('#cargo-compare-tbody tr.employee-row').forEach(row => {
-                    row.classList.remove('expanded');
-                    const key = row.getAttribute('data-row-key');
-                    document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.add('collapsed-row'));
-                });
-            });
-        }
-        
-        p1Select.dataset.listenerBound = 'true';
+        btnExpand.dataset.listenerBound = 'true';
     }
-    
-    initCustomTipoDropdown('cargo-compare-tipo-dropdown', 'cargo-compare-tipo-list', 'cargo-compare-tipo-trigger', renderCargoComparison);
+    if (btnCollapse && !btnCollapse.dataset.listenerBound) {
+        btnCollapse.addEventListener('click', () => {
+            state.cargoCompareExpanded = false;
+            document.querySelectorAll('#cargo-compare-tbody tr.employee-row').forEach(row => {
+                row.classList.remove('expanded');
+                const key = row.getAttribute('data-row-key');
+                document.querySelectorAll(`.child-of-${key}`).forEach(child => child.classList.add('collapsed-row'));
+            });
+        });
+        btnCollapse.dataset.listenerBound = 'true';
+    }
 }
 
 function renderCargoComparison() {
@@ -5528,10 +5616,14 @@ function renderCargoComparison() {
     const headerP2 = document.getElementById('cargo-compare-header-p2');
     if (!tbody) return;
     
+    // Actualizar etiquetas visuales de los filtros
+    updatePeriodSelectorLabels();
+    updateSearchSelectorLabels();
+    
+    // Actualizar cabeceras de columnas
     if (headerP1) headerP1.innerText = getPeriodLabel(state.cargoComparePeriod1) || 'Periodo 1';
     if (headerP2) headerP2.innerText = getPeriodLabel(state.cargoComparePeriod2) || 'Periodo 2';
     
-    syncCustomTipoDropdowns();
     tbody.innerHTML = '';
     
     if (!state.cargoComparePeriod1 || !state.cargoComparePeriod2) {
@@ -5545,11 +5637,15 @@ function renderCargoComparison() {
     const cargosSet = new Set();
     [...dataP1, ...dataP2].forEach(d => { if (d.cg) cargosSet.add(d.cg); });
     
-    const query = state.cargoCompareSearchQuery;
-    const filteredCargos = [...cargosSet].filter(c => !query || c.toLowerCase().includes(query)).sort();
+    // Filtrar cargos por selección si aplica
+    const selectedCargos = state.cargoCompareSelectedCargos || [];
+    const filteredCargos = [...cargosSet].filter(c => {
+        if (selectedCargos.length === 0) return true;
+        return selectedCargos.includes(c);
+    }).sort();
     
     if (filteredCargos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron cargos para este periodo</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No se encontraron cargos que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
