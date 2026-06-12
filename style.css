@@ -1860,10 +1860,10 @@ table * {
     display: none !important;
 }
 
-/* Redesign the comparison grid controls to display inline/horizontally on desktop and grid on mobile */
+/* Redesign the comparison grid controls to display in a 2x2 grid (2 columns) */
 .comparison-filter-layout {
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 16px !important;
     padding: 14px 20px !important;
     align-items: center !important;
