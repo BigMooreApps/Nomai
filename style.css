@@ -1665,8 +1665,16 @@ table * {
         border-radius: 12px;
     }
     .kpi-value {
-        font-size: 1.4rem;
+        font-size: clamp(1.1rem, 3.2vw, 1.4rem);
         letter-spacing: -0.4px;
+        word-break: break-all;
+    }
+    .kpi-sub-separator {
+        display: none !important;
+    }
+    .kpi-sub-item {
+        display: block !important;
+        margin-top: 2px;
     }
 
     /* Gráficos responsivos */
@@ -1704,16 +1712,18 @@ table * {
         padding: 10px 12px;
     }
     .kpi-value {
-        font-size: 1.15rem;
+        font-size: clamp(0.9rem, 4.4vw, 1.15rem);
         margin-bottom: 2px;
+        word-break: break-all;
+        line-height: 1.2;
     }
     .kpi-title {
         font-size: 0.62rem;
         letter-spacing: 0.2px;
     }
     .kpi-subtitle {
-        font-size: 0.68rem;
-        line-height: 1.1;
+        font-size: 0.65rem;
+        line-height: 1.2;
     }
     .kpi-icon {
         width: 22px;

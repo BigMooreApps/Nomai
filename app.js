@@ -684,7 +684,7 @@ function renderOverview() {
     document.getElementById('overview-promedio-salario').innerText = currencyFormatter.format(avgNet);
     
     // Subtitulos detallando el total de Devengos y Descuentos
-    document.getElementById('overview-total-neto-sub').innerText = `Ingresos: ${currencyFormatter.format(totalDevengos)} | Dctos: ${currencyFormatter.format(Math.abs(totalDescuentos))}`;
+    document.getElementById('overview-total-neto-sub').innerHTML = `<span class="kpi-sub-item">Ingresos: ${currencyFormatter.format(totalDevengos)}</span><span class="kpi-sub-separator"> | </span><span class="kpi-sub-item">Dctos: ${currencyFormatter.format(Math.abs(totalDescuentos))}</span>`;
     document.getElementById('overview-total-beneficios-sub').innerText = 'En el periodo seleccionado';
     
     // 2. Gráfico: Tendencia Mensual (Neto, Devengos, Descuentos)
