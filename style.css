@@ -437,7 +437,7 @@ body {
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(108,0,211,0.1);
-    padding: 12px 28px;
+    padding: 8px 24px; /* Reduced vertical padding */
     position: sticky; top: 0; z-index: 40;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     box-shadow: 0 4px 20px rgba(0,0,0,0.03);
@@ -456,18 +456,31 @@ body {
 }
 .filter-group.hidden { display: none !important; }
 .filter-divider {
-    width: 1px; height: 20px;
+    width: 1px; height: 18px;
     background: var(--border-color);
 }
 .filter-group-label {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 0.78rem;
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.72rem; /* Compact label size on desktop */
     color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
-.filter-group-label i { width: 13px; height: 13px; }
+.filter-group-label i,
+.filter-group-label svg { 
+    width: 12px !important; 
+    height: 12px !important; 
+}
+.filter-toolbar .filter-lupa-btn {
+    width: 28px !important;
+    height: 28px !important;
+}
+.filter-toolbar .filter-lupa-btn svg,
+.filter-toolbar .filter-lupa-btn i {
+    width: 12px !important;
+    height: 12px !important;
+}
 
 /* Custom Dropdown */
 .custom-dropdown { position: relative; user-select: none; }
@@ -1848,6 +1861,39 @@ table * {
     .custom-table td {
         padding: 6px 8px !important;
         font-size: 0.75rem !important;
+    }
+
+    /* Compress top global filter toolbar on mobile */
+    .filter-toolbar {
+        padding: 5px 12px !important;
+    }
+    .filter-toolbar-inner {
+        gap: 6px !important;
+    }
+    .filter-toolbar-inner > div,
+    .filter-toolbar-inner > div > div {
+        min-height: 26px !important;
+    }
+    .filter-group-label {
+        font-size: 0.64rem !important;
+        gap: 3px !important;
+    }
+    .filter-group-label i,
+    .filter-group-label svg {
+        width: 10px !important;
+        height: 10px !important;
+    }
+    .filter-toolbar .filter-lupa-btn {
+        width: 22px !important;
+        height: 22px !important;
+    }
+    .filter-toolbar .filter-lupa-btn svg,
+    .filter-toolbar .filter-lupa-btn i {
+        width: 9px !important;
+        height: 9px !important;
+    }
+    .filter-divider {
+        height: 12px !important;
     }
 }
 
