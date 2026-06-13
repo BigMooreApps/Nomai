@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Logica del Dashboard de Nomina y Netos
  * Utiliza Chart.js para graficos, SheetJS para importacion de Excel y Lucide para iconos.
  */
@@ -42,7 +42,7 @@ function formatShortCurrency(value) {
     return value;
 }
 
-// Etiquetas legibles de Tipo de Nómina
+// Etiquetas legibles de Tipo de NÃ³mina
 const TIPO_NOMINA_LABELS = {
     'N': 'Normal',
     'C': 'Complementaria',
@@ -56,11 +56,11 @@ const TIPO_NOMINA_LABELS = {
 const state = {
     data: [],              // Datos brutos cargados
     filteredData: [],      // Datos filtrados
-    selectedYears: [],     // Array de años seleccionados
+    selectedYears: [],     // Array de aÃ±os seleccionados
     selectedMonths: [],    // Array de meses seleccionados
     selectedQuincenas: [], // Array de quincenas seleccionadas
-    selectedTipoNomina: [],    // Array de tipos de nómina seleccionados (vacío = todos)
-    activeTab: 'overview', // Pestaña activa
+    selectedTipoNomina: [],    // Array de tipos de nÃ³mina seleccionados (vacÃ­o = todos)
+    activeTab: 'overview', // PestaÃ±a activa
     charts: {},            // Instancias de graficos de Chart.js
     
     // Vista Empleado
@@ -105,11 +105,11 @@ const state = {
     cargoCompareExpanded: false,
     cargoCompareSelectedCargos: [],
     
-    // Configuración de carpeta local
+    // ConfiguraciÃ³n de carpeta local
     folderHandle: null,
     folderFiles: [],
     
-    // Caché de valores únicos
+    // CachÃ© de valores Ãºnicos
     uniqueYears: [],
     uniqueMonths: [],
     uniqueQuincenas: [],
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn("No se encontraron datos pre-cargados en window.PAYROLL_DATA.");
     }
     
-    // Inicializar caché de valores únicos
+    // Inicializar cachÃ© de valores Ãºnicos
     initUniqueValuesCache();
     
     // 2. Inicializar componentes y eventos
@@ -165,7 +165,7 @@ function initSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
     
-    // Prevenir duplicidad de listeners si se vuelve a llamar esta función
+    // Prevenir duplicidad de listeners si se vuelve a llamar esta funciÃ³n
     if (sidebar.dataset.listenerBound) return;
     sidebar.dataset.listenerBound = 'true';
 
@@ -182,7 +182,7 @@ function initSidebar() {
         if (sidebarOverlay) sidebarOverlay.classList.add('active');
     };
 
-    // Escuchar clicks en los enlaces del sidebar que tengan data-tab (navegación real)
+    // Escuchar clicks en los enlaces del sidebar que tengan data-tab (navegaciÃ³n real)
     const navLinks = document.querySelectorAll('.nav-link[data-tab]');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
@@ -232,7 +232,7 @@ function initSidebar() {
     if (toggleBtn) toggleBtn.addEventListener('click', handleToggle);
     if (toggleBtnBottom) toggleBtnBottom.addEventListener('click', handleToggle);
 
-    // Eventos móviles para abrir/cerrar sidebar
+    // Eventos mÃ³viles para abrir/cerrar sidebar
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -247,7 +247,7 @@ function initSidebar() {
         });
     }
 
-    // Manejo de Dropdowns de categorías (Acordeón)
+    // Manejo de Dropdowns de categorÃ­as (AcordeÃ³n)
     const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', (e) => {
@@ -257,14 +257,14 @@ function initSidebar() {
             const dropdown = toggle.closest('.dropdown');
             if (!dropdown) return;
             
-            // Si el sidebar está colapsado, al hacer clic lo expandimos primero
+            // Si el sidebar estÃ¡ colapsado, al hacer clic lo expandimos primero
             if (sidebar && sidebar.classList.contains('collapsed')) {
                 handleToggle();
             }
             
             const isOpen = dropdown.classList.contains('open');
             
-            // Cerrar otros dropdowns para un comportamiento limpio de acordeón
+            // Cerrar otros dropdowns para un comportamiento limpio de acordeÃ³n
             document.querySelectorAll('.dropdown').forEach(d => {
                 if (d !== dropdown) {
                     d.classList.remove('open');
@@ -293,7 +293,7 @@ function initHeaderTabs() {
 }
 
 // ==========================================
-// SISTEMA DE CACHÉ DE VALORES ÚNICOS
+// SISTEMA DE CACHÃ‰ DE VALORES ÃšNICOS
 // ==========================================
 
 function initUniqueValuesCache() {
@@ -426,7 +426,7 @@ function getUniqueQuincenas() {
 
 // Inicializa los filtros globales
 function initGlobalFilters() {
-    // Inicializar con todos los filtros seleccionados si están vacíos
+    // Inicializar con todos los filtros seleccionados si estÃ¡n vacÃ­os
     if (!state.selectedYears || state.selectedYears.length === 0) {
         state.selectedYears = getUniqueYears();
     }
@@ -437,19 +437,19 @@ function initGlobalFilters() {
         state.selectedQuincenas = getUniqueQuincenas();
     }
     
-    // Si no hay tipos seleccionados, inicializar vacío (=todos)
+    // Si no hay tipos seleccionados, inicializar vacÃ­o (=todos)
     if (!Array.isArray(state.selectedTipoNomina)) {
         state.selectedTipoNomina = [];
     }
     
-    // Botón de limpiar filtros globales
+    // BotÃ³n de limpiar filtros globales
     const btnClear = document.getElementById('btn-clear-filters');
     if (btnClear) {
         btnClear.addEventListener('click', () => {
             state.selectedYears = getUniqueYears();
             state.selectedMonths = getUniqueMonths();
             state.selectedQuincenas = getUniqueQuincenas();
-            state.selectedTipoNomina = []; // vacío = todos
+            state.selectedTipoNomina = []; // vacÃ­o = todos
             
             processData();
             renderActiveTab();
@@ -457,9 +457,9 @@ function initGlobalFilters() {
     }
 }
 
-// Las etiquetas globales de selección ya no se renderizan en la barra principal por requerimiento de diseño.
+// Las etiquetas globales de selecciÃ³n ya no se renderizan en la barra principal por requerimiento de diseÃ±o.
 
-// Cambiar de pestaña activa
+// Cambiar de pestaÃ±a activa
 function switchTab(tabId) {
     state.activeTab = tabId;
     
@@ -468,7 +468,7 @@ function switchTab(tabId) {
         if (link.getAttribute('data-tab') === tabId) {
             link.classList.add('active');
             
-            // Si el enlace activo está dentro de un dropdown, lo abrimos y cerramos los otros
+            // Si el enlace activo estÃ¡ dentro de un dropdown, lo abrimos y cerramos los otros
             const parentDropdown = link.closest('.dropdown');
             if (parentDropdown) {
                 document.querySelectorAll('.dropdown').forEach(d => {
@@ -476,7 +476,7 @@ function switchTab(tabId) {
                 });
                 parentDropdown.classList.add('open');
             } else {
-                // Si está en el nivel superior, cerramos todos los dropdowns
+                // Si estÃ¡ en el nivel superior, cerramos todos los dropdowns
                 document.querySelectorAll('.dropdown').forEach(d => {
                     d.classList.remove('open');
                 });
@@ -511,7 +511,7 @@ function switchTab(tabId) {
     
     if (filterToolbar) {
         if (tabId === 'importer' || tabId === 'period-compare' || tabId === 'concept-compare' || tabId === 'ceco-compare' || tabId === 'cargo-compare') {
-            // Ocultar toda la barra en importador y en análisis masivo (tienen sus propios filtros inline)
+            // Ocultar toda la barra en importador y en anÃ¡lisis masivo (tienen sus propios filtros inline)
             filterToolbar.classList.add('hidden');
         } else {
             filterToolbar.classList.remove('hidden');
@@ -525,7 +525,7 @@ function switchTab(tabId) {
     renderActiveTab();
 }
 
-// Procesa y filtra los datos en memoria segun los filtros globales (años, meses, quincenas)
+// Procesa y filtra los datos en memoria segun los filtros globales (aÃ±os, meses, quincenas)
 function processData() {
     const allYears = getUniqueYears();
     const allMonths = getUniqueMonths();
@@ -571,7 +571,7 @@ function processData() {
     updateSearchSelectorLabels();
 }
 
-// Renderiza la pestaña seleccionada
+// Renderiza la pestaÃ±a seleccionada
 function renderActiveTab() {
     // Destruir todos los graficos previos para evitar fallos de canvas
     destroyCharts();
@@ -630,7 +630,7 @@ function destroyCharts() {
 
 // Muestra un estado vacio si no hay datos
 function showEmptyStateMessage() {
-    // Si no hay datos, forzar ir a pestaña importador
+    // Si no hay datos, forzar ir a pestaÃ±a importador
     const contents = document.querySelectorAll('.tab-content');
     contents.forEach(c => {
         if (c.id !== 'tab-importer') {
@@ -638,7 +638,7 @@ function showEmptyStateMessage() {
                 <div class="chart-card" style="align-items: center; justify-content: center; padding: 60px; text-align: center;">
                     <i data-lucide="database" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
                     <h3 style="margin-bottom: 8px;">No hay datos disponibles</h3>
-                    <p style="color: var(--text-secondary); max-width: 400px; margin-bottom: 24px;">Por favor, importa un archivo Excel con la informacion de pagos en la pestaña de Importador.</p>
+                    <p style="color: var(--text-secondary); max-width: 400px; margin-bottom: 24px;">Por favor, importa un archivo Excel con la informacion de pagos en la pestaÃ±a de Importador.</p>
                     <button class="btn btn-primary" onclick="switchTab('importer')">Ir al Importador</button>
                 </div>
             `;
@@ -687,16 +687,16 @@ function renderOverview() {
     document.getElementById('overview-total-neto-sub').innerHTML = `<span class="kpi-sub-item">Ingresos: ${currencyFormatter.format(totalDevengos)}</span><span class="kpi-sub-separator"> | </span><span class="kpi-sub-item">Dctos: ${currencyFormatter.format(Math.abs(totalDescuentos))}</span>`;
     document.getElementById('overview-total-beneficios-sub').innerText = 'En el periodo seleccionado';
     
-    // 2. Gráfico: Tendencia Mensual (Neto, Devengos, Descuentos)
+    // 2. GrÃ¡fico: Tendencia Mensual (Neto, Devengos, Descuentos)
     renderOverviewTrendChart(data);
     
-    // 3. Gráfico: Distribución por Naturaleza (Doughnut)
+    // 3. GrÃ¡fico: DistribuciÃ³n por Naturaleza (Doughnut)
     renderOverviewNatureChart(totalDevengos, Math.abs(totalDescuentos));
     
     // 4. Tabla: Resumen Mensual
     renderOverviewMonthlyTable(data);
     
-    // 5. Gráficos: Top 10 Centros de Costo y Top 10 Cargos
+    // 5. GrÃ¡ficos: Top 10 Centros de Costo y Top 10 Cargos
     renderTopCecosChart(data);
     renderTopCargosChart(data);
 }
@@ -813,12 +813,12 @@ function renderOverviewNatureChart(dev, desc) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
-    // Gradiente verde para Ingresos (Verde del gráfico de tendencia con degradado y transparencia)
+    // Gradiente verde para Ingresos (Verde del grÃ¡fico de tendencia con degradado y transparencia)
     const greenGrad = ctx.createLinearGradient(0, 0, 0, 200);
     greenGrad.addColorStop(0, 'rgba(16, 185, 129, 0.85)');
     greenGrad.addColorStop(1, 'rgba(16, 185, 129, 0.35)');
     
-    // Gradiente rojo para Deducciones (Rojo del gráfico de tendencia con degradado y transparencia)
+    // Gradiente rojo para Deducciones (Rojo del grÃ¡fico de tendencia con degradado y transparencia)
     const redGrad = ctx.createLinearGradient(0, 0, 0, 200);
     redGrad.addColorStop(0, 'rgba(239, 68, 68, 0.85)');
     redGrad.addColorStop(1, 'rgba(239, 68, 68, 0.35)');
@@ -980,7 +980,7 @@ function renderTopCargosChart(data) {
     const labels = sortedCargos.map(item => item[0]);
     const values = sortedCargos.map(item => item[1]);
 
-    // Gradiente anaranjado NomAI (con degradado y transparencia alineados con el resto de gráficos)
+    // Gradiente anaranjado NomAI (con degradado y transparencia alineados con el resto de grÃ¡ficos)
     const gradient = ctx.createLinearGradient(0, 0, 400, 0);
     gradient.addColorStop(0, 'rgba(249, 115, 22, 0.80)');
     gradient.addColorStop(1, 'rgba(251, 191, 36, 0.55)');
@@ -1063,7 +1063,7 @@ function renderOverviewMonthlyTable(data) {
     
     // Convertir y ordenar
     const rows = Object.values(monthlyData).sort((a,b) => {
-        if (a.year !== b.year) return b.year - a.year; // año descendente
+        if (a.year !== b.year) return b.year - a.year; // aÃ±o descendente
         return (MONTH_ORDER[b.month] || 0) - (MONTH_ORDER[a.month] || 0); // mes descendente
     });
     
@@ -1082,7 +1082,7 @@ function renderOverviewMonthlyTable(data) {
 }
 
 // ==========================================
-// RENDERIZADO: ANÁLISIS POR PERSONA
+// RENDERIZADO: ANÃLISIS POR PERSONA
 // ==========================================
 function renderEmployeeView() {
     // 1. Cargar selector/autocompletar de personas
@@ -1107,7 +1107,7 @@ function renderEmployeeView() {
     const empInfo = employeeData[0] || allEmployeeDataAcrossYears[0];
     const empName = empInfo ? empInfo.n : 'Empleado No Encontrado';
     document.getElementById('employee-title-name').innerText = empName;
-    document.getElementById('employee-title-id').innerText = `Cédula: ${cedula}`;
+    document.getElementById('employee-title-id').innerText = `CÃ©dula: ${cedula}`;
     
     // Llenar selectores de filtro del detalle de la tabla
     const periodSelect = document.getElementById('employee-detail-filter-period');
@@ -1171,7 +1171,7 @@ function renderEmployeeView() {
         else if (d.na === 'DESCUENTO') totalDesc += d.v;
         else if (d.na === 'BENEFICIO') totalBen += d.v;
         
-        if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO') {
+        if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÃSICO') {
             sueldoBasico = d.v;
         }
     });
@@ -1186,7 +1186,7 @@ function renderEmployeeView() {
             return (MONTH_ORDER[a.m] || 0) - (MONTH_ORDER[b.m] || 0);
         });
         sortedAllData.forEach(d => {
-            if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO') {
+            if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÃSICO') {
                 sueldoBasico = d.v;
             }
         });
@@ -1197,13 +1197,13 @@ function renderEmployeeView() {
     document.getElementById('emp-kpi-descuentos').innerText = currencyFormatter.format(Math.abs(totalDesc));
     document.getElementById('emp-kpi-basico').innerText = sueldoBasico > 0 ? currencyFormatter.format(sueldoBasico) : 'No registra';
     
-    // 3. Gráfico: Evolución de Salario Neto Mensual
+    // 3. GrÃ¡fico: EvoluciÃ³n de Salario Neto Mensual
     renderEmployeeHistoryChart(employeeData, allEmployeeDataAcrossYears);
     
-    // 4. Gráfico: Distribución de Ingresos y Deducciones
+    // 4. GrÃ¡fico: DistribuciÃ³n de Ingresos y Deducciones
     renderEmployeeDistributionChart(employeeData);
     
-    // 4.5. Gráfico: Capacidad de Endeudamiento
+    // 4.5. GrÃ¡fico: Capacidad de Endeudamiento
     renderEmployeeDebtChart(employeeData, allEmployeeDataAcrossYears);
     
     // 5. Tabla: Detalles de Pagos
@@ -1291,7 +1291,7 @@ function initEmployeeSearch() {
             div.className = `dropdown-item ${p.cedula === state.selectedEmployeeCedula ? 'selected' : ''}`;
             div.innerHTML = `
                 <div style="font-weight: 500; color: var(--text-primary);">${p.name}</div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">Cédula: ${p.cedula}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">CÃ©dula: ${p.cedula}</div>
             `;
             div.addEventListener('click', () => {
                 state.selectedEmployeeCedula = p.cedula;
@@ -1308,8 +1308,8 @@ function renderEmployeeHistoryChart(currentYearData, allYearsData) {
     const ctx = document.getElementById('employee-history-chart');
     if (!ctx) return;
     
-    // Si se filtra por año especifico, mostramos el detalle de ese año.
-    // Si es "todos los años", mostramos un historico largo año-mes.
+    // Si se filtra por aÃ±o especifico, mostramos el detalle de ese aÃ±o.
+    // Si es "todos los aÃ±os", mostramos un historico largo aÃ±o-mes.
     const isFiltered = state.selectedYears && state.selectedYears.length === 1;
     const chartData = isFiltered ? currentYearData : allYearsData;
     
@@ -1517,7 +1517,7 @@ function renderEmployeeDebtChart(currentYearData, allYearsData) {
                 },
                 {
                     type: 'line',
-                    label: 'Límite Recomendado (40%)',
+                    label: 'LÃ­mite Recomendado (40%)',
                     data: recommendedLimit,
                     borderColor: 'rgba(239, 68, 68, 0.55)',
                     borderWidth: 1.5,
@@ -1840,7 +1840,7 @@ function renderEmployeeDetailsTable(employeeData) {
 }
 
 // ==========================================
-// RENDERIZADO: ANÁLISIS POR CONCEPTO
+// RENDERIZADO: ANÃLISIS POR CONCEPTO
 // ==========================================
 function renderConceptView() {
     initConceptSearch();
@@ -1849,7 +1849,7 @@ function renderConceptView() {
         const conceptList = getUniqueConceptsSorted();
         if (conceptList.length > 0) {
             // Preferir SUELDO BASICO si existe para comenzar
-            const hasBasic = conceptList.find(c => c.toUpperCase().includes('SUELDO BASICO') || c.toUpperCase() === 'SUELDO BÁSICO');
+            const hasBasic = conceptList.find(c => c.toUpperCase().includes('SUELDO BASICO') || c.toUpperCase() === 'SUELDO BÃSICO');
             state.selectedConceptName = hasBasic || conceptList[0];
             document.getElementById('concept-search-input').value = state.selectedConceptName;
         } else {
@@ -1892,17 +1892,17 @@ function renderConceptView() {
     document.getElementById('concept-kpi-promedio').innerText = currencyFormatter.format(avgVal);
     document.getElementById('concept-kpi-maximo').innerText = currencyFormatter.format(maxVal);
     
-    // 2. Gráfico: Top 10 Personas
+    // 2. GrÃ¡fico: Top 10 Personas
     renderConceptTopPeopleChart(conceptData);
     
-    // 3. Gráfico: Tendencia Temporal del Concepto
+    // 3. GrÃ¡fico: Tendencia Temporal del Concepto
     renderConceptTrendChart(conceptData);
     
-    // 3.5. Gráficos de Distribución por CECO y Cargo (Pie/Torta)
+    // 3.5. GrÃ¡ficos de DistribuciÃ³n por CECO y Cargo (Pie/Torta)
     renderConceptCecoChart(conceptData);
     renderConceptCargoChart(conceptData);
     
-    // 3.8. Gráfico de Distribución Cruzada: Cargo vs Centro de Costo (Stacked Bar)
+    // 3.8. GrÃ¡fico de DistribuciÃ³n Cruzada: Cargo vs Centro de Costo (Stacked Bar)
     renderConceptCrossChart(conceptData);
     
     // 4. Tabla: Detalles del Concepto
@@ -2209,7 +2209,7 @@ function renderConceptCecoChart(conceptData) {
                     
                     const meta = chart.getDatasetMeta(0);
                     const chartWidth = chart.width || 300;
-                    // En móvil (gráfico angosto) empujar etiquetas más hacia afuera
+                    // En mÃ³vil (grÃ¡fico angosto) empujar etiquetas mÃ¡s hacia afuera
                     const radiusFactor = chartWidth < 280 ? 0.82 : 0.68;
                     meta.data.forEach((element, index) => {
                         const value = dataset.data[index];
@@ -2324,7 +2324,7 @@ function renderConceptCargoChart(conceptData) {
                     
                     const meta = chart.getDatasetMeta(0);
                     const chartWidth = chart.width || 300;
-                    // En móvil (gráfico angosto) empujar etiquetas más hacia afuera
+                    // En mÃ³vil (grÃ¡fico angosto) empujar etiquetas mÃ¡s hacia afuera
                     const radiusFactor = chartWidth < 280 ? 0.82 : 0.68;
                     meta.data.forEach((element, index) => {
                         const value = dataset.data[index];
@@ -2428,7 +2428,7 @@ function renderConceptCrossChart(conceptData) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    display: false // Oculta la leyenda para evitar saturación de nombres
+                    display: false // Oculta la leyenda para evitar saturaciÃ³n de nombres
                 },
                 tooltip: {
                     backgroundColor: '#FFFFFF',
@@ -2520,7 +2520,7 @@ function renderComparisonView() {
     renderCompareCargoTags();
     renderCompareCecoTags();
     
-    // 2. Renderizar gráfico comparativo
+    // 2. Renderizar grÃ¡fico comparativo
     renderCompareChart();
     
     // 3. Renderizar Matriz / Heatmap
@@ -2534,7 +2534,7 @@ function renderComparisonView() {
 /**
  * Estado del modal de filtros.
  * currentFilterType: 'employees' | 'concepts' | 'cargos' | 'cecos'
- * modalTempSelected: Set con la selección temporal mientras el modal está abierto
+ * modalTempSelected: Set con la selecciÃ³n temporal mientras el modal estÃ¡ abierto
  */
 const filterModalState = {
     currentFilterType: null,
@@ -2595,14 +2595,14 @@ function getFilterOptions(type) {
             return getUniquePeopleSorted().map(p => ({
                 value: p.cedula,
                 label: p.name,
-                sublabel: `Cédula: ${p.cedula}`
+                sublabel: `CÃ©dula: ${p.cedula}`
             }));
         }
         case 'employee_single': {
             return getUniquePeopleSorted().map(p => ({
                 value: p.cedula,
                 label: p.name,
-                sublabel: `Cédula: ${p.cedula}`
+                sublabel: `CÃ©dula: ${p.cedula}`
             }));
         }
         case 'concepts':
@@ -2634,7 +2634,7 @@ function getFilterOptions(type) {
 }
 
 /**
- * Retorna el array de selección actual del estado global para cada tipo.
+ * Retorna el array de selecciÃ³n actual del estado global para cada tipo.
  */
 function getCurrentSelectionForType(type) {
     switch (type) {
@@ -2673,7 +2673,7 @@ function getCurrentSelectionForType(type) {
 }
 
 /**
- * Persiste la selección temporal del modal al estado global.
+ * Persiste la selecciÃ³n temporal del modal al estado global.
  */
 function applyModalSelection(type) {
     const arr = Array.from(filterModalState.modalTempSelected);
@@ -2708,7 +2708,7 @@ function applyModalSelection(type) {
             state.selectedQuincenas = arr;
             break;
         case 'types':
-            // Multi-select: vacío = todos los tipos
+            // Multi-select: vacÃ­o = todos los tipos
             state.selectedTipoNomina = arr.filter(v => v !== 'all');
             break;
         case 'employees': state.compareEmployees = arr; break;
@@ -2743,7 +2743,7 @@ function applyModalSelection(type) {
 }
 
 /**
- * Renderiza las opciones en la lista del modal, filtradas por la búsqueda interna.
+ * Renderiza las opciones en la lista del modal, filtradas por la bÃºsqueda interna.
  */
 function renderModalOptions(allOptions, query) {
     const list = document.getElementById('filter-modal-options-list');
@@ -2848,27 +2848,27 @@ function openFilterModal(type) {
 
     filterModalState.currentFilterType = type;
 
-    // Inicializar selección temporal con la selección actual del estado
+    // Inicializar selecciÃ³n temporal con la selecciÃ³n actual del estado
     filterModalState.modalTempSelected = new Set(getCurrentSelectionForType(type));
 
-    // Configurar título
+    // Configurar tÃ­tulo
     const titles = {
-        years:     '🔍 Filtrar Años',
-        months:    '🔍 Filtrar Meses',
-        quincenas: '🔍 Filtrar Quincenas',
-        types:     '🔍 Filtrar Tipo de Nómina',
-        employees: '🔍 Filtrar Personas',
-        concepts:  '🔍 Filtrar Conceptos',
-        cargos:    '🔍 Filtrar por Cargo',
-        cecos:     '🔍 Filtrar Centros de Costo',
-        employee_single: '👤 Seleccionar Colaborador',
-        concept_single: '🔍 Seleccionar Concepto',
-        p1: '📅 Seleccionar Periodo 1 (Base)',
-        p2: '📅 Seleccionar Periodo 2 (Comparado)',
-        period_compare_employees: '👤 Filtrar Colaborador',
-        concept_compare_concepts: '🔍 Filtrar Concepto',
-        ceco_compare_cecos: '🏢 Filtrar Centro de Costo',
-        cargo_compare_cargos: '🎖️ Filtrar Cargo'
+        years:     'ðŸ” Filtrar AÃ±os',
+        months:    'ðŸ” Filtrar Meses',
+        quincenas: 'ðŸ” Filtrar Quincenas',
+        types:     'ðŸ” Filtrar Tipo de NÃ³mina',
+        employees: 'ðŸ” Filtrar Personas',
+        concepts:  'ðŸ” Filtrar Conceptos',
+        cargos:    'ðŸ” Filtrar por Cargo',
+        cecos:     'ðŸ” Filtrar Centros de Costo',
+        employee_single: 'ðŸ‘¤ Seleccionar Colaborador',
+        concept_single: 'ðŸ” Seleccionar Concepto',
+        p1: 'ðŸ“… Seleccionar Periodo 1 (Base)',
+        p2: 'ðŸ“… Seleccionar Periodo 2 (Comparado)',
+        period_compare_employees: 'ðŸ‘¤ Filtrar Colaborador',
+        concept_compare_concepts: 'ðŸ” Filtrar Concepto',
+        ceco_compare_cecos: 'ðŸ¢ Filtrar Centro de Costo',
+        cargo_compare_cargos: 'ðŸŽ–ï¸ Filtrar Cargo'
     };
     titleEl.textContent = titles[type] || 'Filtrar Opciones';
 
@@ -2879,7 +2879,7 @@ function openFilterModal(type) {
     const allOptions = getFilterOptions(type);
     renderModalOptions(allOptions, '');
 
-    // Listener de búsqueda interna (se clona el nodo para evitar duplicados)
+    // Listener de bÃºsqueda interna (se clona el nodo para evitar duplicados)
     if (searchInput) {
         const newSearch = searchInput.cloneNode(true);
         searchInput.parentNode.replaceChild(newSearch, searchInput);
@@ -2910,7 +2910,7 @@ function closeFilterModal() {
  * Registra todos los eventos del modal. Se llama UNA SOLA VEZ al iniciar la app.
  */
 function initFilterModal() {
-    // Botón cerrar (X)
+    // BotÃ³n cerrar (X)
     const btnClose = document.getElementById('btn-close-filter-modal');
     if (btnClose) {
         btnClose.addEventListener('click', closeFilterModal);
@@ -2924,7 +2924,7 @@ function initFilterModal() {
         });
     }
 
-    // Botón Limpiar
+    // BotÃ³n Limpiar
     const btnClear = document.getElementById('btn-filter-modal-clear');
     if (btnClear) {
         btnClear.addEventListener('click', () => {
@@ -2934,7 +2934,7 @@ function initFilterModal() {
         });
     }
 
-    // Botón Aceptar
+    // BotÃ³n Aceptar
     const btnAccept = document.getElementById('btn-filter-modal-accept');
     if (btnAccept) {
         btnAccept.addEventListener('click', () => {
@@ -2965,25 +2965,25 @@ function initFilterModal() {
         { btnId: 'btn-open-filter-employee-label',  type: 'employee_single' },
         { btnId: 'btn-open-filter-concept-label',   type: 'concept_single' },
         
-        // Pestaña Análisis Masivo por Persona
+        // PestaÃ±a AnÃ¡lisis Masivo por Persona
         { btnId: 'period-compare-p1-label',        type: 'p1' },
         { btnId: 'period-compare-p2-label',        type: 'p2' },
         { btnId: 'period-compare-employees-label', type: 'period_compare_employees' },
         { btnId: 'period-compare-tipo-label',      type: 'types' },
         
-        // Pestaña Análisis Masivo por Concepto
+        // PestaÃ±a AnÃ¡lisis Masivo por Concepto
         { btnId: 'concept-compare-p1-label',       type: 'p1' },
         { btnId: 'concept-compare-p2-label',       type: 'p2' },
         { btnId: 'concept-compare-concepts-label', type: 'concept_compare_concepts' },
         { btnId: 'concept-compare-tipo-label',     type: 'types' },
         
-        // Pestaña Análisis Masivo por CECO
+        // PestaÃ±a AnÃ¡lisis Masivo por CECO
         { btnId: 'ceco-compare-p1-label',          type: 'p1' },
         { btnId: 'ceco-compare-p2-label',          type: 'p2' },
         { btnId: 'ceco-compare-cecos-label',       type: 'ceco_compare_cecos' },
         { btnId: 'ceco-compare-tipo-label',        type: 'types' },
         
-        // Pestaña Análisis Masivo por Cargo
+        // PestaÃ±a AnÃ¡lisis Masivo por Cargo
         { btnId: 'cargo-compare-p1-label',         type: 'p1' },
         { btnId: 'cargo-compare-p2-label',         type: 'p2' },
         { btnId: 'cargo-compare-cargos-label',     type: 'cargo_compare_cargos' },
@@ -3355,7 +3355,7 @@ function renderHeatmapMatrix() {
         th.innerText = label;
         tableHeader.appendChild(th);
     });
-    // Añadir columna de Total
+    // AÃ±adir columna de Total
     const thTotal = document.createElement('th');
     thTotal.style.textAlign = 'right';
     thTotal.innerText = 'Total ' + (filterByConcept ? 'Filtrado' : 'Neto');
@@ -3417,11 +3417,11 @@ function renderHeatmapMatrix() {
     const activePeople = people.filter(p => totals[p.cedula] !== 0);
     
     if (activePeople.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${sortedPeriods.length + 2}" style="text-align: center; color: var(--text-muted);">No hay datos para esta selección</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${sortedPeriods.length + 2}" style="text-align: center; color: var(--text-muted);">No hay datos para esta selecciÃ³n</td></tr>`;
         return;
     }
     
-    // Semáforo si hay conceptos filtrados, azul si es neto general
+    // SemÃ¡foro si hay conceptos filtrados, azul si es neto general
     const useSemaphore = filterByConcept;
     const maxPosVal = maxNet > 0 ? maxNet : 1;
     const maxNegVal = minNet < 0 ? Math.abs(minNet) : 1;
@@ -3446,7 +3446,7 @@ function renderHeatmapMatrix() {
             let heatClass = 'heatmap-cell';
             
             if (useSemaphore) {
-                // Semáforo: Verde para positivo, Rojo para negativo
+                // SemÃ¡foro: Verde para positivo, Rojo para negativo
                 if (val > 0) {
                     const intensity = Math.min(Math.max(val / maxPosVal, 0.1), 1);
                     heatStyle = `background-color: rgba(16, 185, 129, ${intensity * 0.4});`;
@@ -3499,7 +3499,7 @@ function renderHeatmapMatrix() {
 }
 
 // ==========================================
-// IMPORTACIÓN: DRAG AND DROP EXCEL
+// IMPORTACIÃ“N: DRAG AND DROP EXCEL
 // ==========================================
 function initImporter() {
     const importZone = document.getElementById('import-drop-zone');
@@ -3553,7 +3553,7 @@ function handleExcelFile(file) {
     const importZone = document.getElementById('import-drop-zone');
     
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        alert('Por favor, selecciona únicamente archivos de Excel (.xlsx, .xls)');
+        alert('Por favor, selecciona Ãºnicamente archivos de Excel (.xlsx, .xls)');
         return;
     }
     
@@ -3565,14 +3565,14 @@ function handleExcelFile(file) {
             const consolidated = aggregateRecords(mappedData);
             
             if (consolidated.length === 0) {
-                alert('No se encontraron registros de pagos válidos.');
+                alert('No se encontraron registros de pagos vÃ¡lidos.');
                 return;
             }
             
             // Cargar en el estado global
             state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
             
-            // Inicializar caché de valores únicos con nuevos datos
+            // Inicializar cachÃ© de valores Ãºnicos con nuevos datos
             initUniqueValuesCache();
             
             // Reiniciar filtros y selecciones para evitar inconsistencias
@@ -3586,7 +3586,7 @@ function handleExcelFile(file) {
             state.compareConcepts = [];
             state.compareCecos = [];
             state.compareCargos = [];
-            // Resetear periodos de comparación para que se reinicialicen con los nuevos datos
+            // Resetear periodos de comparaciÃ³n para que se reinicialicen con los nuevos datos
             state.comparePeriod1 = '';
             state.comparePeriod2 = '';
             state.conceptComparePeriod1 = '';
@@ -3604,10 +3604,10 @@ function handleExcelFile(file) {
             
             processData();
             
-            // Mostrar confirmación
+            // Mostrar confirmaciÃ³n
             if (fileInfo) {
                 fileInfo.style.display = 'inline-flex';
-                document.getElementById('file-info-text').innerText = `¡Cargados con éxito ${consolidated.length} registros del archivo: ${file.name}!`;
+                document.getElementById('file-info-text').innerText = `Â¡Cargados con Ã©xito ${consolidated.length} registros del archivo: ${file.name}!`;
             }
             
             // Llenar selectores de periodos con nuevos datos
@@ -3616,7 +3616,7 @@ function handleExcelFile(file) {
             initCecoCompareSelectors();
             initCargoCompareSelectors();
             
-            // Mostrar pestaña resumen
+            // Mostrar pestaÃ±a resumen
             setTimeout(() => {
                 switchTab('overview');
             }, 1500);
@@ -3630,7 +3630,7 @@ function handleExcelFile(file) {
 }
 
 // ==========================================
-// CONFIGURACIÓN Y CARGA DESDE CARPETA LOCAL
+// CONFIGURACIÃ“N Y CARGA DESDE CARPETA LOCAL
 // ==========================================
 
 const DB_NAME = 'NomAIFolderStorage';
@@ -3908,7 +3908,7 @@ async function loadSingleFolderFile(index) {
         
         state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
         
-        // Inicializar caché de valores únicos con nuevos datos
+        // Inicializar cachÃ© de valores Ãºnicos con nuevos datos
         initUniqueValuesCache();
         
         state.selectedYears = getUniqueYears();
@@ -3930,7 +3930,7 @@ async function loadSingleFolderFile(index) {
         const fileInfo = document.getElementById('file-info-box');
         if (fileInfo) {
             fileInfo.style.display = 'inline-flex';
-            document.getElementById('file-info-text').innerText = `¡Cargado con éxito: ${file.name}!`;
+            document.getElementById('file-info-text').innerText = `Â¡Cargado con Ã©xito: ${file.name}!`;
         }
         
         setTimeout(() => {
@@ -3991,14 +3991,14 @@ async function handleImportSelected() {
     btnImport.disabled = false;
     
     if (allRecords.length === 0) {
-        alert('No se pudo procesar ningún registro válido de los archivos seleccionados.');
+        alert('No se pudo procesar ningÃºn registro vÃ¡lido de los archivos seleccionados.');
         return;
     }
     
     const consolidated = aggregateRecords(allRecords);
     state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
     
-    // Inicializar caché de valores únicos con nuevos datos
+    // Inicializar cachÃ© de valores Ãºnicos con nuevos datos
     initUniqueValuesCache();
     
     state.selectedYears = getUniqueYears();
@@ -4007,7 +4007,7 @@ async function handleImportSelected() {
     state.selectedEmployeeCedula = '';
     state.selectedConceptName = '';
     state.compareEmployees = [];
-    // Resetear periodos de comparación para que se reinicialicen con los nuevos datos
+    // Resetear periodos de comparaciÃ³n para que se reinicialicen con los nuevos datos
     state.comparePeriod1 = '';
     state.comparePeriod2 = '';
     state.conceptComparePeriod1 = '';
@@ -4033,7 +4033,7 @@ async function handleImportSelected() {
     const fileInfo = document.getElementById('file-info-box');
     if (fileInfo) {
         fileInfo.style.display = 'inline-flex';
-        document.getElementById('file-info-text').innerText = `¡Se importaron con éxito ${processedCount} archivos (${consolidated.length} registros consolidados)!`;
+        document.getElementById('file-info-text').innerText = `Â¡Se importaron con Ã©xito ${processedCount} archivos (${consolidated.length} registros consolidados)!`;
     }
     
     if (window.lucide) window.lucide.createIcons();
@@ -4056,7 +4056,7 @@ function parseExcelFile(arrayBuffer, fileName) {
     });
     
     if (jsonData.length === 0) {
-        throw new Error('El archivo parece estar vacío.');
+        throw new Error('El archivo parece estar vacÃ­o.');
     }
     
     const firstRow = jsonData[0];
@@ -4081,7 +4081,7 @@ function parseExcelFile(arrayBuffer, fileName) {
         });
         if (found) return found;
         
-        // 2. Coincidencia parcial (inclusión)
+        // 2. Coincidencia parcial (inclusiÃ³n)
         return keys.find(k => {
             const cleanK = cleanStr(k);
             return cleanStdNames.some(name => cleanK.includes(name));
@@ -4095,17 +4095,17 @@ function parseExcelFile(arrayBuffer, fileName) {
     const kCon = getColKey(['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO']);
     const kTot = getColKey(['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE']);
     const kMes = getColKey(['MES ACUMULADO', 'MES']);
-    const kAnio = getColKey(['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA']);
-    const kTip = getColKey(['TIPO DE NOMINA', 'TIPO DE NÓMINA', 'TIPO']);
+    const kAnio = getColKey(['FECHA ACUMULA', 'AÃ‘O', 'ANIO', 'FECHA']);
+    const kTip = getColKey(['TIPO DE NOMINA', 'TIPO DE NÃ“MINA', 'TIPO']);
     const kNat = getColKey(['NATURALEZA']);
     const kCC = getColKey(['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO']);
     const kDCC = getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
     const kCg = getColKey(['NOMBRE CARGO', 'CARGO']);
-    const kPa = getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
+    const kPa = getColKey(['PERIODO ACUMULA', 'PERÃODO ACUMULA', 'PERIODO', 'PERÃODO', 'QUINCENA']);
     const kCant = getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA']);
     
     if (!kCed || !kCon || !kTot) {
-        throw new Error('No se encontraron las columnas mínimas requeridas (Cédula, Concepto y Valor).');
+        throw new Error('No se encontraron las columnas mÃ­nimas requeridas (CÃ©dula, Concepto y Valor).');
     }
     
     let fileMonth = null;
@@ -4306,7 +4306,7 @@ function aggregateRecords(records) {
 }
 
 // ==========================================
-// LÓGICA DE COMPARATIVA DE PERIODOS (NUEVA)
+// LÃ“GICA DE COMPARATIVA DE PERIODOS (NUEVA)
 // ==========================================
 
 // Retorna lista ordenada de periodos. Incluye quincenas individuales (Q1/Q2) y mes completo.
@@ -4346,7 +4346,7 @@ function filterDataByPeriod(periodStr) {
     });
 }
 
-// Inicializa un dropdown personalizado con soporte para selección múltiple
+// Inicializa un dropdown personalizado con soporte para selecciÃ³n mÃºltiple
 function initCustomTipoDropdown(dropdownId, listId, triggerId, onSelectionChange) {
     const dropdown = document.getElementById(dropdownId);
     const trigger = document.getElementById(triggerId);
@@ -4366,7 +4366,7 @@ function initCustomTipoDropdown(dropdownId, listId, triggerId, onSelectionChange
         trigger.dataset.listenerBound = 'true';
     }
     
-    // Función para renderizar las opciones de la lista
+    // FunciÃ³n para renderizar las opciones de la lista
     const renderOptions = () => {
         const set = new Set();
         state.data.forEach(d => { if (d.tn) set.add(d.tn); });
@@ -4374,7 +4374,7 @@ function initCustomTipoDropdown(dropdownId, listId, triggerId, onSelectionChange
         
         list.innerHTML = '';
         
-        // Agregar opción "Todos" al inicio
+        // Agregar opciÃ³n "Todos" al inicio
         const allSelected = state.selectedTipoNomina.length === 0;
         const liAll = document.createElement('li');
         liAll.className = allSelected ? 'selected' : '';
@@ -4392,7 +4392,7 @@ function initCustomTipoDropdown(dropdownId, listId, triggerId, onSelectionChange
         });
         list.appendChild(liAll);
         
-        // Agregar las letras individuales de Tipo de Nómina
+        // Agregar las letras individuales de Tipo de NÃ³mina
         types.forEach(t => {
             const isSelected = state.selectedTipoNomina.includes(t);
             const li = document.createElement('li');
@@ -4436,7 +4436,7 @@ function initCustomTipoDropdown(dropdownId, listId, triggerId, onSelectionChange
     renderOptions();
 }
 
-// Sincroniza todos los dropdowns personalizados de tipo de nómina
+// Sincroniza todos los dropdowns personalizados de tipo de nÃ³mina
 function syncCustomTipoDropdowns() {
     document.querySelectorAll('.custom-dropdown').forEach(d => {
         if (typeof d.renderOptions === 'function') {
@@ -4533,7 +4533,7 @@ function updateSearchSelectorLabels() {
         }
     }
 
-    // Tipo de Nómina para todos los 4 comparadores
+    // Tipo de NÃ³mina para todos los 4 comparadores
     const labels = [
         'period-compare-tipo-label',
         'concept-compare-tipo-label',
@@ -4566,7 +4566,7 @@ function initPeriodCompareSelectors() {
     const periods = getUniquePeriodsSorted();
     if (periods.length === 0) return;
     
-    // Valores predeterminados (P1 = penúltimo, P2 = último)
+    // Valores predeterminados (P1 = penÃºltimo, P2 = Ãºltimo)
     if (!state.comparePeriod1) {
         if (periods.length >= 2) {
             state.comparePeriod1 = periods[periods.length - 2];
@@ -4606,14 +4606,14 @@ function initPeriodCompareSelectors() {
     }
 }
 
-// Formatea la variación monetaria con colores e iconos
+// Formatea la variaciÃ³n monetaria con colores e iconos
 function formatVariationHTML(val, isPercentage = false) {
     if (val === 0) {
         return `<span class="val-neutral">-</span>`;
     }
     
     const sign = val > 0 ? '+' : '';
-    const icon = val > 0 ? '↑' : '↓';
+    const icon = val > 0 ? 'â†‘' : 'â†“';
     const cssClass = val > 0 ? 'val-up' : 'val-down';
     
     let formattedText = '';
@@ -4626,7 +4626,7 @@ function formatVariationHTML(val, isPercentage = false) {
     return `<span class="${cssClass}">${icon} ${formattedText}</span>`;
 }
 
-// Genera un comentario inteligente de la variación del neto del colaborador
+// Genera un comentario inteligente de la variaciÃ³n del neto del colaborador
 function generatePeriodInsight(val1, val2, devVar, descVar, benVar, conceptChanges) {
     const diff = val2 - val1;
     if (Math.abs(diff) < 100) {
@@ -4643,41 +4643,41 @@ function generatePeriodInsight(val1, val2, devVar, descVar, benVar, conceptChang
         const topChange = sortedChanges[0];
         const isPositive = topChange.diff > 0;
         
-        // Si es un descuento y es positivo, significa que se descontó menos!
+        // Si es un descuento y es positivo, significa que se descontÃ³ menos!
         let effectText = '';
         if (topChange.na === 'DESCUENTO') {
             effectText = isPositive ? 'Menores descuentos en' : 'Mayores deducciones por';
         } else if (topChange.na === 'DEVENGO') {
-            effectText = isPositive ? 'Incremento en' : 'Reducción de';
+            effectText = isPositive ? 'Incremento en' : 'ReducciÃ³n de';
         } else {
-            effectText = isPositive ? 'Aumento de beneficio en' : 'Reducción de beneficio en';
+            effectText = isPositive ? 'Aumento de beneficio en' : 'ReducciÃ³n de beneficio en';
         }
         
         insightParts.push(`${effectText} <strong>${topChange.co.toLowerCase()}</strong>`);
     }
     
-    // Si hay un segundo cambio importante, añadirlo
+    // Si hay un segundo cambio importante, aÃ±adirlo
     if (sortedChanges.length > 1 && Math.abs(sortedChanges[1].diff) > 50000) {
         const secondChange = sortedChanges[1];
         const isPositive = secondChange.diff > 0;
         
         let effectText = '';
         if (secondChange.na === 'DESCUENTO') {
-            effectText = isPositive ? 'menor deducción de' : 'mayor retención de';
+            effectText = isPositive ? 'menor deducciÃ³n de' : 'mayor retenciÃ³n de';
         } else {
-            effectText = isPositive ? 'más' : 'menos';
+            effectText = isPositive ? 'mÃ¡s' : 'menos';
         }
         
         insightParts.push(`y ${effectText} <strong>${secondChange.co.toLowerCase()}</strong>`);
     }
     
-    const directionText = diff > 0 ? 'aumento neto de' : 'disminución neta de';
+    const directionText = diff > 0 ? 'aumento neto de' : 'disminuciÃ³n neta de';
     const sumInsight = `Genera un ${directionText} ${currencyFormatter.format(Math.abs(diff))}.`;
     
     return `<div class="insight-text">${insightParts.join(' ')}. ${sumInsight}</div>`;
 }
 
-// Renderiza la tabla de comparación de periodos jerárquica
+// Renderiza la tabla de comparaciÃ³n de periodos jerÃ¡rquica
 function renderPeriodComparison() {
     const tbody = document.getElementById('period-compare-tbody');
     const headerP1 = document.getElementById('period-header-p1');
@@ -4712,7 +4712,7 @@ function renderPeriodComparison() {
     // 2. Obtener lista de personas a mostrar
     const people = getUniquePeopleSorted();
     
-    // Filtrar personas por selección si aplica
+    // Filtrar personas por selecciÃ³n si aplica
     const selectedCeds = state.periodCompareSelectedEmployees || [];
     const filteredPeople = people.filter(p => {
         if (selectedCeds.length === 0) return true;
@@ -4745,18 +4745,18 @@ function renderPeriodComparison() {
         const allConceptsMeta = {}; // Guardar naturaleza y tipo de cada concepto
         
         p1Rows.forEach(r => {
-            p1Concepts[r.co] = r.v;
-            p1ConceptsCant[r.co] = r.cant || 0;
+            p1Concepts[r.co] = (p1Concepts[r.co] || 0) + r.v;
+            p1ConceptsCant[r.co] = (p1ConceptsCant[r.co] || 0) + (r.cant || 0);
             allConceptsMeta[r.co] = { na: r.na, t: r.t };
         });
         
         p2Rows.forEach(r => {
-            p2Concepts[r.co] = r.v;
-            p2ConceptsCant[r.co] = r.cant || 0;
+            p2Concepts[r.co] = (p2Concepts[r.co] || 0) + r.v;
+            p2ConceptsCant[r.co] = (p2ConceptsCant[r.co] || 0) + (r.cant || 0);
             allConceptsMeta[r.co] = { na: r.na, t: r.t };
         });
         
-        // Lista única de conceptos ordenados por naturaleza
+        // Lista Ãºnica de conceptos ordenados por naturaleza
         const uniqueConceptsList = Object.keys(allConceptsMeta).sort((a, b) => {
             const natA = allConceptsMeta[a].na;
             const natB = allConceptsMeta[b].na;
@@ -4812,7 +4812,7 @@ function renderPeriodComparison() {
         const netDiff = netP2 - netP1;
         const netPct = netP1 !== 0 ? (netDiff / Math.abs(netP1)) * 100 : (netDiff > 0 ? 100.0 : (netDiff < 0 ? -100.0 : 0));
         
-        // Generar Insight dinámico
+        // Generar Insight dinÃ¡mico
         const insightHTML = generatePeriodInsight(netP1, netP2, totals.DEVENGO.p2 - totals.DEVENGO.p1, totals.DESCUENTO.p2 - totals.DESCUENTO.p1, totals.BENEFICIO.p2 - totals.BENEFICIO.p1, conceptChanges);
         
         // ==========================================
@@ -4861,7 +4861,7 @@ function renderPeriodComparison() {
                 // Ocultar si el estado global dice colapsado
                 conRow.className = `concept-row child-of-${cedula} ${state.periodCompareExpanded ? '' : 'collapsed-row'}`;
                 
-                // Variación porcentual individual
+                // VariaciÃ³n porcentual individual
                 const cPct = c.val1 !== 0 ? (c.diff / Math.abs(c.val1)) * 100 : (c.diff > 0 ? 100.0 : (c.diff < 0 ? -100.0 : 0));
                 
                 conRow.innerHTML = `
@@ -4869,9 +4869,9 @@ function renderPeriodComparison() {
                     <td>${cedula}</td>
                     <td><span class="badge badge-${nat.toLowerCase()}">${nat}</span></td>
                     <td>${c.co}</td>
-                    <td style="text-align: right;">${c.val1 !== 0 && c.cant1 ? c.cant1 : '-'}</td>
+                    <td style="text-align: right;">${c.val1 !== 0 ? c.cant1 : "—"}</td>
                     <td style="text-align: right;">${c.val1 !== 0 ? currencyFormatter.format(c.val1) : '-'}</td>
-                    <td style="text-align: right;">${c.val2 !== 0 && c.cant2 ? c.cant2 : '-'}</td>
+                    <td style="text-align: right;">${c.val2 !== 0 ? c.cant2 : "—"}</td>
                     <td style="text-align: right;">${c.val2 !== 0 ? currencyFormatter.format(c.val2) : '-'}</td>
                     <td style="text-align: right;">${formatVariationHTML(c.diff)}</td>
                     <td style="text-align: right;">${formatVariationHTML(cPct, true)}</td>
@@ -4880,7 +4880,7 @@ function renderPeriodComparison() {
                 tbody.appendChild(conRow);
             });
             
-            // Fila de Total de Categoría (Subtotal)
+            // Fila de Total de CategorÃ­a (Subtotal)
             const totRow = document.createElement('tr');
             totRow.className = `total-row child-of-${cedula} ${state.periodCompareExpanded ? '' : 'collapsed-row'}`;
             
@@ -4941,7 +4941,7 @@ function renderPeriodComparison() {
 }
 
 // ==========================================
-// MODAL DE ANÁLISIS DETALLADO DE VARIACIONES
+// MODAL DE ANÃLISIS DETALLADO DE VARIACIONES
 // ==========================================
 function showAnalysisModal(cedula, name, period1, period2) {
     // Remove existing modal if any
@@ -4987,10 +4987,10 @@ function showAnalysisModal(cedula, name, period1, period2) {
     let narrative = '';
     
     if (Math.abs(netDiff) < 100) {
-        narrative = `<p class="analysis-summary">El salario neto de <strong>${name}</strong> se mantuvo prácticamente estable entre ambos periodos, sin variaciones significativas.</p>`;
+        narrative = `<p class="analysis-summary">El salario neto de <strong>${name}</strong> se mantuvo prÃ¡cticamente estable entre ambos periodos, sin variaciones significativas.</p>`;
     } else {
-        const direction = netDiff > 0 ? 'aumentó' : 'disminuyó';
-        const arrow = netDiff > 0 ? '↑' : '↓';
+        const direction = netDiff > 0 ? 'aumentÃ³' : 'disminuyÃ³';
+        const arrow = netDiff > 0 ? 'â†‘' : 'â†“';
         const colorClass = netDiff > 0 ? 'analysis-positive' : 'analysis-negative';
         
         narrative = `<p class="analysis-summary">El ingreso neto de <strong>${name}</strong> ${direction} en <span class="${colorClass}"><strong>${arrow} ${currencyFormatter.format(Math.abs(netDiff))}</strong> (${netPct > 0 ? '+' : ''}${netPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
@@ -5004,7 +5004,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (increases.length > 0) {
         increasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-positive">↑ Conceptos con incremento</h4>
+                <h4 class="analysis-section-title analysis-positive">â†‘ Conceptos con incremento</h4>
                 <div class="analysis-items">
                     ${increases.map(c => `
                         <div class="analysis-item">
@@ -5014,7 +5014,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">→</span>
+                                <span class="analysis-arrow">â†’</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -5029,7 +5029,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (decreases.length > 0) {
         decreasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-negative">↓ Conceptos con reducción</h4>
+                <h4 class="analysis-section-title analysis-negative">â†“ Conceptos con reducciÃ³n</h4>
                 <div class="analysis-items">
                     ${decreases.map(c => `
                         <div class="analysis-item">
@@ -5039,7 +5039,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">→</span>
+                                <span class="analysis-arrow">â†’</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -5056,7 +5056,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (newConcepts.length > 0) {
         newConceptsHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title" style="color: var(--info);">● Conceptos nuevos en ${period2}</h4>
+                <h4 class="analysis-section-title" style="color: var(--info);">â— Conceptos nuevos en ${period2}</h4>
                 <div class="analysis-items">
                     ${newConcepts.slice(0, 5).map(c => `
                         <div class="analysis-item">
@@ -5075,12 +5075,12 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (removedConcepts.length > 0) {
         removedHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title" style="color: var(--text-muted);">○ Conceptos que desaparecen en ${period2}</h4>
+                <h4 class="analysis-section-title" style="color: var(--text-muted);">â—‹ Conceptos que desaparecen en ${period2}</h4>
                 <div class="analysis-items">
                     ${removedConcepts.slice(0, 5).map(c => `
                         <div class="analysis-item">
                             <span class="analysis-concept">${c.co.toLowerCase()}</span>
-                            <span class="analysis-diff" style="color: var(--text-muted);">${currencyFormatter.format(c.v1)} → $0</span>
+                            <span class="analysis-diff" style="color: var(--text-muted);">${currencyFormatter.format(c.v1)} â†’ $0</span>
                         </div>
                     `).join('')}
                 </div>
@@ -5094,25 +5094,25 @@ function showAnalysisModal(cedula, name, period1, period2) {
             <div class="analysis-summary-item">
                 <span class="analysis-label">Devengos</span>
                 <span class="analysis-val">${currencyFormatter.format(totals.DEVENGO.p1)}</span>
-                <span class="analysis-val">→ ${currencyFormatter.format(totals.DEVENGO.p2)}</span>
+                <span class="analysis-val">â†’ ${currencyFormatter.format(totals.DEVENGO.p2)}</span>
                 <span class="${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? 'analysis-positive' : 'analysis-negative'}">
-                    ${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? '↑' : '↓'} ${currencyFormatter.format(Math.abs(totals.DEVENGO.p2 - totals.DEVENGO.p1))}
+                    ${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? 'â†‘' : 'â†“'} ${currencyFormatter.format(Math.abs(totals.DEVENGO.p2 - totals.DEVENGO.p1))}
                 </span>
             </div>
             <div class="analysis-summary-item">
                 <span class="analysis-label">Descuentos</span>
                 <span class="analysis-val">${currencyFormatter.format(Math.abs(totals.DESCUENTO.p1))}</span>
-                <span class="analysis-val">→ ${currencyFormatter.format(Math.abs(totals.DESCUENTO.p2))}</span>
+                <span class="analysis-val">â†’ ${currencyFormatter.format(Math.abs(totals.DESCUENTO.p2))}</span>
                 <span class="${Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1) <= 0 ? 'analysis-positive' : 'analysis-negative'}">
-                    ${Math.abs(totals.DESCUENTO.p2) <= Math.abs(totals.DESCUENTO.p1) ? '↓' : '↑'} ${currencyFormatter.format(Math.abs(Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1)))}
+                    ${Math.abs(totals.DESCUENTO.p2) <= Math.abs(totals.DESCUENTO.p1) ? 'â†“' : 'â†‘'} ${currencyFormatter.format(Math.abs(Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1)))}
                 </span>
             </div>
             <div class="analysis-summary-item" style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
                 <span class="analysis-label" style="font-weight:600;">Neto</span>
                 <span class="analysis-val" style="font-weight:600;">${currencyFormatter.format(netP1)}</span>
-                <span class="analysis-val" style="font-weight:600;">→ ${currencyFormatter.format(netP2)}</span>
+                <span class="analysis-val" style="font-weight:600;">â†’ ${currencyFormatter.format(netP2)}</span>
                 <span class="${netDiff >= 0 ? 'analysis-positive' : 'analysis-negative'}" style="font-weight:700;">
-                    ${netDiff >= 0 ? '↑' : '↓'} ${currencyFormatter.format(Math.abs(netDiff))}
+                    ${netDiff >= 0 ? 'â†‘' : 'â†“'} ${currencyFormatter.format(Math.abs(netDiff))}
                 </span>
             </div>
         </div>
@@ -5127,8 +5127,8 @@ function showAnalysisModal(cedula, name, period1, period2) {
         <div class="analysis-modal">
             <div class="analysis-modal-header">
                 <div>
-                    <h3 class="analysis-modal-title">Análisis de Variaciones</h3>
-                    <p class="analysis-modal-subtitle">${name} · C.C. ${cedula}</p>
+                    <h3 class="analysis-modal-title">AnÃ¡lisis de Variaciones</h3>
+                    <p class="analysis-modal-subtitle">${name} Â· C.C. ${cedula}</p>
                     <p class="analysis-modal-periods">${period1} vs ${period2}</p>
                 </div>
                 <button class="analysis-close-btn" id="analysis-close-btn">
@@ -5180,7 +5180,7 @@ function initConceptCompareSelectors() {
     const periods = getUniquePeriodsSorted();
     if (periods.length === 0) return;
     
-    // Valores predeterminados (P1 = penúltimo, P2 = último)
+    // Valores predeterminados (P1 = penÃºltimo, P2 = Ãºltimo)
     if (!state.conceptComparePeriod1) {
         if (periods.length >= 2) {
             state.conceptComparePeriod1 = periods[periods.length - 2];
@@ -5228,7 +5228,7 @@ function initConceptCompareSelectors() {
     }
 }
 
-// Renderiza la tabla de comparación de conceptos jerárquica
+// Renderiza la tabla de comparaciÃ³n de conceptos jerÃ¡rquica
 function renderConceptComparison() {
     const tbody = document.getElementById('concept-compare-tbody');
     const headerP1 = document.getElementById('concept-period-header-p1');
@@ -5263,10 +5263,10 @@ function renderConceptComparison() {
     const dataP1 = filterDataByPeriod(state.conceptComparePeriod1);
     const dataP2 = filterDataByPeriod(state.conceptComparePeriod2);
     
-    // 2. Obtener lista única de todos los conceptos
+    // 2. Obtener lista Ãºnica de todos los conceptos
     const allConcepts = [...new Set(state.data.map(d => d.co))];
     
-    // Filtrar conceptos por selección si aplica
+    // Filtrar conceptos por selecciÃ³n si aplica
     const selectedConcepts = state.conceptCompareSelectedConcepts || [];
     const filteredConcepts = allConcepts.filter(co => {
         if (selectedConcepts.length === 0) return true;
@@ -5278,7 +5278,7 @@ function renderConceptComparison() {
         return;
     }
     
-    // 3. Obtener nombres de colaboradores mapeados por su cédula
+    // 3. Obtener nombres de colaboradores mapeados por su cÃ©dula
     const employeeNames = {};
     state.data.forEach(d => {
         employeeNames[d.c] = d.n;
@@ -5296,7 +5296,7 @@ function renderConceptComparison() {
             return;
         }
         
-        // Mapear valor de cada empleado por cédula
+        // Mapear valor de cada empleado por cÃ©dula
         const p1Employees = {};
         const p1EmployeesCant = {};
         const p2Employees = {};
@@ -5306,16 +5306,16 @@ function renderConceptComparison() {
         let conceptType = 'Otros';
         
         p1Rows.forEach(r => {
-            p1Employees[r.c] = r.v;
-            p1EmployeesCant[r.c] = r.cant || 0;
+            p1Employees[r.c] = (p1Employees[r.c] || 0) + r.v;
+            p1EmployeesCant[r.c] = (p1EmployeesCant[r.c] || 0) + (r.cant || 0);
             allEmployeesInConcept.add(r.c);
             conceptNature = r.na;
             conceptType = r.t;
         });
         
         p2Rows.forEach(r => {
-            p2Employees[r.c] = r.v;
-            p2EmployeesCant[r.c] = r.cant || 0;
+            p2Employees[r.c] = (p2Employees[r.c] || 0) + r.v;
+            p2EmployeesCant[r.c] = (p2EmployeesCant[r.c] || 0) + (r.cant || 0);
             allEmployeesInConcept.add(r.c);
             conceptNature = r.na;
             conceptType = r.t;
@@ -5360,7 +5360,7 @@ function renderConceptComparison() {
             });
         });
         
-        // Ordenar desglose de empleados por el impacto absoluto de la variación
+        // Ordenar desglose de empleados por el impacto absoluto de la variaciÃ³n
         employeeBreakdown.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
         
         conceptDataList.push({
@@ -5377,13 +5377,13 @@ function renderConceptComparison() {
         });
     });
     
-    // Ordenar conceptos: DEVENGO (1), DESCUENTO (2), BENEFICIO (3), y luego por variación absoluta decreciente
+    // Ordenar conceptos: DEVENGO (1), DESCUENTO (2), BENEFICIO (3), y luego por variaciÃ³n absoluta decreciente
     const natOrder = { 'DEVENGO': 1, 'DESCUENTO': 2, 'BENEFICIO': 3 };
     conceptDataList.sort((a, b) => {
         const ordA = natOrder[a.na] || 99;
         const ordB = natOrder[b.na] || 99;
         if (ordA !== ordB) return ordA - ordB;
-        return Math.abs(b.diff) - Math.abs(a.diff); // de mayor variación absoluta a menor
+        return Math.abs(b.diff) - Math.abs(a.diff); // de mayor variaciÃ³n absoluta a menor
     });
     
     if (conceptDataList.length === 0) {
@@ -5411,9 +5411,9 @@ function renderConceptComparison() {
             <td><span class="badge badge-${item.na.toLowerCase()}">${item.na}</span></td>
             <td>-</td>
             <td>-</td>
-            <td style="text-align: right; font-weight: normal;">${item.v1 !== 0 && item.cant1 ? item.cant1 : '-'}</td>
+            <td style="text-align: right; font-weight: normal;">${item.v1 !== 0 ? item.cant1 : "—"}</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(item.v1)}</td>
-            <td style="text-align: right; font-weight: normal;">${item.v2 !== 0 && item.cant2 ? item.cant2 : '-'}</td>
+            <td style="text-align: right; font-weight: normal;">${item.v2 !== 0 ? item.cant2 : "—"}</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(item.v2)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.diff)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.pct, true)}</td>
@@ -5439,9 +5439,9 @@ function renderConceptComparison() {
                 <td>-</td>
                 <td style="font-weight: normal; padding-left: 20px;">${emp.name}</td>
                 <td style="color: var(--text-secondary);">${emp.cedula}</td>
-                <td style="text-align: right;">${emp.v1 !== 0 && emp.cant1 ? emp.cant1 : '-'}</td>
+                <td style="text-align: right;">${emp.v1 !== 0 ? emp.cant1 : "—"}</td>
                 <td style="text-align: right;">${emp.v1 !== 0 ? currencyFormatter.format(emp.v1) : '-'}</td>
-                <td style="text-align: right;">${emp.v2 !== 0 && emp.cant2 ? emp.cant2 : '-'}</td>
+                <td style="text-align: right;">${emp.v2 !== 0 ? emp.cant2 : "—"}</td>
                 <td style="text-align: right;">${emp.v2 !== 0 ? currencyFormatter.format(emp.v2) : '-'}</td>
                 <td style="text-align: right;">${formatVariationHTML(emp.diff)}</td>
                 <td style="text-align: right;">${formatVariationHTML(emp.pct, true)}</td>
@@ -5486,7 +5486,7 @@ function renderConceptComparison() {
 }
 
 // ==========================================
-// ANÁLISIS MASIVO: CENTRO DE COSTO
+// ANÃLISIS MASIVO: CENTRO DE COSTO
 // ==========================================
 function initCecoCompareSelectors() {
     const btnExpand = document.getElementById('btn-ceco-compare-expand');
@@ -5564,7 +5564,7 @@ function renderCecoComparison() {
     const cecosSet = new Set();
     [...dataP1, ...dataP2].forEach(d => { if (d.cc && d.dcc) cecosSet.add(`${d.cc} - ${d.dcc}`); });
     
-    // Filtrar CECOs por selección si aplica
+    // Filtrar CECOs por selecciÃ³n si aplica
     const selectedCecos = state.cecoCompareSelectedCecos || [];
     const filteredCecos = [...cecosSet].filter(c => {
         if (selectedCecos.length === 0) return true;
@@ -5673,9 +5673,9 @@ function renderCecoComparison() {
                     <td></td><td></td>
                     <td><span class="badge badge-${na.toLowerCase()}">${na}</span></td>
                     <td>${co}</td>
-                    <td style="text-align:right;">${v1!==0 && cant1 ? cant1 : '-'}</td>
+                    <td style="text-align:right;">${v1!==0 ? cant1 : "—"}</td>
                     <td style="text-align:right;">${v1!==0?currencyFormatter.format(v1):'-'}</td>
-                    <td style="text-align:right;">${v2!==0 && cant2 ? cant2 : '-'}</td>
+                    <td style="text-align:right;">${v2!==0 ? cant2 : "—"}</td>
                     <td style="text-align:right;">${v2!==0?currencyFormatter.format(v2):'-'}</td>
                     <td style="text-align:right;">${formatVariationHTML(diff)}</td>
                     <td style="text-align:right;">${formatVariationHTML(cPct,true)}</td>
@@ -5684,7 +5684,7 @@ function renderCecoComparison() {
                 tbody.appendChild(conRow);
             });
             
-            // Click trabajador → mostrar/ocultar sus conceptos
+            // Click trabajador â†’ mostrar/ocultar sus conceptos
             personRow.addEventListener('click', () => {
                 personRow.classList.toggle('expanded');
                 const isExp = personRow.classList.contains('expanded');
@@ -5692,7 +5692,7 @@ function renderCecoComparison() {
             });
         });
         
-        // Click CECO → mostrar/ocultar trabajadores (colapsa sus sub-hijos también)
+        // Click CECO â†’ mostrar/ocultar trabajadores (colapsa sus sub-hijos tambiÃ©n)
         cecoRow.addEventListener('click', () => {
             cecoRow.classList.toggle('expanded');
             const isExp = cecoRow.classList.contains('expanded');
@@ -5711,7 +5711,7 @@ function renderCecoComparison() {
 }
 
 // ==========================================
-// ANÁLISIS MASIVO: CARGOS
+// ANÃLISIS MASIVO: CARGOS
 // ==========================================
 function initCargoCompareSelectors() {
     const btnExpand = document.getElementById('btn-cargo-compare-expand');
@@ -5787,7 +5787,7 @@ function renderCargoComparison() {
     const cargosSet = new Set();
     [...dataP1, ...dataP2].forEach(d => { if (d.cg) cargosSet.add(d.cg); });
     
-    // Filtrar cargos por selección si aplica
+    // Filtrar cargos por selecciÃ³n si aplica
     const selectedCargos = state.cargoCompareSelectedCargos || [];
     const filteredCargos = [...cargosSet].filter(c => {
         if (selectedCargos.length === 0) return true;
@@ -5892,9 +5892,9 @@ function renderCargoComparison() {
                     <td></td><td></td>
                     <td><span class="badge badge-${na.toLowerCase()}">${na}</span></td>
                     <td>${co}</td>
-                    <td style="text-align:right;">${v1!==0 && cant1 ? cant1 : '-'}</td>
+                    <td style="text-align:right;">${v1!==0 ? cant1 : "—"}</td>
                     <td style="text-align:right;">${v1!==0?currencyFormatter.format(v1):'-'}</td>
-                    <td style="text-align:right;">${v2!==0 && cant2 ? cant2 : '-'}</td>
+                    <td style="text-align:right;">${v2!==0 ? cant2 : "—"}</td>
                     <td style="text-align:right;">${v2!==0?currencyFormatter.format(v2):'-'}</td>
                     <td style="text-align:right;">${formatVariationHTML(diff)}</td>
                     <td style="text-align:right;">${formatVariationHTML(cPct,true)}</td>
@@ -5986,8 +5986,8 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     if (Math.abs(totalDiff) < 100) {
         narrative = `<p class="analysis-summary">El desembolso consolidado para el concepto <strong>${conceptName}</strong> se mantuvo estable entre ambos periodos.</p>`;
     } else {
-        const direction = totalDiff > 0 ? 'aumentó' : 'disminuyó';
-        const arrow = totalDiff > 0 ? '↑' : '↓';
+        const direction = totalDiff > 0 ? 'aumentÃ³' : 'disminuyÃ³';
+        const arrow = totalDiff > 0 ? 'â†‘' : 'â†“';
         const colorClass = totalDiff > 0 ? 'analysis-positive' : 'analysis-negative';
         
         narrative = `<p class="analysis-summary">El monto total consolidado de <strong>${conceptName}</strong> (${nature.toLowerCase()}) ${direction} en <span class="${colorClass}"><strong>${arrow} ${currencyFormatter.format(Math.abs(totalDiff))}</strong> (${totalPct > 0 ? '+' : ''}${totalPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
@@ -5997,7 +5997,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     if (increases.length > 0) {
         increasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-positive">↑ Colaboradores con mayor incremento</h4>
+                <h4 class="analysis-section-title analysis-positive">â†‘ Colaboradores con mayor incremento</h4>
                 <div class="analysis-items">
                     ${increases.map(c => `
                         <div class="analysis-item">
@@ -6007,7 +6007,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">→</span>
+                                <span class="analysis-arrow">â†’</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -6022,7 +6022,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     if (decreases.length > 0) {
         decreasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-negative">↓ Colaboradores con mayor reducción</h4>
+                <h4 class="analysis-section-title analysis-negative">â†“ Colaboradores con mayor reducciÃ³n</h4>
                 <div class="analysis-items">
                     ${decreases.map(c => `
                         <div class="analysis-item">
@@ -6032,7 +6032,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">→</span>
+                                <span class="analysis-arrow">â†’</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -6053,10 +6053,10 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
             <div class="analysis-modal-header">
                 <div>
                     <h3 class="analysis-modal-title" style="text-transform:uppercase;">${conceptName}</h3>
-                    <p class="analysis-modal-subtitle">Análisis comparativo de variaciones</p>
+                    <p class="analysis-modal-subtitle">AnÃ¡lisis comparativo de variaciones</p>
                     <p class="analysis-modal-periods">${period1} vs ${period2}</p>
                 </div>
-                <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar análisis">
+                <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar anÃ¡lisis">
                     <i data-lucide="x" style="width:18px;height:18px;"></i>
                 </button>
             </div>
@@ -6077,7 +6077,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
                         <span class="analysis-val">${currencyFormatter.format(totalP2)}</span>
                     </div>
                     <div class="analysis-summary-item">
-                        <span class="analysis-label">Variación:</span>
+                        <span class="analysis-label">VariaciÃ³n:</span>
                         <span class="analysis-val" style="font-weight:600;">${formatVariationHTML(totalDiff)}</span>
                     </div>
                 </div>
@@ -6110,8 +6110,8 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     }
 }
 
-// Modal lateral de análisis general consolidado de periodos (Análisis Ejecutivo)
-// Modal lateral de análisis general consolidado de periodos (Análisis Ejecutivo)
+// Modal lateral de anÃ¡lisis general consolidado de periodos (AnÃ¡lisis Ejecutivo)
+// Modal lateral de anÃ¡lisis general consolidado de periodos (AnÃ¡lisis Ejecutivo)
 function showGeneralPeriodAnalysisModal(period1, period2) {
     const existing = document.getElementById('analysis-modal-overlay');
     if (existing) existing.remove();
@@ -6133,7 +6133,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
     document.body.appendChild(overlay);
     
     function renderModalContent() {
-        // Filtrar datos según conceptos seleccionados
+        // Filtrar datos segÃºn conceptos seleccionados
         const dataP1 = dataP1Raw.filter(d => selectedConcepts.has(d.co));
         const dataP2 = dataP2Raw.filter(d => selectedConcepts.has(d.co));
         
@@ -6253,8 +6253,8 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                             <th>Colaborador</th>
                             <th style="text-align: right;">${period1}</th>
                             <th style="text-align: right;">${period2}</th>
-                            <th style="text-align: right;">Variación ($)</th>
-                            <th style="text-align: right;">Variación (%)</th>
+                            <th style="text-align: right;">VariaciÃ³n ($)</th>
+                            <th style="text-align: right;">VariaciÃ³n (%)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -6288,14 +6288,14 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
         `;
         
         // Build Narrative
-        const dir = netDiff > 0 ? 'un incremento' : 'una reducción';
+        const dir = netDiff > 0 ? 'un incremento' : 'una reducciÃ³n';
         const sign = netDiff > 0 ? '+' : '';
-        const arrow = netDiff > 0 ? '↑' : '↓';
+        const arrow = netDiff > 0 ? 'â†‘' : 'â†“';
         const colorClass = netDiff > 0 ? 'analysis-positive' : 'analysis-negative';
         
         const narrative = `
             <p class="analysis-summary">
-                Para los conceptos seleccionados, el neto consolidado pasó de <strong>${currencyFormatter.format(netP1)}</strong> en ${period1} a <strong>${currencyFormatter.format(netP2)}</strong> en ${period2}. 
+                Para los conceptos seleccionados, el neto consolidado pasÃ³ de <strong>${currencyFormatter.format(netP1)}</strong> en ${period1} a <strong>${currencyFormatter.format(netP2)}</strong> en ${period2}. 
                 Esto representa ${dir} de <span class="${colorClass}"><strong>${arrow} ${currencyFormatter.format(Math.abs(netDiff))}</strong> (${sign}${netPct.toFixed(2)}%)</span>.
             </p>
         `;
@@ -6305,7 +6305,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
         if (increases.length > 0) {
             increasesHTML = `
                 <div class="analysis-section">
-                    <h4 class="analysis-section-title analysis-positive">↑ Conceptos con mayor incremento</h4>
+                    <h4 class="analysis-section-title analysis-positive">â†‘ Conceptos con mayor incremento</h4>
                     <div class="analysis-items">
                         ${increases.map(c => `
                             <div class="analysis-item">
@@ -6315,7 +6315,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                                 </div>
                                 <div class="analysis-item-values">
                                     <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                    <span class="analysis-arrow">→</span>
+                                    <span class="analysis-arrow">â†’</span>
                                     <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                     <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
                                 </div>
@@ -6328,7 +6328,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
         if (decreases.length > 0) {
             decreasesHTML = `
                 <div class="analysis-section">
-                    <h4 class="analysis-section-title analysis-negative">↓ Conceptos con mayor reducción</h4>
+                    <h4 class="analysis-section-title analysis-negative">â†“ Conceptos con mayor reducciÃ³n</h4>
                     <div class="analysis-items">
                         ${decreases.map(c => `
                             <div class="analysis-item">
@@ -6338,7 +6338,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                                 </div>
                                 <div class="analysis-item-values">
                                     <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                    <span class="analysis-arrow">→</span>
+                                    <span class="analysis-arrow">â†’</span>
                                     <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                     <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
                                 </div>
@@ -6357,18 +6357,18 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
             if (disappearedConcepts.length > 0) {
                 newContent += `<div><span style="font-size: 0.72rem; font-weight:600; color: var(--accent-yellow);">Conceptos no registrados en ${period2}:</span><ul style="padding-left: 16px; margin-top: 4px; font-size: 0.7rem; color: var(--text-secondary);">${disappearedConcepts.slice(0, 3).map(c => `<li>${c.co.toLowerCase()} (-${currencyFormatter.format(c.v1)})</li>`).join('')}</ul></div>`;
             }
-            extrasHTML = `<div class="analysis-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; padding: 12px; margin-top: 14px;"><h4 style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px;">Auditoría de Conceptos</h4>${newContent}</div>`;
+            extrasHTML = `<div class="analysis-section" style="background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; padding: 12px; margin-top: 14px;"><h4 style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px;">AuditorÃ­a de Conceptos</h4>${newContent}</div>`;
         }
         
         overlay.innerHTML = `
             <div class="analysis-modal" style="max-height: 90vh; display: flex; flex-direction: column;">
                 <div class="analysis-modal-header" style="flex-shrink: 0;">
                     <div>
-                        <h3 class="analysis-modal-title">ANÁLISIS GENERAL EJECUTIVO</h3>
-                        <p class="analysis-modal-subtitle">Consolidado General de Nómina</p>
+                        <h3 class="analysis-modal-title">ANÃLISIS GENERAL EJECUTIVO</h3>
+                        <p class="analysis-modal-subtitle">Consolidado General de NÃ³mina</p>
                         <p class="analysis-modal-periods">${period1} vs ${period2}</p>
                     </div>
-                    <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar análisis">
+                    <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar anÃ¡lisis">
                         <i data-lucide="x" style="width:18px;height:18px;"></i>
                     </button>
                 </div>
@@ -6397,11 +6397,11 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                             </div>
                         </div>
                         <div style="border-top: 1px solid rgba(0,0,0,0.06); padding-top: 8px; display: flex; justify-content: space-between; font-size: 0.76rem;">
-                            <span style="color: var(--text-secondary);">Variación Devengos:</span>
+                            <span style="color: var(--text-secondary);">VariaciÃ³n Devengos:</span>
                             <span>${formatVariationHTML(devDiff)} (${devPct > 0 ? '+' : ''}${devPct.toFixed(2)}%)</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.76rem;">
-                            <span style="color: var(--text-secondary);">Variación Descuentos:</span>
+                            <span style="color: var(--text-secondary);">VariaciÃ³n Descuentos:</span>
                             <span>${formatVariationHTML(descDiff)} (${descPct > 0 ? '+' : ''}${descPct.toFixed(2)}%)</span>
                         </div>
                     </div>
@@ -6469,7 +6469,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
 
 
 // ============================================================================
-// GENERACIÓN DE INFORME GERENCIAL EN PDF (ANÁLISIS MASIVO POR CONCEPTO)
+// GENERACIÃ“N DE INFORME GERENCIAL EN PDF (ANÃLISIS MASIVO POR CONCEPTO)
 // ============================================================================
 
 function loadHtml2Pdf() {
@@ -6481,7 +6481,7 @@ function loadHtml2Pdf() {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
         script.onload = () => resolve(window.html2pdf);
-        script.onerror = () => reject(new Error('No se pudo cargar la librería html2pdf.js'));
+        script.onerror = () => reject(new Error('No se pudo cargar la librerÃ­a html2pdf.js'));
         document.head.appendChild(script);
     });
 }
@@ -7368,3 +7368,5 @@ function generateManagerialReport() {
         }
     }, 400);
 }
+
+
