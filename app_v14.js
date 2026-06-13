@@ -4244,7 +4244,7 @@ function parseExcelFile(arrayBuffer, fileName) {
             n: fullName,
             co: row[kCon] ? row[kCon].toString().trim().toUpperCase() : "N/A",
             v: Math.round(valNum * 100) / 100,
-            cant: Math.round(cantNum * 100) / 100,
+            cant: Math.round(cantNum),
             m: mes,
             a: anio,
             t: tipo,
@@ -4293,7 +4293,7 @@ function aggregateRecords(records) {
             agg[key].v = Math.round(agg[key].v * 100) / 100;
             if (r.cant !== undefined && r.cant !== null) {
                 agg[key].cant = (agg[key].cant || 0) + r.cant;
-                agg[key].cant = Math.round(agg[key].cant * 100) / 100;
+                agg[key].cant = Math.round(agg[key].cant);
             }
         } else {
             agg[key] = { ...r };
@@ -4869,9 +4869,9 @@ function renderPeriodComparison() {
                     <td>${cedula}</td>
                     <td><span class="badge badge-${nat.toLowerCase()}">${nat}</span></td>
                     <td>${c.co}</td>
-                    <td style="text-align: right;">${c.val1 !== 0 ? c.cant1 : "—"}</td>
+                    <td style="text-align: right;">${c.val1 !== 0 ? Math.round(c.cant1) : "—"}</td>
                     <td style="text-align: right;">${c.val1 !== 0 ? currencyFormatter.format(c.val1) : '-'}</td>
-                    <td style="text-align: right;">${c.val2 !== 0 ? c.cant2 : "—"}</td>
+                    <td style="text-align: right;">${c.val2 !== 0 ? Math.round(c.cant2) : "—"}</td>
                     <td style="text-align: right;">${c.val2 !== 0 ? currencyFormatter.format(c.val2) : '-'}</td>
                     <td style="text-align: right;">${formatVariationHTML(c.diff)}</td>
                     <td style="text-align: right;">${formatVariationHTML(cPct, true)}</td>
@@ -5014,7 +5014,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">â†’</span>
+                                <span class="analysis-arrow">&rarr;</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -5039,7 +5039,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">â†’</span>
+                                <span class="analysis-arrow">&rarr;</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -5056,7 +5056,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (newConcepts.length > 0) {
         newConceptsHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title" style="color: var(--info);">â— Conceptos nuevos en ${period2}</h4>
+                <h4 class="analysis-section-title" style="color: var(--info);">&#9679; Conceptos nuevos en ${period2}</h4>
                 <div class="analysis-items">
                     ${newConcepts.slice(0, 5).map(c => `
                         <div class="analysis-item">
@@ -5075,12 +5075,12 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (removedConcepts.length > 0) {
         removedHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title" style="color: var(--text-muted);">â—‹ Conceptos que desaparecen en ${period2}</h4>
+                <h4 class="analysis-section-title" style="color: var(--text-muted);">&#9675; Conceptos que desaparecen en ${period2}</h4>
                 <div class="analysis-items">
                     ${removedConcepts.slice(0, 5).map(c => `
                         <div class="analysis-item">
                             <span class="analysis-concept">${c.co.toLowerCase()}</span>
-                            <span class="analysis-diff" style="color: var(--text-muted);">${currencyFormatter.format(c.v1)} â†’ $0</span>
+                            <span class="analysis-diff" style="color: var(--text-muted);">${currencyFormatter.format(c.v1)} &rarr; $0</span>
                         </div>
                     `).join('')}
                 </div>
@@ -5094,7 +5094,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
             <div class="analysis-summary-item">
                 <span class="analysis-label">Devengos</span>
                 <span class="analysis-val">${currencyFormatter.format(totals.DEVENGO.p1)}</span>
-                <span class="analysis-val">â†’ ${currencyFormatter.format(totals.DEVENGO.p2)}</span>
+                <span class="analysis-val">&rarr; ${currencyFormatter.format(totals.DEVENGO.p2)}</span>
                 <span class="${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? 'analysis-positive' : 'analysis-negative'}">
                     ${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? '&#9650;' : '&#9660;'} ${currencyFormatter.format(Math.abs(totals.DEVENGO.p2 - totals.DEVENGO.p1))}
                 </span>
@@ -5102,7 +5102,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
             <div class="analysis-summary-item">
                 <span class="analysis-label">Descuentos</span>
                 <span class="analysis-val">${currencyFormatter.format(Math.abs(totals.DESCUENTO.p1))}</span>
-                <span class="analysis-val">â†’ ${currencyFormatter.format(Math.abs(totals.DESCUENTO.p2))}</span>
+                <span class="analysis-val">&rarr; ${currencyFormatter.format(Math.abs(totals.DESCUENTO.p2))}</span>
                 <span class="${Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1) <= 0 ? 'analysis-positive' : 'analysis-negative'}">
                     ${Math.abs(totals.DESCUENTO.p2) <= Math.abs(totals.DESCUENTO.p1) ? '&#9660;' : '&#9650;'} ${currencyFormatter.format(Math.abs(Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1)))}
                 </span>
@@ -5110,7 +5110,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
             <div class="analysis-summary-item" style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
                 <span class="analysis-label" style="font-weight:600;">Neto</span>
                 <span class="analysis-val" style="font-weight:600;">${currencyFormatter.format(netP1)}</span>
-                <span class="analysis-val" style="font-weight:600;">â†’ ${currencyFormatter.format(netP2)}</span>
+                <span class="analysis-val" style="font-weight:600;">&rarr; ${currencyFormatter.format(netP2)}</span>
                 <span class="${netDiff >= 0 ? 'analysis-positive' : 'analysis-negative'}" style="font-weight:700;">
                     ${netDiff >= 0 ? '&#9650;' : '&#9660;'} ${currencyFormatter.format(Math.abs(netDiff))}
                 </span>
@@ -5411,9 +5411,9 @@ function renderConceptComparison() {
             <td><span class="badge badge-${item.na.toLowerCase()}">${item.na}</span></td>
             <td>-</td>
             <td>-</td>
-            <td style="text-align: right; font-weight: normal;">${item.v1 !== 0 ? item.cant1 : "—"}</td>
+            <td style="text-align: right; font-weight: normal;">${item.v1 !== 0 ? Math.round(item.cant1) : "—"}</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(item.v1)}</td>
-            <td style="text-align: right; font-weight: normal;">${item.v2 !== 0 ? item.cant2 : "—"}</td>
+            <td style="text-align: right; font-weight: normal;">${item.v2 !== 0 ? Math.round(item.cant2) : "—"}</td>
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(item.v2)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.diff)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.pct, true)}</td>
@@ -5439,9 +5439,9 @@ function renderConceptComparison() {
                 <td>-</td>
                 <td style="font-weight: normal; padding-left: 20px;">${emp.name}</td>
                 <td style="color: var(--text-secondary);">${emp.cedula}</td>
-                <td style="text-align: right;">${emp.v1 !== 0 ? emp.cant1 : "—"}</td>
+                <td style="text-align: right;">${emp.v1 !== 0 ? Math.round(emp.cant1) : "—"}</td>
                 <td style="text-align: right;">${emp.v1 !== 0 ? currencyFormatter.format(emp.v1) : '-'}</td>
-                <td style="text-align: right;">${emp.v2 !== 0 ? emp.cant2 : "—"}</td>
+                <td style="text-align: right;">${emp.v2 !== 0 ? Math.round(emp.cant2) : "—"}</td>
                 <td style="text-align: right;">${emp.v2 !== 0 ? currencyFormatter.format(emp.v2) : '-'}</td>
                 <td style="text-align: right;">${formatVariationHTML(emp.diff)}</td>
                 <td style="text-align: right;">${formatVariationHTML(emp.pct, true)}</td>
@@ -5673,9 +5673,9 @@ function renderCecoComparison() {
                     <td></td><td></td>
                     <td><span class="badge badge-${na.toLowerCase()}">${na}</span></td>
                     <td>${co}</td>
-                    <td style="text-align:right;">${v1!==0 ? cant1 : "—"}</td>
+                    <td style="text-align:right;">${v1!==0 ? Math.round(cant1) : "—"}</td>
                     <td style="text-align:right;">${v1!==0?currencyFormatter.format(v1):'-'}</td>
-                    <td style="text-align:right;">${v2!==0 ? cant2 : "—"}</td>
+                    <td style="text-align:right;">${v2!==0 ? Math.round(cant2) : "—"}</td>
                     <td style="text-align:right;">${v2!==0?currencyFormatter.format(v2):'-'}</td>
                     <td style="text-align:right;">${formatVariationHTML(diff)}</td>
                     <td style="text-align:right;">${formatVariationHTML(cPct,true)}</td>
@@ -5684,7 +5684,7 @@ function renderCecoComparison() {
                 tbody.appendChild(conRow);
             });
             
-            // Click trabajador â†’ mostrar/ocultar sus conceptos
+            // Click trabajador &rarr; mostrar/ocultar sus conceptos
             personRow.addEventListener('click', () => {
                 personRow.classList.toggle('expanded');
                 const isExp = personRow.classList.contains('expanded');
@@ -5692,7 +5692,7 @@ function renderCecoComparison() {
             });
         });
         
-        // Click CECO â†’ mostrar/ocultar trabajadores (colapsa sus sub-hijos también)
+        // Click CECO &rarr; mostrar/ocultar trabajadores (colapsa sus sub-hijos también)
         cecoRow.addEventListener('click', () => {
             cecoRow.classList.toggle('expanded');
             const isExp = cecoRow.classList.contains('expanded');
@@ -5892,9 +5892,9 @@ function renderCargoComparison() {
                     <td></td><td></td>
                     <td><span class="badge badge-${na.toLowerCase()}">${na}</span></td>
                     <td>${co}</td>
-                    <td style="text-align:right;">${v1!==0 ? cant1 : "—"}</td>
+                    <td style="text-align:right;">${v1!==0 ? Math.round(cant1) : "—"}</td>
                     <td style="text-align:right;">${v1!==0?currencyFormatter.format(v1):'-'}</td>
-                    <td style="text-align:right;">${v2!==0 ? cant2 : "—"}</td>
+                    <td style="text-align:right;">${v2!==0 ? Math.round(cant2) : "—"}</td>
                     <td style="text-align:right;">${v2!==0?currencyFormatter.format(v2):'-'}</td>
                     <td style="text-align:right;">${formatVariationHTML(diff)}</td>
                     <td style="text-align:right;">${formatVariationHTML(cPct,true)}</td>
@@ -6007,7 +6007,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">â†’</span>
+                                <span class="analysis-arrow">&rarr;</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -6032,7 +6032,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
                             </div>
                             <div class="analysis-item-values">
                                 <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">â†’</span>
+                                <span class="analysis-arrow">&rarr;</span>
                                 <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                 <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
                             </div>
@@ -6315,7 +6315,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                                 </div>
                                 <div class="analysis-item-values">
                                     <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                    <span class="analysis-arrow">â†’</span>
+                                    <span class="analysis-arrow">&rarr;</span>
                                     <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                     <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
                                 </div>
@@ -6338,7 +6338,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                                 </div>
                                 <div class="analysis-item-values">
                                     <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                    <span class="analysis-arrow">â†’</span>
+                                    <span class="analysis-arrow">&rarr;</span>
                                     <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
                                     <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
                                 </div>
