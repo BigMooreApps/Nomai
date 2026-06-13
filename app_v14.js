@@ -4210,23 +4210,24 @@ function parseExcelFile(arrayBuffer, fileName) {
             valNum = -valNum;
         }
         
-        let tipo = "SALARIAL";
+        let tn = "N";
         if (kTip && row[kTip]) {
-            tipo = row[kTip].toString().toUpperCase().trim();
-        } else {
-            const conceptUpper = (row[kCon] || "").toString().toUpperCase();
-            if (nat === "DESCUENTO") {
-                if (conceptUpper.includes("EPS") || conceptUpper.includes("PENSION") || conceptUpper.includes("SOLIDARIDAD") || conceptUpper.includes("SALUD")) {
-                    tipo = "SEGURIDAD SOCIAL";
-                } else {
-                    tipo = "OTROS";
-                }
+            tn = row[kTip].toString().toUpperCase().trim();
+        }
+        
+        let tipo = "SALARIAL";
+        const conceptUpper = (row[kCon] || "").toString().toUpperCase();
+        if (nat === "DESCUENTO") {
+            if (conceptUpper.includes("EPS") || conceptUpper.includes("PENSION") || conceptUpper.includes("SOLIDARIDAD") || conceptUpper.includes("SALUD")) {
+                tipo = "SEGURIDAD SOCIAL";
             } else {
-                if (conceptUpper.includes("SUELDO") || conceptUpper.includes("SALARIO") || conceptUpper.includes("COMISION") || conceptUpper.includes("EXTRA") || conceptUpper.includes("REC.") || conceptUpper.includes("VACACIO") || conceptUpper.includes("PRIMA") || conceptUpper.includes("CESANTIA") || conceptUpper.includes("INCAPAC") || conceptUpper.includes("LICENCIA")) {
-                    tipo = "SALARIAL";
-                } else {
-                    tipo = "NO SALARIAL";
-                }
+                tipo = "OTROS";
+            }
+        } else {
+            if (conceptUpper.includes("SUELDO") || conceptUpper.includes("SALARIO") || conceptUpper.includes("COMISION") || conceptUpper.includes("EXTRA") || conceptUpper.includes("REC.") || conceptUpper.includes("VACACIO") || conceptUpper.includes("PRIMA") || conceptUpper.includes("CESANTIA") || conceptUpper.includes("INCAPAC") || conceptUpper.includes("LICENCIA")) {
+                tipo = "SALARIAL";
+            } else {
+                tipo = "NO SALARIAL";
             }
         }
         
@@ -4247,6 +4248,7 @@ function parseExcelFile(arrayBuffer, fileName) {
             m: mes,
             a: anio,
             t: tipo,
+            tn: tn,
             na: nat,
             cc: cc,
             dcc: dcc,
