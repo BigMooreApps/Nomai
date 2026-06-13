@@ -4613,7 +4613,7 @@ function formatVariationHTML(val, isPercentage = false) {
     }
     
     const sign = val > 0 ? '+' : '';
-    const icon = val > 0 ? '&#9650;' : '&#9660;';
+    const icon = '';
     const cssClass = val > 0 ? 'val-up' : 'val-down';
     
     let formattedText = '';
@@ -4623,7 +4623,7 @@ function formatVariationHTML(val, isPercentage = false) {
         formattedText = `${sign}${currencyFormatter.format(val)}`;
     }
     
-    return `<span class="${cssClass}">${icon} ${formattedText}</span>`;
+    return `<span class="${cssClass}">${formattedText}</span>`;
 }
 
 // Genera un comentario inteligente de la variación del neto del colaborador
@@ -4990,10 +4990,10 @@ function showAnalysisModal(cedula, name, period1, period2) {
         narrative = `<p class="analysis-summary">El salario neto de <strong>${name}</strong> se mantuvo prácticamente estable entre ambos periodos, sin variaciones significativas.</p>`;
     } else {
         const direction = netDiff > 0 ? 'aumentó' : 'disminuyó';
-        const arrow = netDiff > 0 ? '&#9650;' : '&#9660;';
+        const signChar = netDiff >= 0 ? '+' : '-';
         const colorClass = netDiff > 0 ? 'analysis-positive' : 'analysis-negative';
         
-        narrative = `<p class="analysis-summary">El ingreso neto de <strong>${name}</strong> ${direction} en <span class="${colorClass}"><strong>${arrow} ${currencyFormatter.format(Math.abs(netDiff))}</strong> (${netPct > 0 ? '+' : ''}${netPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
+        narrative = `<p class="analysis-summary">El ingreso neto de <strong>${name}</strong> ${direction} en <span class="${colorClass}"><strong>${signChar}${currencyFormatter.format(Math.abs(netDiff))}</strong> (${netPct > 0 ? '+' : ''}${netPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
     }
     
     // Top increases
@@ -5004,7 +5004,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (increases.length > 0) {
         increasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-positive">&#9650; Conceptos con incremento</h4>
+                <h4 class="analysis-section-title analysis-positive">Conceptos con incremento</h4>
                 <div class="analysis-items">
                     ${increases.map(c => `
                         <div class="analysis-item">
@@ -5029,7 +5029,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
     if (decreases.length > 0) {
         decreasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-negative">&#9660; Conceptos con reducción</h4>
+                <h4 class="analysis-section-title analysis-negative">Conceptos con reducción</h4>
                 <div class="analysis-items">
                     ${decreases.map(c => `
                         <div class="analysis-item">
@@ -5096,7 +5096,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                 <span class="analysis-val">${currencyFormatter.format(totals.DEVENGO.p1)}</span>
                 <span class="analysis-val">&rarr; ${currencyFormatter.format(totals.DEVENGO.p2)}</span>
                 <span class="${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? 'analysis-positive' : 'analysis-negative'}">
-                    ${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? '&#9650;' : '&#9660;'} ${currencyFormatter.format(Math.abs(totals.DEVENGO.p2 - totals.DEVENGO.p1))}
+                    ${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? '+' : '-'} ${currencyFormatter.format(Math.abs(totals.DEVENGO.p2 - totals.DEVENGO.p1))}
                 </span>
             </div>
             <div class="analysis-summary-item">
@@ -5104,7 +5104,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                 <span class="analysis-val">${currencyFormatter.format(Math.abs(totals.DESCUENTO.p1))}</span>
                 <span class="analysis-val">&rarr; ${currencyFormatter.format(Math.abs(totals.DESCUENTO.p2))}</span>
                 <span class="${Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1) <= 0 ? 'analysis-positive' : 'analysis-negative'}">
-                    ${Math.abs(totals.DESCUENTO.p2) <= Math.abs(totals.DESCUENTO.p1) ? '&#9660;' : '&#9650;'} ${currencyFormatter.format(Math.abs(Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1)))}
+                    ${Math.abs(totals.DESCUENTO.p2) <= Math.abs(totals.DESCUENTO.p1) ? '-' : '+'} ${currencyFormatter.format(Math.abs(Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1)))}
                 </span>
             </div>
             <div class="analysis-summary-item" style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
@@ -5112,7 +5112,7 @@ function showAnalysisModal(cedula, name, period1, period2) {
                 <span class="analysis-val" style="font-weight:600;">${currencyFormatter.format(netP1)}</span>
                 <span class="analysis-val" style="font-weight:600;">&rarr; ${currencyFormatter.format(netP2)}</span>
                 <span class="${netDiff >= 0 ? 'analysis-positive' : 'analysis-negative'}" style="font-weight:700;">
-                    ${netDiff >= 0 ? '&#9650;' : '&#9660;'} ${currencyFormatter.format(Math.abs(netDiff))}
+                    ${netDiff >= 0 ? '+' : '-'} ${currencyFormatter.format(Math.abs(netDiff))}
                 </span>
             </div>
         </div>
@@ -5987,17 +5987,17 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
         narrative = `<p class="analysis-summary">El desembolso consolidado para el concepto <strong>${conceptName}</strong> se mantuvo estable entre ambos periodos.</p>`;
     } else {
         const direction = totalDiff > 0 ? 'aumentó' : 'disminuyó';
-        const arrow = totalDiff > 0 ? '&#9650;' : '&#9660;';
+        const signChar = totalDiff >= 0 ? '+' : '-';
         const colorClass = totalDiff > 0 ? 'analysis-positive' : 'analysis-negative';
         
-        narrative = `<p class="analysis-summary">El monto total consolidado de <strong>${conceptName}</strong> (${nature.toLowerCase()}) ${direction} en <span class="${colorClass}"><strong>${arrow} ${currencyFormatter.format(Math.abs(totalDiff))}</strong> (${totalPct > 0 ? '+' : ''}${totalPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
+        narrative = `<p class="analysis-summary">El monto total consolidado de <strong>${conceptName}</strong> (${nature.toLowerCase()}) ${direction} en <span class="${colorClass}"><strong>${signChar}${currencyFormatter.format(Math.abs(totalDiff))}</strong> (${totalPct > 0 ? '+' : ''}${totalPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
     }
     
     let increasesHTML = '';
     if (increases.length > 0) {
         increasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-positive">&#9650; Colaboradores con mayor incremento</h4>
+                <h4 class="analysis-section-title analysis-positive">Colaboradores con mayor incremento</h4>
                 <div class="analysis-items">
                     ${increases.map(c => `
                         <div class="analysis-item">
@@ -6022,7 +6022,7 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     if (decreases.length > 0) {
         decreasesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-negative">&#9660; Colaboradores con mayor reducción</h4>
+                <h4 class="analysis-section-title analysis-negative">Colaboradores con mayor reducción</h4>
                 <div class="analysis-items">
                     ${decreases.map(c => `
                         <div class="analysis-item">
@@ -6290,13 +6290,13 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
         // Build Narrative
         const dir = netDiff > 0 ? 'un incremento' : 'una reducción';
         const sign = netDiff > 0 ? '+' : '';
-        const arrow = netDiff > 0 ? '&#9650;' : '&#9660;';
+        const signChar = netDiff >= 0 ? '+' : '-';
         const colorClass = netDiff > 0 ? 'analysis-positive' : 'analysis-negative';
         
         const narrative = `
             <p class="analysis-summary">
                 Para los conceptos seleccionados, el neto consolidado pasó de <strong>${currencyFormatter.format(netP1)}</strong> en ${period1} a <strong>${currencyFormatter.format(netP2)}</strong> en ${period2}. 
-                Esto representa ${dir} de <span class="${colorClass}"><strong>${arrow} ${currencyFormatter.format(Math.abs(netDiff))}</strong> (${sign}${netPct.toFixed(2)}%)</span>.
+                Esto representa ${dir} de <span class="${colorClass}"><strong>${signChar}${currencyFormatter.format(Math.abs(netDiff))}</strong> (${sign}${netPct.toFixed(2)}%)</span>.
             </p>
         `;
         
@@ -6305,7 +6305,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
         if (increases.length > 0) {
             increasesHTML = `
                 <div class="analysis-section">
-                    <h4 class="analysis-section-title analysis-positive">&#9650; Conceptos con mayor incremento</h4>
+                    <h4 class="analysis-section-title analysis-positive">Conceptos con mayor incremento</h4>
                     <div class="analysis-items">
                         ${increases.map(c => `
                             <div class="analysis-item">
@@ -6328,7 +6328,7 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
         if (decreases.length > 0) {
             decreasesHTML = `
                 <div class="analysis-section">
-                    <h4 class="analysis-section-title analysis-negative">&#9660; Conceptos con mayor reducción</h4>
+                    <h4 class="analysis-section-title analysis-negative">Conceptos con mayor reducción</h4>
                     <div class="analysis-items">
                         ${decreases.map(c => `
                             <div class="analysis-item">
