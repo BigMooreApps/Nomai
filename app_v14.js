@@ -3507,12 +3507,12 @@ const MAPPING_FIELDS = [
     { id: 'fullName', name: 'Nombre Completo', type: 'recommended', aliases: ['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE COMPLETO', 'NOMBRE Y APELLIDO', 'NOMBRE Y APELLIDOS'] },
     { id: 'ape', name: 'Apellidos (si está separado)', type: 'optional', aliases: ['APELLIDOS', 'APELLIDO'] },
     { id: 'nom', name: 'Nombres (si está separado)', type: 'optional', aliases: ['NOMBRES', 'NOMBRE'] },
-    { id: 'co', name: 'Concepto (Nombre/Código)', type: 'required', aliases: ['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO'] },
+    { id: 'co', name: 'Concepto (Nombre)', type: 'required', aliases: ['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'DESCRIPCION CONCEPTO', 'DESC CONCEPTO', 'CONCEPTO'] },
     { id: 'v', name: 'Valor (Importe)', type: 'required', aliases: ['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE'] },
     { id: 'cant', name: 'Cantidad (Unidades/Horas)', type: 'optional', aliases: ['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA'] },
     { id: 'cc', name: 'Centro de Costo Código', type: 'optional', aliases: ['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO'] },
     { id: 'dcc', name: 'Nombre Centro de Costo', type: 'optional', aliases: ['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO'] },
-    { id: 'cg', name: 'Cargo', type: 'optional', aliases: ['NOMBRE CARGO', 'CARGO'] },
+    { id: 'cg', name: 'Cargo (Nombre)', type: 'optional', aliases: ['NOMBRE CARGO', 'DESCRIPCION CARGO', 'DESC CARGO', 'CARGO'] },
     { id: 'tn', name: 'Tipo de Nómina', type: 'optional', aliases: ['TIPO DE NOMINA', 'TIPO DE NÓMINA', 'TIPO'] },
     { id: 'm', name: 'Mes Acumulado', type: 'optional', aliases: ['MES ACUMULADO', 'MES'] },
     { id: 'a', name: 'Año', type: 'optional', aliases: ['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA'] },
@@ -4480,7 +4480,9 @@ function parseExcelFile(arrayBuffer, fileName, mapping = null) {
     const kApe = mapping ? mapping.ape : getColKey(['APELLIDOS', 'APELLIDO']);
     const kNom = mapping ? mapping.nom : getColKey(['NOMBRES', 'NOMBRE']);
     const kFullName = mapping ? mapping.fullName : getColKey(['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE COMPLETO', 'NOMBRE Y APELLIDO', 'NOMBRE Y APELLIDOS']);
-    const kCon = mapping ? mapping.co : getColKey(['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO']);
+    const kCon = mapping ? mapping.co : getColKey(['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'DESCRIPCION CONCEPTO', 'DESC CONCEPTO']);
+    const kCodCon = !kCon ? getColKey(['CONCEPTO']) : null; // fallback al código si no hay nombre
+    const kConFinal = kCon || kCodCon;
     const kTot = mapping ? mapping.v : getColKey(['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE']);
     const kMes = mapping ? mapping.m : getColKey(['MES ACUMULADO', 'MES']);
     const kAnio = mapping ? mapping.a : getColKey(['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA']);
@@ -4488,11 +4490,13 @@ function parseExcelFile(arrayBuffer, fileName, mapping = null) {
     const kNat = mapping ? mapping.na : getColKey(['NATURALEZA']);
     const kCC = mapping ? mapping.cc : getColKey(['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO']);
     const kDCC = mapping ? mapping.dcc : getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
-    const kCg = mapping ? mapping.cg : getColKey(['NOMBRE CARGO', 'CARGO']);
+    const kCg = mapping ? mapping.cg : getColKey(['NOMBRE CARGO', 'DESCRIPCION CARGO', 'DESC CARGO']);
+    const kCodCg = !kCg ? getColKey(['CARGO']) : null; // fallback al código si no hay nombre
+    const kCgFinal = kCg || kCodCg;
     const kPa = mapping ? mapping.pa : getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
     const kCant = mapping ? mapping.cant : getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA']);
     
-    if (!kCed || !kCon || !kTot) {
+    if (!kCed || !kConFinal || !kTot) {
         throw new Error('No se encontraron las columnas mínimas requeridas (Cédula, Concepto y Valor).');
     }
     
@@ -4604,7 +4608,7 @@ function parseExcelFile(arrayBuffer, fileName, mapping = null) {
         }
         
         let tipo = "SALARIAL";
-        const conceptUpper = (row[kCon] || "").toString().toUpperCase();
+        const conceptUpper = (row[kConFinal] || "").toString().toUpperCase();
         if (nat === "DESCUENTO") {
             if (conceptUpper.includes("EPS") || conceptUpper.includes("PENSION") || conceptUpper.includes("SOLIDARIDAD") || conceptUpper.includes("SALUD")) {
                 tipo = "SEGURIDAD SOCIAL";
@@ -4624,13 +4628,13 @@ function parseExcelFile(arrayBuffer, fileName, mapping = null) {
         if (cc && !dcc) {
             dcc = cc;
         }
-        const cg = kCg && row[kCg] ? row[kCg].toString().trim().toUpperCase() : "";
+        const cg = kCgFinal && row[kCgFinal] ? row[kCgFinal].toString().trim().toUpperCase() : "";
         const pa = kPa && row[kPa] ? parseInt(row[kPa]) : null;
         
         mappedData.push({
             c: cedula.toString().trim(),
             n: fullName,
-            co: row[kCon] ? row[kCon].toString().trim().toUpperCase() : "N/A",
+            co: row[kConFinal] ? row[kConFinal].toString().trim().toUpperCase() : "N/A",
             v: Math.round(valNum * 100) / 100,
             cant: Math.round(cantNum),
             m: mes,
