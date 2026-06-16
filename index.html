@@ -955,6 +955,71 @@
         </div>
     </div>
 
+    <!-- Modal de Adaptación de Estructura de Nómina -->
+    <div id="mapping-modal" class="modal-overlay">
+        <div class="modal-content glass-panel" style="width: 850px; max-width: 95vw; max-height: 90vh;">
+            <div class="modal-header">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <h3 style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="shuffle" style="color: var(--primary); width: 20px; height: 20px;"></i>
+                        Adaptador de Estructura de Nómina
+                    </h3>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 500px;" id="mapping-modal-filename">Archivo: -</span>
+                </div>
+                <button id="btn-close-mapping-modal" class="btn-close" type="button" aria-label="Cerrar">&times;</button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px; overflow-y: auto;">
+                <!-- Profile selector bar -->
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <label for="mapping-profile-select" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Perfil de Mapeo:</label>
+                        <select id="mapping-profile-select" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-family: inherit; font-size: 0.85rem; min-width: 180px; max-width: 250px; background-color: #FFF; color: var(--text-primary);">
+                            <option value="auto">Autodetectar (Predeterminado)</option>
+                        </select>
+                        <button id="btn-save-mapping-profile" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;" type="button" title="Guardar mapeo actual como perfil">
+                            <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar
+                        </button>
+                        <button id="btn-delete-mapping-profile" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; color: #EF4444;" type="button" title="Eliminar perfil seleccionado" disabled>
+                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        </button>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px;">
+                        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; background-color: #EF4444; border-radius: 50%;"></span> Requerido</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; background-color: var(--accent-yellow); border-radius: 50%;"></span> Recomendado</span>
+                        <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; background-color: var(--text-muted); border-radius: 50%;"></span> Opcional</span>
+                    </div>
+                </div>
+
+                <!-- Grid headers -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: grid; grid-template-columns: 260px 240px 1fr; gap: 16px; font-weight: 600; font-size: 0.78rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                        <span>Campo Destino (Dashboard)</span>
+                        <span>Columna en tu Excel</span>
+                        <span>Vista Previa de Valores Reales</span>
+                    </div>
+                    
+                    <div id="mapping-fields-container" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- JS generará las filas aquí -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(108, 0, 211, 0.08);">
+                <div id="mapping-validation-msg" style="font-size: 0.82rem; color: #EF4444; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                    <!-- Mapeo incompleto -->
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-cancel-mapping" class="btn btn-secondary" type="button">Cancelar</button>
+                    <button id="btn-apply-mapping" class="btn btn-primary" type="button" style="background: var(--primary); border-color: var(--primary);">
+                        <i data-lucide="check" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+                        Confirmar e Importar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Librerías de Terceros vía CDN -->
     <!-- 1. SheetJS para procesamiento de Excel local -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -966,6 +1031,6 @@
     <!-- Datos Pre-Cargados -->
     <script src="data.js?v=202606130038"></script>
     <!-- Código Lógico de la Aplicación -->
-    <script src="app_v14.js?v=20260613031"></script>
+    <script src="app_v14.js?v=20260616001"></script>
 </body>
 </html>

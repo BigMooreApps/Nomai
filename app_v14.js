@@ -3499,6 +3499,360 @@ function renderHeatmapMatrix() {
 }
 
 // ==========================================
+// ADAPTADOR DE ESTRUCTURA Y MAPEO DE COLUMNAS
+// ==========================================
+
+const MAPPING_FIELDS = [
+    { id: 'c', name: 'Identificación (Cédula)', type: 'required', aliases: ['CEDULA', 'IDENTIFICACION', 'IDENTIFICAC', 'DOCUMENTO', 'N PERS', 'ID'] },
+    { id: 'fullName', name: 'Nombre Completo', type: 'recommended', aliases: ['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE COMPLETO', 'NOMBRE Y APELLIDO', 'NOMBRE Y APELLIDOS'] },
+    { id: 'ape', name: 'Apellidos (si está separado)', type: 'optional', aliases: ['APELLIDOS', 'APELLIDO'] },
+    { id: 'nom', name: 'Nombres (si está separado)', type: 'optional', aliases: ['NOMBRES', 'NOMBRE'] },
+    { id: 'co', name: 'Concepto (Nombre/Código)', type: 'required', aliases: ['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO'] },
+    { id: 'v', name: 'Valor (Importe)', type: 'required', aliases: ['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE'] },
+    { id: 'cant', name: 'Cantidad (Unidades/Horas)', type: 'optional', aliases: ['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA'] },
+    { id: 'cc', name: 'Centro de Costo Código', type: 'optional', aliases: ['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO'] },
+    { id: 'dcc', name: 'Nombre Centro de Costo', type: 'optional', aliases: ['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO'] },
+    { id: 'cg', name: 'Cargo', type: 'optional', aliases: ['NOMBRE CARGO', 'CARGO'] },
+    { id: 'tn', name: 'Tipo de Nómina', type: 'optional', aliases: ['TIPO DE NOMINA', 'TIPO DE NÓMINA', 'TIPO'] },
+    { id: 'm', name: 'Mes Acumulado', type: 'optional', aliases: ['MES ACUMULADO', 'MES'] },
+    { id: 'a', name: 'Año', type: 'optional', aliases: ['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA'] },
+    { id: 'pa', name: 'Quincena (Periodo)', type: 'optional', aliases: ['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA'] },
+    { id: 'na', name: 'Naturaleza (Devengo/Descuento)', type: 'optional', aliases: ['NATURALEZA'] }
+];
+
+const LOCAL_STORAGE_KEY = 'nomai_mapping_profiles';
+
+function loadProfiles() {
+    try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+        console.error('Error loading profiles:', e);
+        return {};
+    }
+}
+
+function saveProfile(name, mapping) {
+    try {
+        const profiles = loadProfiles();
+        profiles[name] = mapping;
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profiles));
+    } catch (e) {
+        console.error('Error saving profile:', e);
+    }
+}
+
+function deleteProfile(name) {
+    try {
+        const profiles = loadProfiles();
+        delete profiles[name];
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profiles));
+    } catch (e) {
+        console.error('Error deleting profile:', e);
+    }
+}
+
+function detectFieldHeader(field, headers) {
+    const cleanStr = (str) => {
+        if (!str) return '';
+        return str.toUpperCase()
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .replace(/\s+/g, ' ')
+                  .trim();
+    };
+    const cleanAliases = field.aliases.map(cleanStr);
+    
+    // 1. Coincidencia exacta primero
+    let found = headers.find(h => {
+        const cleanH = cleanStr(h);
+        return cleanAliases.some(alias => cleanH === alias);
+    });
+    if (found) return found;
+
+    // 2. Coincidencia parcial
+    return headers.find(h => {
+        const cleanH = cleanStr(h);
+        return cleanAliases.some(alias => cleanH.includes(alias));
+    });
+}
+
+function updateDataPreview(selectEl, fieldId, firstRows) {
+    const previewContainer = document.getElementById(`preview-field-${fieldId}`);
+    if (!previewContainer) return;
+    
+    const selectedColumn = selectEl.value;
+    previewContainer.innerHTML = '';
+    
+    if (!selectedColumn) {
+        previewContainer.innerHTML = '<span style="color: var(--text-muted); font-size: 0.78rem; font-style: italic;">Sin asignar</span>';
+        selectEl.className = 'mapping-select unmapped';
+        return;
+    }
+    
+    selectEl.className = 'mapping-select mapped';
+    
+    const chips = [];
+    firstRows.forEach(row => {
+        const val = row[selectedColumn];
+        if (val !== undefined && val !== null && val !== '') {
+            chips.push(val);
+        }
+    });
+    
+    if (chips.length === 0) {
+        previewContainer.innerHTML = '<span style="color: var(--text-muted); font-size: 0.78rem; font-style: italic;">(Celda vacía / sin datos)</span>';
+        return;
+    }
+    
+    chips.forEach(val => {
+        const chip = document.createElement('span');
+        chip.className = 'preview-data-chip';
+        chip.innerText = val.toString();
+        chip.title = val.toString();
+        previewContainer.appendChild(chip);
+    });
+}
+
+function populateProfilesDropdown(profileSelect, activeProfileName) {
+    profileSelect.innerHTML = '<option value="auto">Autodetectar (Predeterminado)</option>';
+    const profiles = loadProfiles();
+    Object.keys(profiles).forEach(pName => {
+        const opt = document.createElement('option');
+        opt.value = pName;
+        opt.innerText = pName;
+        profileSelect.appendChild(opt);
+    });
+    
+    if (activeProfileName) {
+        profileSelect.value = activeProfileName;
+    }
+}
+
+function showMappingModal(headers, firstRows, fileName) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('mapping-modal');
+        const fileNameEl = document.getElementById('mapping-modal-filename');
+        const container = document.getElementById('mapping-fields-container');
+        const profileSelect = document.getElementById('mapping-profile-select');
+        const btnSave = document.getElementById('btn-save-mapping-profile');
+        const btnDelete = document.getElementById('btn-delete-mapping-profile');
+        const validationMsg = document.getElementById('mapping-validation-msg');
+        const btnApply = document.getElementById('btn-apply-mapping');
+        const btnCancel = document.getElementById('btn-cancel-mapping');
+        const btnClose = document.getElementById('btn-close-mapping-modal');
+        
+        if (!modal || !container) {
+            console.error('El modal de mapeo no está en el DOM.');
+            resolve(null);
+            return;
+        }
+        
+        fileNameEl.innerText = `Archivo: ${fileName}`;
+        container.innerHTML = '';
+        
+        populateProfilesDropdown(profileSelect, 'auto');
+        
+        const selectors = {};
+        
+        const checkValidation = () => {
+            const missingRequired = [];
+            MAPPING_FIELDS.forEach(field => {
+                if (field.type === 'required') {
+                    const select = selectors[field.id];
+                    if (!select || !select.value) {
+                        missingRequired.push(field.name);
+                    }
+                }
+            });
+            
+            if (missingRequired.length > 0) {
+                validationMsg.innerHTML = `<i data-lucide="alert-circle" style="width: 14px; height: 14px; color:#EF4444; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Faltan requeridos: ${missingRequired.join(', ')}`;
+                btnApply.disabled = true;
+                btnApply.style.opacity = '0.5';
+                btnApply.style.cursor = 'not-allowed';
+            } else {
+                validationMsg.innerHTML = '';
+                btnApply.disabled = false;
+                btnApply.style.opacity = '1';
+                btnApply.style.cursor = 'pointer';
+            }
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        MAPPING_FIELDS.forEach(field => {
+            const row = document.createElement('div');
+            row.className = 'mapping-row';
+            
+            const targetCol = document.createElement('div');
+            targetCol.className = 'mapping-target-info';
+            
+            const badgeClass = field.type === 'required' ? 'required' : (field.type === 'recommended' ? 'recommended' : 'optional');
+            const badgeText = field.type === 'required' ? 'Requerido' : (field.type === 'recommended' ? 'Recomendado' : 'Opcional');
+            
+            targetCol.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span class="mapping-target-name">${field.name}</span>
+                    <span class="mapping-badge ${badgeClass}" style="width: fit-content;">${badgeText}</span>
+                </div>
+            `;
+            
+            const selectCol = document.createElement('div');
+            const select = document.createElement('select');
+            select.className = 'mapping-select unmapped';
+            select.id = `select-mapping-${field.id}`;
+            
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.innerText = field.type === 'required' ? '-- Seleccionar columna --' : '-- Omitir campo --';
+            select.appendChild(defaultOpt);
+            
+            headers.forEach(header => {
+                const opt = document.createElement('option');
+                opt.value = header;
+                opt.innerText = header;
+                select.appendChild(opt);
+            });
+            
+            const detected = detectFieldHeader(field, headers);
+            if (detected) {
+                select.value = detected;
+                select.className = 'mapping-select mapped';
+            }
+            
+            selectCol.appendChild(select);
+            selectors[field.id] = select;
+            
+            const previewCol = document.createElement('div');
+            previewCol.className = 'preview-data-box';
+            previewCol.id = `preview-field-${field.id}`;
+            
+            row.appendChild(targetCol);
+            row.appendChild(selectCol);
+            row.appendChild(previewCol);
+            container.appendChild(row);
+            
+            select.addEventListener('change', () => {
+                updateDataPreview(select, field.id, firstRows);
+                checkValidation();
+            });
+            
+            updateDataPreview(select, field.id, firstRows);
+        });
+        
+        checkValidation();
+        
+        const onProfileChange = () => {
+            const pValue = profileSelect.value;
+            if (pValue === 'auto') {
+                btnDelete.disabled = true;
+                MAPPING_FIELDS.forEach(field => {
+                    const select = selectors[field.id];
+                    if (select) {
+                        const detected = detectFieldHeader(field, headers);
+                        select.value = detected || '';
+                        updateDataPreview(select, field.id, firstRows);
+                    }
+                });
+            } else {
+                btnDelete.disabled = false;
+                const profiles = loadProfiles();
+                const mapping = profiles[pValue];
+                if (mapping) {
+                    MAPPING_FIELDS.forEach(field => {
+                        const select = selectors[field.id];
+                        if (select) {
+                            const savedCol = mapping[field.id];
+                            if (savedCol && headers.includes(savedCol)) {
+                                select.value = savedCol;
+                            } else {
+                                select.value = '';
+                            }
+                            updateDataPreview(select, field.id, firstRows);
+                        }
+                    });
+                }
+            }
+            checkValidation();
+        };
+        
+        profileSelect.onchange = onProfileChange;
+        
+        btnSave.onclick = () => {
+            const profileName = prompt('Ingresa el nombre para este perfil de mapeo (ej. Cliente A, Estructura X):');
+            if (!profileName || !profileName.trim()) return;
+            
+            const currentMapping = {};
+            MAPPING_FIELDS.forEach(field => {
+                currentMapping[field.id] = selectors[field.id].value;
+            });
+            
+            saveProfile(profileName.trim(), currentMapping);
+            populateProfilesDropdown(profileSelect, profileName.trim());
+            btnDelete.disabled = false;
+            alert(`Perfil "${profileName.trim()}" guardado con éxito.`);
+        };
+        
+        btnDelete.onclick = () => {
+            const pValue = profileSelect.value;
+            if (pValue === 'auto') return;
+            
+            if (confirm(`¿Estás seguro de que deseas eliminar el perfil "${pValue}"?`)) {
+                deleteProfile(pValue);
+                populateProfilesDropdown(profileSelect, 'auto');
+                onProfileChange();
+            }
+        };
+        
+        const cleanup = () => {
+            modal.classList.remove('show');
+            btnApply.onclick = null;
+            btnCancel.onclick = null;
+            btnClose.onclick = null;
+            btnSave.onclick = null;
+            btnDelete.onclick = null;
+            profileSelect.onchange = null;
+        };
+        
+        btnApply.onclick = () => {
+            const finalMapping = {};
+            MAPPING_FIELDS.forEach(field => {
+                finalMapping[field.id] = selectors[field.id].value || null;
+            });
+            cleanup();
+            resolve(finalMapping);
+        };
+        
+        btnCancel.onclick = () => {
+            cleanup();
+            resolve(null);
+        };
+        
+        btnClose.onclick = () => {
+            cleanup();
+            resolve(null);
+        };
+        
+        modal.classList.add('show');
+        if (window.lucide) window.lucide.createIcons();
+    });
+}
+
+// ==========================================
+// UTILIDAD: LEER ENCABEZADOS Y PRIMERAS FILAS
+// ==========================================
+function peekExcelHeaders(arrayBuffer) {
+    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const headerRowIndex = findHeaderRowIndex(worksheet);
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null, range: headerRowIndex });
+    if (!jsonData || jsonData.length === 0) return { headers: [], firstRows: [] };
+    const headers = Object.keys(jsonData[0]);
+    const firstRows = jsonData.slice(0, 5);
+    return { headers, firstRows };
+}
+
+// ==========================================
 // IMPORTACIÓN: DRAG AND DROP EXCEL
 // ==========================================
 function initImporter() {
@@ -3548,85 +3902,86 @@ function initImporter() {
     initFolderControls();
 }
 
-function handleExcelFile(file) {
+async function handleExcelFile(file) {
     const fileInfo = document.getElementById('file-info-box');
-    const importZone = document.getElementById('import-drop-zone');
     
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
         alert('Por favor, selecciona únicamente archivos de Excel (.xlsx, .xls)');
         return;
     }
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const arrayBuffer = e.target.result;
-            const mappedData = parseExcelFile(arrayBuffer, file.name);
-            const consolidated = aggregateRecords(mappedData);
-            
-            if (consolidated.length === 0) {
-                alert('No se encontraron registros de pagos válidos.');
-                return;
-            }
-            
-            // Cargar en el estado global
-            state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
-            
-            // Inicializar caché de valores únicos con nuevos datos
-            initUniqueValuesCache();
-            
-            // Reiniciar filtros y selecciones para evitar inconsistencias
-            state.selectedYears = getUniqueYears();
-            state.selectedMonths = getUniqueMonths();
-            state.selectedQuincenas = getUniqueQuincenas();
-            state.selectedEmployeeCedula = '';
-            state.selectedConceptName = '';
-            state.compareEmployees = [];
-            state.comparePeriods = [];
-            state.compareConcepts = [];
-            state.compareCecos = [];
-            state.compareCargos = [];
-            // Resetear periodos de comparación para que se reinicialicen con los nuevos datos
-            state.comparePeriod1 = '';
-            state.comparePeriod2 = '';
-            state.conceptComparePeriod1 = '';
-            state.conceptComparePeriod2 = '';
-            state.cecoComparePeriod1 = '';
-            state.cecoComparePeriod2 = '';
-            state.cargoComparePeriod1 = '';
-            state.cargoComparePeriod2 = '';
-            // Resetear filtros de los comparadores masivos
-            state.periodCompareSelectedEmployees = [];
-            state.conceptCompareSelectedConcepts = [];
-            state.cecoCompareSelectedCecos = [];
-            state.cargoCompareSelectedCargos = [];
-            state.selectedTipoNomina = [];
-            
-            processData();
-            
-            // Mostrar confirmación
-            if (fileInfo) {
-                fileInfo.style.display = 'inline-flex';
-                document.getElementById('file-info-text').innerText = `¡Cargados con éxito ${consolidated.length} registros del archivo: ${file.name}!`;
-            }
-            
-            // Llenar selectores de periodos con nuevos datos
-            initPeriodCompareSelectors();
-            initConceptCompareSelectors();
-            initCecoCompareSelectors();
-            initCargoCompareSelectors();
-            
-            // Mostrar pestaña resumen
-            setTimeout(() => {
-                switchTab('overview');
-            }, 1500);
-            
-        } catch (error) {
-            console.error('Error procesando archivo:', error);
-            alert(`Error al procesar el archivo Excel: ${error.message}`);
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        
+        // Mostrar el adaptador de columnas para confirmar/ajustar el mapeo
+        const { headers, firstRows } = peekExcelHeaders(arrayBuffer);
+        const mapping = await showMappingModal(headers, firstRows, file.name);
+        if (mapping === null) return; // Usuario canceló
+        
+        const mappedData = parseExcelFile(arrayBuffer, file.name, mapping);
+        const consolidated = aggregateRecords(mappedData);
+        
+        if (consolidated.length === 0) {
+            alert('No se encontraron registros de pagos válidos.');
+            return;
         }
-    };
-    reader.readAsArrayBuffer(file);
+        
+        // Cargar en el estado global
+        state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
+        
+        // Inicializar caché de valores únicos con nuevos datos
+        initUniqueValuesCache();
+        
+        // Reiniciar filtros y selecciones para evitar inconsistencias
+        state.selectedYears = getUniqueYears();
+        state.selectedMonths = getUniqueMonths();
+        state.selectedQuincenas = getUniqueQuincenas();
+        state.selectedEmployeeCedula = '';
+        state.selectedConceptName = '';
+        state.compareEmployees = [];
+        state.comparePeriods = [];
+        state.compareConcepts = [];
+        state.compareCecos = [];
+        state.compareCargos = [];
+        // Resetear periodos de comparación para que se reinicialicen con los nuevos datos
+        state.comparePeriod1 = '';
+        state.comparePeriod2 = '';
+        state.conceptComparePeriod1 = '';
+        state.conceptComparePeriod2 = '';
+        state.cecoComparePeriod1 = '';
+        state.cecoComparePeriod2 = '';
+        state.cargoComparePeriod1 = '';
+        state.cargoComparePeriod2 = '';
+        // Resetear filtros de los comparadores masivos
+        state.periodCompareSelectedEmployees = [];
+        state.conceptCompareSelectedConcepts = [];
+        state.cecoCompareSelectedCecos = [];
+        state.cargoCompareSelectedCargos = [];
+        state.selectedTipoNomina = [];
+        
+        processData();
+        
+        // Mostrar confirmación
+        if (fileInfo) {
+            fileInfo.style.display = 'inline-flex';
+            document.getElementById('file-info-text').innerText = `¡Cargados con éxito ${consolidated.length} registros del archivo: ${file.name}!`;
+        }
+        
+        // Llenar selectores de periodos con nuevos datos
+        initPeriodCompareSelectors();
+        initConceptCompareSelectors();
+        initCecoCompareSelectors();
+        initCargoCompareSelectors();
+        
+        // Mostrar pestaña resumen
+        setTimeout(() => {
+            switchTab('overview');
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error procesando archivo:', error);
+        alert(`Error al procesar el archivo Excel: ${error.message}`);
+    }
 }
 
 // ==========================================
@@ -3903,7 +4258,15 @@ async function loadSingleFolderFile(index) {
         const file = await fileEntry.getFile();
         const arrayBuffer = await file.arrayBuffer();
         
-        const mappedData = parseExcelFile(arrayBuffer, file.name);
+        // Mostrar adaptador de columnas
+        const { headers, firstRows } = peekExcelHeaders(arrayBuffer);
+        const mapping = await showMappingModal(headers, firstRows, file.name);
+        if (mapping === null) {
+            statusCol.innerHTML = `<span class="badge-status" style="background: rgba(156,163,175,0.1); color: var(--text-secondary); border-radius: 6px; padding: 3px 8px; font-size: 0.72rem; font-weight: 600;">Cancelado</span>`;
+            return;
+        }
+        
+        const mappedData = parseExcelFile(arrayBuffer, file.name, mapping);
         const consolidated = aggregateRecords(mappedData);
         
         state.data = consolidated.filter(d => d.na !== 'BENEFICIO');
@@ -3959,6 +4322,31 @@ async function handleImportSelected() {
     
     let allRecords = [];
     let processedCount = 0;
+    let sharedMapping = null;
+    
+    // Obtener el mapeo del primer archivo para aplicarlo a todos
+    const firstChk = checkedBoxes[0];
+    const firstIdx = parseInt(firstChk.getAttribute('data-index'));
+    const firstEntry = state.folderFiles[firstIdx];
+    if (firstEntry) {
+        try {
+            const firstFile = await firstEntry.getFile();
+            const firstBuffer = await firstFile.arrayBuffer();
+            const { headers, firstRows } = peekExcelHeaders(firstBuffer);
+            sharedMapping = await showMappingModal(headers, firstRows, `${firstFile.name} (y ${checkedBoxes.length - 1} más)`);
+            if (sharedMapping === null) {
+                // Usuario canceló — restaurar botón y salir
+                btnImport.innerHTML = originalText;
+                btnImport.disabled = false;
+                return;
+            }
+        } catch (err) {
+            console.error('Error leyendo el primer archivo para mapeo:', err);
+            btnImport.innerHTML = originalText;
+            btnImport.disabled = false;
+            return;
+        }
+    }
     
     for (const chk of checkedBoxes) {
         const idx = parseInt(chk.getAttribute('data-index'));
@@ -3973,7 +4361,7 @@ async function handleImportSelected() {
         try {
             const file = await fileEntry.getFile();
             const arrayBuffer = await file.arrayBuffer();
-            const mappedData = parseExcelFile(arrayBuffer, file.name);
+            const mappedData = parseExcelFile(arrayBuffer, file.name, sharedMapping);
             
             allRecords = allRecords.concat(mappedData);
             
@@ -4043,7 +4431,7 @@ async function handleImportSelected() {
     }, 1500);
 }
 
-function parseExcelFile(arrayBuffer, fileName) {
+function parseExcelFile(arrayBuffer, fileName, mapping = null) {
     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
@@ -4088,21 +4476,21 @@ function parseExcelFile(arrayBuffer, fileName) {
         });
     };
     
-    const kCed = getColKey(['CEDULA', 'IDENTIFICACION', 'IDENTIFICAC', 'DOCUMENTO', 'N PERS', 'ID']);
-    const kApe = getColKey(['APELLIDOS', 'APELLIDO']);
-    const kNom = getColKey(['NOMBRES', 'NOMBRE']);
-    const kFullName = getColKey(['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE COMPLETO', 'NOMBRE Y APELLIDO', 'NOMBRE Y APELLIDOS']);
-    const kCon = getColKey(['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO']);
-    const kTot = getColKey(['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE']);
-    const kMes = getColKey(['MES ACUMULADO', 'MES']);
-    const kAnio = getColKey(['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA']);
-    const kTip = getColKey(['TIPO DE NOMINA', 'TIPO DE NÓMINA', 'TIPO']);
-    const kNat = getColKey(['NATURALEZA']);
-    const kCC = getColKey(['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO']);
-    const kDCC = getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
-    const kCg = getColKey(['NOMBRE CARGO', 'CARGO']);
-    const kPa = getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
-    const kCant = getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA']);
+    const kCed = mapping ? mapping.c : getColKey(['CEDULA', 'IDENTIFICACION', 'IDENTIFICAC', 'DOCUMENTO', 'N PERS', 'ID']);
+    const kApe = mapping ? mapping.ape : getColKey(['APELLIDOS', 'APELLIDO']);
+    const kNom = mapping ? mapping.nom : getColKey(['NOMBRES', 'NOMBRE']);
+    const kFullName = mapping ? mapping.fullName : getColKey(['NOMBRE DEL EMPLEADO', 'COLABORADOR', 'NOMBRE COMPLETO', 'NOMBRE Y APELLIDO', 'NOMBRE Y APELLIDOS']);
+    const kCon = mapping ? mapping.co : getColKey(['NOMBRE CONCEPTO', 'NOMBRE DEL CONCEPTO', 'CONCEPTO']);
+    const kTot = mapping ? mapping.v : getColKey(['VALOR (+/-)', 'VALOR(+/-)', 'VALOR', 'TOTAL', 'IMPORTE']);
+    const kMes = mapping ? mapping.m : getColKey(['MES ACUMULADO', 'MES']);
+    const kAnio = mapping ? mapping.a : getColKey(['FECHA ACUMULA', 'AÑO', 'ANIO', 'FECHA']);
+    const kTip = mapping ? mapping.tn : getColKey(['TIPO DE NOMINA', 'TIPO DE NÓMINA', 'TIPO']);
+    const kNat = mapping ? mapping.na : getColKey(['NATURALEZA']);
+    const kCC = mapping ? mapping.cc : getColKey(['CENTRO DE COSTO', 'COD CECO', 'CECO', 'CENTRO COSTO']);
+    const kDCC = mapping ? mapping.dcc : getColKey(['NOMBRE CENTRO DE COSTO', 'DESCRIPCION CENTRO DE COSTO', 'DESC CECO', 'DESC CENTRO DE COSTO', 'DESCRIPCION CECO', 'NOMBRE CECO', 'DESCRIPCION', 'DETALLE CECO', 'DETALLE CENTRO DE COSTO']);
+    const kCg = mapping ? mapping.cg : getColKey(['NOMBRE CARGO', 'CARGO']);
+    const kPa = mapping ? mapping.pa : getColKey(['PERIODO ACUMULA', 'PERÍODO ACUMULA', 'PERIODO', 'PERÍODO', 'QUINCENA']);
+    const kCant = mapping ? mapping.cant : getColKey(['CANTIDAD', 'CANT', 'HORAS', 'DIAS', 'CANT.', 'UNIDADES', 'NO HORAS', 'NUM DIAS', 'NUM. DIAS', 'CANT DIAS', 'CANT HORAS', 'NUM HORAS', 'CANTIDAD DIAS', 'CANTIDAD HORAS', 'QTY', 'CANTIDAD DEVENGADA']);
     
     if (!kCed || !kCon || !kTot) {
         throw new Error('No se encontraron las columnas mínimas requeridas (Cédula, Concepto y Valor).');

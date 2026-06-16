@@ -267,3 +267,99 @@
 .spin-animation {
     animation: spin 1s linear infinite;
 }
+
+/* ============================================================
+   ESTILOS PARA EL ADAPTADOR DE ESTRUCTURA DE NÓMINA (MAPPING)
+   ============================================================ */
+.mapping-row {
+    display: grid;
+    grid-template-columns: 260px 240px 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+.mapping-row:hover {
+    background: #FFF;
+    border-color: rgba(108, 0, 211, 0.15);
+    box-shadow: 0 4px 12px rgba(108, 0, 211, 0.04);
+}
+.mapping-target-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mapping-target-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.mapping-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+.mapping-badge.required {
+    background: rgba(239, 68, 68, 0.08);
+    color: #EF4444;
+    border: 1.5px solid rgba(239, 68, 68, 0.2);
+}
+.mapping-badge.recommended {
+    background: rgba(245, 158, 11, 0.08);
+    color: #F59E0B;
+    border: 1.5px solid rgba(245, 158, 11, 0.2);
+}
+.mapping-badge.optional {
+    background: rgba(156, 163, 175, 0.08);
+    color: var(--text-secondary);
+    border: 1.5px solid rgba(156, 163, 175, 0.2);
+}
+.mapping-select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border-color);
+    font-family: inherit;
+    font-size: 0.85rem;
+    background-color: #FFF;
+    color: var(--text-primary);
+    transition: border-color var(--t-fast);
+}
+.mapping-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+.mapping-select.unmapped {
+    border-color: rgba(239, 68, 68, 0.4);
+    background-color: rgba(239, 68, 68, 0.02);
+}
+.mapping-select.mapped {
+    border-color: rgba(16, 185, 129, 0.4);
+    background-color: rgba(16, 185, 129, 0.02);
+}
+.preview-data-box {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 4px 0;
+}
+.preview-data-chip {
+    font-family: monospace;
+    font-size: 0.72rem;
+    background: rgba(245, 246, 250, 0.9);
+    border: 1px solid var(--border-color);
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
