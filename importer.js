@@ -1565,6 +1565,8 @@
                 hideLoading();
             }
         }, 300);
+    }
+
     function openCustomizeModal(targetKey) {
         const target = TARGET_COLUMNS.find(t => t.key === targetKey);
         if (!target) return;
