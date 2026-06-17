@@ -1869,6 +1869,8 @@
             headerTitle = `Personalizar columna: Quincena`;
         } else if (targetKey === 'fecha_acumulado') {
             headerTitle = `Personalizar columna: Fecha de Acumulado`;
+        } else if (targetKey === 'naturaleza') {
+            headerTitle = `Personalizar columna: Naturaleza`;
         }
 
         header.innerHTML = `${iconSvg} <h3>${headerTitle}</h3>`;
@@ -1923,6 +1925,34 @@
             body.innerHTML = `
                 <p style="margin-bottom: 0.5rem; color: #4B5563;">Selecciona las columnas en orden: Día (1), Mes (2) y Año (3) [o solo Mes (1) y Año (2)]:</p>
             `;
+        } else if (targetKey === 'naturaleza') {
+            const mappedHeader = appState.columnMappings['naturaleza'] || 'NATURALEZA';
+            body.innerHTML = `
+                <p style="color: #4B5563; line-height: 1.5; margin-bottom: 0.75rem; font-size: 0.85rem;">
+                    La columna <b>${mappedHeader}</b> del archivo origen está siendo usada para determinar la naturaleza de cada concepto.
+                </p>
+                <p style="color: #4B5563; line-height: 1.5; margin-bottom: 1rem; font-size: 0.85rem;">
+                    Si el valor en esa columna no se reconoce como <b>INGRESO</b> o <b>DESCUENTO</b>, se aplicará automáticamente la regla por signo del <b>Valor</b>:
+                </p>
+                <div style="display: flex; gap: 1rem; width: 100%; margin-bottom: 0.5rem;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; flex: 1; padding: 1.25rem 1rem; background: #ECFDF5; border: 1.5px solid #10B981; border-radius: 12px; text-align: center;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                            <polyline points="17 6 23 6 23 12"></polyline>
+                        </svg>
+                        <span style="font-weight: 700; font-size: 0.95rem; color: #047857; margin-top: 0.2rem;">INGRESO</span>
+                        <span style="font-size: 0.78rem; color: #4B5563;">Valor ≥ 0</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; flex: 1; padding: 1.25rem 1rem; background: #FEF2F2; border: 1.5px solid #EF4444; border-radius: 12px; text-align: center;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+                            <polyline points="17 18 23 18 23 12"></polyline>
+                        </svg>
+                        <span style="font-weight: 700; font-size: 0.95rem; color: #B91C1C; margin-top: 0.2rem;">DESCUENTO</span>
+                        <span style="font-size: 0.78rem; color: #4B5563;">Valor &lt; 0</span>
+                    </div>
+                </div>
+            `;
         } else {
             body.innerHTML = `
                 <p>Selecciona una o más columnas del archivo de origen para mapear o unificar al campo de destino <b>${target.name}</b>:</p>
@@ -1932,178 +1962,180 @@
         const columnsList = document.createElement('div');
         columnsList.className = 'nomai-custom-columns-list';
 
-        // Inicializar select constante o radio cards
-        constantSelect = body.querySelector('#nomai-custom-constant-select');
-        if (targetKey === 'quincena') {
-            const radioQuincenal = body.querySelector('#nomai-card-quincenal input');
-            const radioMensual = body.querySelector('#nomai-card-mensual input');
-            const cards = body.querySelectorAll('.nomai-card-radio');
-
-            let currentRule = '';
-            if (mappedVal === '__unified__' || mappedVal === '') {
-                currentRule = appState.quincenaRule || 'quincenal';
-            }
-
-            // Establecer estado inicial
-            if (currentRule === 'quincenal') {
-                radioQuincenal.checked = true;
-                body.querySelector('#nomai-card-quincenal').classList.add('active');
-            } else if (currentRule === 'mensual') {
-                radioMensual.checked = true;
-                body.querySelector('#nomai-card-mensual').classList.add('active');
-            }
-
-            // Event listener para cambios en los radio buttons
-            cards.forEach(card => {
-                const radio = card.querySelector('input');
-                card.addEventListener('click', (e) => {
-                    // Si el click no fue en el input, disparar el click en el input
-                    if (e.target !== radio) {
-                        radio.checked = true;
-                    }
-                    
-                    // Actualizar clases active
-                    cards.forEach(c => c.classList.remove('active'));
-                    card.classList.add('active');
-
-                    // Desmarcar todos los checkboxes de columnas origen
-                    const chks = columnsList.querySelectorAll('input[type=checkbox]');
-                    chks.forEach(chk => {
-                        chk.checked = false;
-                        chk.parentElement.classList.remove('selected');
-                    });
-                    currentSelection = [];
-                    updateLivePreview();
-                });
-            });
-        } else if (constantSelect) {
-            if (mappedVal === '__unified__' || mappedVal === '') {
-                if (targetKey === 'tipo_nomina') {
-                    constantSelect.value = appState.defaultTipoNomina || 'Normal';
-                }
-            } else {
-                constantSelect.value = '';
-            }
-
-            constantSelect.addEventListener('change', () => {
-                if (constantSelect.value !== '') {
-                    // Desmarcar todos los checkboxes
-                    const chks = columnsList.querySelectorAll('input[type=checkbox]');
-                    chks.forEach(chk => {
-                        chk.checked = false;
-                        chk.parentElement.classList.remove('selected');
-                    });
-                    currentSelection = [];
-                }
-                updateLivePreview();
-            });
-        }
-
-        // Agregar checkboxes para cada columna origen
-        appState.rawHeaders.forEach(colHeader => {
-            const item = document.createElement('label');
-            item.className = 'nomai-custom-column-item';
-            
-            // Si el mapeo actual es de columna simple y coincide, o si está en unificación, pre-seleccionar
-            // Pero si el mapeo actual es unificado con constante de tipo_nomina/quincena, no marcar checkboxes
-            let isColSelected = currentSelection.includes(colHeader);
+        // Inicializar select constante o radio cards (Solo si no es naturaleza)
+        if (targetKey !== 'naturaleza') {
+            constantSelect = body.querySelector('#nomai-custom-constant-select');
             if (targetKey === 'quincena') {
-                const hasQuincenaRule = (mappedVal === '__unified__' || mappedVal === '') && appState.quincenaRule;
-                if (hasQuincenaRule) {
-                    isColSelected = false;
+                const radioQuincenal = body.querySelector('#nomai-card-quincenal input');
+                const radioMensual = body.querySelector('#nomai-card-mensual input');
+                const cards = body.querySelectorAll('.nomai-card-radio');
+
+                let currentRule = '';
+                if (mappedVal === '__unified__' || mappedVal === '') {
+                    currentRule = appState.quincenaRule || 'quincenal';
                 }
-            } else if (constantSelect && constantSelect.value !== '') {
-                isColSelected = false;
-            }
-            
-            if (isColSelected) {
-                item.classList.add('selected');
-            }
 
-            const chk = document.createElement('input');
-            chk.type = 'checkbox';
-            chk.value = colHeader;
-            chk.checked = isColSelected;
+                // Establecer estado inicial
+                if (currentRule === 'quincenal') {
+                    radioQuincenal.checked = true;
+                    body.querySelector('#nomai-card-quincenal').classList.add('active');
+                } else if (currentRule === 'mensual') {
+                    radioMensual.checked = true;
+                    body.querySelector('#nomai-card-mensual').classList.add('active');
+                }
 
-            const labelText = document.createElement('span');
-            labelText.innerText = colHeader;
-
-            chk.addEventListener('change', () => {
-                if (chk.checked) {
-                    item.classList.add('selected');
-                    if (!currentSelection.includes(colHeader)) {
-                        currentSelection.push(colHeader);
-                    }
-                    if (constantSelect) {
-                        constantSelect.value = '';
-                    }
-                    if (targetKey === 'quincena') {
-                        // Desmarcar radios y quitar clase active
-                        const radios = body.querySelectorAll('input[name="nomai-quincena-rule"]');
-                        radios.forEach(r => r.checked = false);
-                        const cards = body.querySelectorAll('.nomai-card-radio');
+                // Event listener para cambios en los radio buttons
+                cards.forEach(card => {
+                    const radio = card.querySelector('input');
+                    card.addEventListener('click', (e) => {
+                        // Si el click no fue en el input, disparar el click en el input
+                        if (e.target !== radio) {
+                            radio.checked = true;
+                        }
+                        
+                        // Actualizar clases active
                         cards.forEach(c => c.classList.remove('active'));
+                        card.classList.add('active');
+
+                        // Desmarcar todos los checkboxes de columnas origen
+                        const chks = columnsList.querySelectorAll('input[type=checkbox]');
+                        chks.forEach(chk => {
+                            chk.checked = false;
+                            chk.parentElement.classList.remove('selected');
+                        });
+                        currentSelection = [];
+                        updateLivePreview();
+                    });
+                });
+            } else if (constantSelect) {
+                if (mappedVal === '__unified__' || mappedVal === '') {
+                    if (targetKey === 'tipo_nomina') {
+                        constantSelect.value = appState.defaultTipoNomina || 'Normal';
                     }
                 } else {
-                    item.classList.remove('selected');
-                    currentSelection = currentSelection.filter(c => c !== colHeader);
+                    constantSelect.value = '';
                 }
 
-                if (targetKey === 'fecha_acumulado') {
-                    updateDateOrderBadges();
-                    if (dayRuleSelect) {
-                        if (currentSelection.length === 3) {
-                            dayRuleSelect.value = 'none';
-                            dayRuleSelect.disabled = true;
-                        } else {
-                            dayRuleSelect.disabled = false;
-                            if (dayRuleSelect.value === 'none') {
-                                dayRuleSelect.value = 'last';
+                constantSelect.addEventListener('change', () => {
+                    if (constantSelect.value !== '') {
+                        // Desmarcar todos los checkboxes
+                        const chks = columnsList.querySelectorAll('input[type=checkbox]');
+                        chks.forEach(chk => {
+                            chk.checked = false;
+                            chk.parentElement.classList.remove('selected');
+                        });
+                        currentSelection = [];
+                    }
+                    updateLivePreview();
+                });
+            }
+
+            // Agregar checkboxes para cada columna origen
+            appState.rawHeaders.forEach(colHeader => {
+                const item = document.createElement('label');
+                item.className = 'nomai-custom-column-item';
+                
+                // Si el mapeo actual es de columna simple y coincide, o si está en unificación, pre-seleccionar
+                // Pero si el mapeo actual es unificado con constante de tipo_nomina/quincena, no marcar checkboxes
+                let isColSelected = currentSelection.includes(colHeader);
+                if (targetKey === 'quincena') {
+                    const hasQuincenaRule = (mappedVal === '__unified__' || mappedVal === '') && appState.quincenaRule;
+                    if (hasQuincenaRule) {
+                        isColSelected = false;
+                    }
+                } else if (constantSelect && constantSelect.value !== '') {
+                    isColSelected = false;
+                }
+                
+                if (isColSelected) {
+                    item.classList.add('selected');
+                }
+
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.value = colHeader;
+                chk.checked = isColSelected;
+
+                const labelText = document.createElement('span');
+                labelText.innerText = colHeader;
+
+                chk.addEventListener('change', () => {
+                    if (chk.checked) {
+                        item.classList.add('selected');
+                        if (!currentSelection.includes(colHeader)) {
+                            currentSelection.push(colHeader);
+                        }
+                        if (constantSelect) {
+                            constantSelect.value = '';
+                        }
+                        if (targetKey === 'quincena') {
+                            // Desmarcar radios y quitar clase active
+                            const radios = body.querySelectorAll('input[name="nomai-quincena-rule"]');
+                            radios.forEach(r => r.checked = false);
+                            const cards = body.querySelectorAll('.nomai-card-radio');
+                            cards.forEach(c => c.classList.remove('active'));
+                        }
+                    } else {
+                        item.classList.remove('selected');
+                        currentSelection = currentSelection.filter(c => c !== colHeader);
+                    }
+
+                    if (targetKey === 'fecha_acumulado') {
+                        updateDateOrderBadges();
+                        if (dayRuleSelect) {
+                            if (currentSelection.length === 3) {
+                                dayRuleSelect.value = 'none';
+                                dayRuleSelect.disabled = true;
+                            } else {
+                                dayRuleSelect.disabled = false;
+                                if (dayRuleSelect.value === 'none') {
+                                    dayRuleSelect.value = 'last';
+                                }
                             }
                         }
                     }
+
+                    updateLivePreview();
+                });
+
+                item.appendChild(chk);
+                item.appendChild(labelText);
+                columnsList.appendChild(item);
+            });
+            body.appendChild(columnsList);
+
+            // Si es fecha_acumulado, inyectar el selector de Día del Mes a Asignar
+            if (targetKey === 'fecha_acumulado') {
+                const dayGroup = document.createElement('div');
+                dayGroup.className = 'form-group';
+                dayGroup.style.cssText = 'display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-top: 0.5rem; margin-bottom: 0.5rem;';
+                dayGroup.innerHTML = `
+                    <label style="font-weight:600; font-size:0.82rem; color:#374151;">Día del Mes a Asignar</label>
+                    <select id="nomai-custom-day-rule-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem; color: #1F2937; background-color: #ffffff;">
+                        <option value="none">No aplica (El día está en las columnas)</option>
+                        <option value="30">Día 30</option>
+                        <option value="last">Fin de mes (Día 28, 30, 31)</option>
+                    </select>
+                `;
+                body.appendChild(dayGroup);
+
+                dayRuleSelect = dayGroup.querySelector('#nomai-custom-day-rule-select');
+                
+                if (currentSelection.length === 3) {
+                    dayRuleSelect.value = 'none';
+                    dayRuleSelect.disabled = true;
+                } else {
+                    dayRuleSelect.value = appState.monthYearDayRule || 'last';
+                    dayRuleSelect.disabled = false;
                 }
 
-                updateLivePreview();
-            });
+                dayRuleSelect.addEventListener('change', () => {
+                    updateLivePreview();
+                });
 
-            item.appendChild(chk);
-            item.appendChild(labelText);
-            columnsList.appendChild(item);
-        });
-        body.appendChild(columnsList);
-
-        // Si es fecha_acumulado, inyectar el selector de Día del Mes a Asignar
-        if (targetKey === 'fecha_acumulado') {
-            const dayGroup = document.createElement('div');
-            dayGroup.className = 'form-group';
-            dayGroup.style.cssText = 'display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-top: 0.5rem; margin-bottom: 0.5rem;';
-            dayGroup.innerHTML = `
-                <label style="font-weight:600; font-size:0.82rem; color:#374151;">Día del Mes a Asignar</label>
-                <select id="nomai-custom-day-rule-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem; color: #1F2937; background-color: #ffffff;">
-                    <option value="none">No aplica (El día está en las columnas)</option>
-                    <option value="30">Día 30</option>
-                    <option value="last">Fin de mes (Día 28, 30, 31)</option>
-                </select>
-            `;
-            body.appendChild(dayGroup);
-
-            dayRuleSelect = dayGroup.querySelector('#nomai-custom-day-rule-select');
-            
-            if (currentSelection.length === 3) {
-                dayRuleSelect.value = 'none';
-                dayRuleSelect.disabled = true;
-            } else {
-                dayRuleSelect.value = appState.monthYearDayRule || 'last';
-                dayRuleSelect.disabled = false;
+                // Función para actualizar badges de orden visual (1), (2), (3)
+                updateDateOrderBadges();
             }
-
-            dayRuleSelect.addEventListener('change', () => {
-                updateLivePreview();
-            });
-
-            // Función para actualizar badges de orden visual (1), (2), (3)
-            updateDateOrderBadges();
         }
 
         function updateDateOrderBadges() {
@@ -2126,163 +2158,174 @@
             });
         }
 
-        // Caja de Vista Previa
-        const previewBox = document.createElement('div');
-        previewBox.className = 'nomai-custom-preview-box';
-        previewBox.innerHTML = `
-            <div class="nomai-custom-preview-title">Vista Previa del Valor Resultante</div>
-            <div class="nomai-custom-preview-value" id="nomai-custom-preview-val" style="font-size: 1.15rem !important; font-weight: 800 !important; color: #111827 !important;">Selecciona alguna columna...</div>
-        `;
-        body.appendChild(previewBox);
+        // Caja de Vista Previa (Solo si no es naturaleza)
+        if (targetKey !== 'naturaleza') {
+            const previewBox = document.createElement('div');
+            previewBox.className = 'nomai-custom-preview-box';
+            previewBox.innerHTML = `
+                <div class="nomai-custom-preview-title">Vista Previa del Valor Resultante</div>
+                <div class="nomai-custom-preview-value" id="nomai-custom-preview-val" style="font-size: 1.15rem !important; font-weight: 800 !important; color: #111827 !important;">Selecciona alguna columna...</div>
+            `;
+            body.appendChild(previewBox);
 
-        const previewValEl = previewBox.querySelector('#nomai-custom-preview-val');
+            const previewValEl = previewBox.querySelector('#nomai-custom-preview-val');
 
-        function updateLivePreview() {
-            if (targetKey === 'quincena') {
-                const checkedRadio = body.querySelector('input[name="nomai-quincena-rule"]:checked');
-                if (checkedRadio) {
-                    previewValEl.innerText = `Regla por defecto: ${checkedRadio.value === 'quincenal' ? 'Nómina Quincenal (1Q/2Q)' : 'Nómina Mensual'}`;
+            function updateLivePreview() {
+                if (targetKey === 'quincena') {
+                    const checkedRadio = body.querySelector('input[name="nomai-quincena-rule"]:checked');
+                    if (checkedRadio) {
+                        previewValEl.innerText = `Regla por defecto: ${checkedRadio.value === 'quincenal' ? 'Nómina Quincenal (1Q/2Q)' : 'Nómina Mensual'}`;
+                        return;
+                    }
+                } else if (constantSelect && constantSelect.value !== '') {
+                    if (targetKey === 'tipo_nomina') {
+                        previewValEl.innerText = `Valor Constante: ${constantSelect.value}`;
+                    }
                     return;
                 }
-            } else if (constantSelect && constantSelect.value !== '') {
-                if (targetKey === 'tipo_nomina') {
-                    previewValEl.innerText = `Valor Constante: ${constantSelect.value}`;
+
+                if (currentSelection.length === 0) {
+                    previewValEl.innerText = 'Sin columnas seleccionadas';
+                    return;
                 }
-                return;
-            }
 
-            if (currentSelection.length === 0) {
-                previewValEl.innerText = 'Sin columnas seleccionadas';
-                return;
-            }
-
-            if (appState.rawRows.length === 0) {
-                previewValEl.innerText = 'Sin filas de muestra';
-                return;
-            }
-
-            const rowSample = appState.rawRows[0];
-            if (targetKey === 'fecha_acumulado') {
-                let parsed;
-                if (currentSelection.length === 1) {
-                    const rawVal = rowSample[currentSelection[0]];
-                    const ruleToUse = dayRuleSelect ? dayRuleSelect.value : 'last';
-                    parsed = parseMonthNameToDate(rawVal, appState.convertMonthYear || '2026', ruleToUse);
-                    if (!parsed.isValid) {
-                        parsed = parseDate(rawVal);
-                    }
-                } else if (currentSelection.length >= 2) {
-                    const ruleToUse = currentSelection.length === 3 ? 'none' : (dayRuleSelect ? dayRuleSelect.value : 'last');
-                    if (currentSelection.length === 2) {
-                        parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', ruleToUse);
-                    } else {
-                        parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', ruleToUse, rowSample[currentSelection[0]]);
-                    }
+                if (appState.rawRows.length === 0) {
+                    previewValEl.innerText = 'Sin filas de muestra';
+                    return;
                 }
-                previewValEl.innerText = parsed ? (parsed.formattedString || 'FECHA INVÁLIDA') : 'FECHA INVÁLIDA';
-            } else {
-                const values = currentSelection.map(col => String(rowSample[col] || '').trim()).filter(v => v !== '');
-                previewValEl.innerText = values.join(' ').trim() || '[Vacío en fila 1]';
+
+                const rowSample = appState.rawRows[0];
+                if (targetKey === 'fecha_acumulado') {
+                    let parsed;
+                    if (currentSelection.length === 1) {
+                        const rawVal = rowSample[currentSelection[0]];
+                        const ruleToUse = dayRuleSelect ? dayRuleSelect.value : 'last';
+                        parsed = parseMonthNameToDate(rawVal, appState.convertMonthYear || '2026', ruleToUse);
+                        if (!parsed.isValid) {
+                            parsed = parseDate(rawVal);
+                        }
+                    } else if (currentSelection.length >= 2) {
+                        const ruleToUse = currentSelection.length === 3 ? 'none' : (dayRuleSelect ? dayRuleSelect.value : 'last');
+                        if (currentSelection.length === 2) {
+                            parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', ruleToUse);
+                        } else {
+                            parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', ruleToUse, rowSample[currentSelection[0]]);
+                        }
+                    }
+                    previewValEl.innerText = parsed ? (parsed.formattedString || 'FECHA INVÁLIDA') : 'FECHA INVÁLIDA';
+                } else {
+                    const values = currentSelection.map(col => String(rowSample[col] || '').trim()).filter(v => v !== '');
+                    previewValEl.innerText = values.join(' ').trim() || '[Vacío en fila 1]';
+                }
             }
+
+            updateLivePreview();
         }
-
-        updateLivePreview();
 
         // Footer
         const footer = document.createElement('div');
         footer.id = 'nomai-custom-modal-footer';
 
-        const btnCancel = document.createElement('button');
-        btnCancel.className = 'nomai-custom-btn nomai-custom-btn-secondary';
-        btnCancel.innerText = 'Cancelar';
-        btnCancel.addEventListener('click', () => {
-            document.body.removeChild(overlay);
-        });
-
-        const btnSave = document.createElement('button');
-        btnSave.className = 'nomai-custom-btn nomai-custom-btn-primary';
-        
         const saveCheckSvg = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 8px; flex-shrink: 0;">
                 <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
         `;
-        
-        btnSave.innerHTML = `Aceptar ${saveCheckSvg}`;
-        btnSave.addEventListener('click', () => {
-            let hasConstant = false;
-            let constantValue = '';
 
-            if (targetKey === 'quincena') {
-                const checkedRadio = body.querySelector('input[name="nomai-quincena-rule"]:checked');
-                if (checkedRadio) {
+        if (targetKey === 'naturaleza') {
+            const btnOk = document.createElement('button');
+            btnOk.className = 'nomai-custom-btn nomai-custom-btn-primary';
+            btnOk.innerHTML = `Entendido ${saveCheckSvg}`;
+            btnOk.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+            });
+            footer.appendChild(btnOk);
+        } else {
+            const btnCancel = document.createElement('button');
+            btnCancel.className = 'nomai-custom-btn nomai-custom-btn-secondary';
+            btnCancel.innerText = 'Cancelar';
+            btnCancel.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+            });
+
+            const btnSave = document.createElement('button');
+            btnSave.className = 'nomai-custom-btn nomai-custom-btn-primary';
+            btnSave.innerHTML = `Aceptar ${saveCheckSvg}`;
+            btnSave.addEventListener('click', () => {
+                let hasConstant = false;
+                let constantValue = '';
+
+                if (targetKey === 'quincena') {
+                    const checkedRadio = body.querySelector('input[name="nomai-quincena-rule"]:checked');
+                    if (checkedRadio) {
+                        hasConstant = true;
+                        constantValue = checkedRadio.value;
+                    }
+                } else if (constantSelect && constantSelect.value !== '') {
                     hasConstant = true;
-                    constantValue = checkedRadio.value;
+                    constantValue = constantSelect.value;
                 }
-            } else if (constantSelect && constantSelect.value !== '') {
-                hasConstant = true;
-                constantValue = constantSelect.value;
-            }
 
-            if (currentSelection.length === 0 && !hasConstant) {
-                alert('Por favor selecciona al menos una columna o define un valor/regla por defecto.');
-                return;
-            }
-
-            if (hasConstant) {
-                appState.columnMappings[targetKey] = '__unified__';
-                if (targetKey === 'tipo_nomina') {
-                    appState.defaultTipoNomina = constantValue;
-                } else if (targetKey === 'quincena') {
-                    appState.quincenaRule = constantValue;
+                if (currentSelection.length === 0 && !hasConstant) {
+                    alert('Por favor selecciona al menos una columna o define un valor/regla por defecto.');
+                    return;
                 }
-            } else {
-                if (currentSelection.length === 1) {
-                    appState.columnMappings[targetKey] = currentSelection[0];
-                    delete appState.genericUnifications[targetKey];
-                    if (targetKey === 'nombre_completo') {
-                        appState.combineNames = false;
-                    } else if (targetKey === 'fecha_acumulado') {
-                        appState.combineMonthYear = false;
-                        if (dayRuleSelect) {
-                            appState.convertMonthDayRule = dayRuleSelect.value;
-                        }
+
+                if (hasConstant) {
+                    appState.columnMappings[targetKey] = '__unified__';
+                    if (targetKey === 'tipo_nomina') {
+                        appState.defaultTipoNomina = constantValue;
+                    } else if (targetKey === 'quincena') {
+                        appState.quincenaRule = constantValue;
                     }
                 } else {
-                    appState.columnMappings[targetKey] = '__unified__';
-                    if (targetKey === 'nombre_completo') {
-                        appState.combineNames = true;
-                        appState.combineSurnamesList = [];
-                        appState.combineNamesList = [...currentSelection];
-                    } else if (targetKey === 'fecha_acumulado') {
-                        appState.combineMonthYear = true;
-                        if (dayRuleSelect) {
-                            appState.monthYearDayRule = dayRuleSelect.value;
-                        }
-                        if (currentSelection.length === 2) {
-                            appState.monthColumn = currentSelection[0];
-                            appState.yearColumn = currentSelection[1];
-                            appState.dayColumn = '';
-                        } else {
-                            appState.dayColumn = currentSelection[0];
-                            appState.monthColumn = currentSelection[1];
-                            appState.yearColumn = currentSelection[2];
+                    if (currentSelection.length === 1) {
+                        appState.columnMappings[targetKey] = currentSelection[0];
+                        delete appState.genericUnifications[targetKey];
+                        if (targetKey === 'nombre_completo') {
+                            appState.combineNames = false;
+                        } else if (targetKey === 'fecha_acumulado') {
+                            appState.combineMonthYear = false;
+                            if (dayRuleSelect) {
+                                appState.convertMonthDayRule = dayRuleSelect.value;
+                            }
                         }
                     } else {
-                        appState.genericUnifications[targetKey] = {
-                            columns: [...currentSelection],
-                            separator: ' '
-                        };
+                        appState.columnMappings[targetKey] = '__unified__';
+                        if (targetKey === 'nombre_completo') {
+                            appState.combineNames = true;
+                            appState.combineSurnamesList = [];
+                            appState.combineNamesList = [...currentSelection];
+                        } else if (targetKey === 'fecha_acumulado') {
+                            appState.combineMonthYear = true;
+                            if (dayRuleSelect) {
+                                appState.monthYearDayRule = dayRuleSelect.value;
+                            }
+                            if (currentSelection.length === 2) {
+                                appState.monthColumn = currentSelection[0];
+                                appState.yearColumn = currentSelection[1];
+                                appState.dayColumn = '';
+                            } else {
+                                appState.dayColumn = currentSelection[0];
+                                appState.monthColumn = currentSelection[1];
+                                appState.yearColumn = currentSelection[2];
+                            }
+                        } else {
+                            appState.genericUnifications[targetKey] = {
+                                columns: [...currentSelection],
+                                separator: ' '
+                            };
+                        }
                     }
                 }
-            }
 
-            document.body.removeChild(overlay);
-            renderMappingUI();
-        });
+                document.body.removeChild(overlay);
+                renderMappingUI();
+            });
 
-        footer.appendChild(btnCancel);
-        footer.appendChild(btnSave);
+            footer.appendChild(btnCancel);
+            footer.appendChild(btnSave);
+        }
 
         card.appendChild(header);
         card.appendChild(body);
