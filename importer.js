@@ -1842,6 +1842,8 @@
         let headerTitle = `Personalizar: ${target.name}`;
         if (targetKey === 'quincena') {
             headerTitle = `Personalizar columna: Quincena`;
+        } else if (targetKey === 'fecha_acumulado') {
+            headerTitle = `Personalizar columna: Fecha de Acumulado`;
         }
 
         header.innerHTML = `${iconSvg} <h3>${headerTitle}</h3>`;
@@ -1851,6 +1853,8 @@
         body.id = 'nomai-custom-modal-body';
         
         let constantSelect = null;
+        let dayRuleSelect = null;
+
         if (targetKey === 'tipo_nomina') {
             body.innerHTML = `
                 <p>Configura el <b>Tipo de Nómina</b> por defecto o mapea desde el archivo:</p>
@@ -1889,6 +1893,10 @@
                     </label>
                 </div>
                 <p style="margin-top: 0.5rem; margin-bottom: 0.4rem; color: #4B5563;">O selecciona una columna del archivo origen:</p>
+            `;
+        } else if (targetKey === 'fecha_acumulado') {
+            body.innerHTML = `
+                <p style="margin-bottom: 0.5rem; color: #4B5563;">Selecciona las columnas en orden: Día (1), Mes (2) y Año (3) [o solo Mes (1) y Año (2)]:</p>
             `;
         } else {
             body.innerHTML = `
@@ -2015,6 +2023,22 @@
                     item.classList.remove('selected');
                     currentSelection = currentSelection.filter(c => c !== colHeader);
                 }
+
+                if (targetKey === 'fecha_acumulado') {
+                    updateDateOrderBadges();
+                    if (dayRuleSelect) {
+                        if (currentSelection.length === 3) {
+                            dayRuleSelect.value = 'none';
+                            dayRuleSelect.disabled = true;
+                        } else {
+                            dayRuleSelect.disabled = false;
+                            if (dayRuleSelect.value === 'none') {
+                                dayRuleSelect.value = 'last';
+                            }
+                        }
+                    }
+                }
+
                 updateLivePreview();
             });
 
@@ -2024,12 +2048,65 @@
         });
         body.appendChild(columnsList);
 
+        // Si es fecha_acumulado, inyectar el selector de Día del Mes a Asignar
+        if (targetKey === 'fecha_acumulado') {
+            const dayGroup = document.createElement('div');
+            dayGroup.className = 'form-group';
+            dayGroup.style.cssText = 'display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-top: 0.5rem; margin-bottom: 0.5rem;';
+            dayGroup.innerHTML = `
+                <label style="font-weight:600; font-size:0.82rem; color:#374151;">Día del Mes a Asignar</label>
+                <select id="nomai-custom-day-rule-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem; color: #1F2937; background-color: #ffffff;">
+                    <option value="none">No aplica (El día está en las columnas)</option>
+                    <option value="30">Día 30</option>
+                    <option value="last">Fin de mes (Día 28, 30, 31)</option>
+                </select>
+            `;
+            body.appendChild(dayGroup);
+
+            dayRuleSelect = dayGroup.querySelector('#nomai-custom-day-rule-select');
+            
+            if (currentSelection.length === 3) {
+                dayRuleSelect.value = 'none';
+                dayRuleSelect.disabled = true;
+            } else {
+                dayRuleSelect.value = appState.monthYearDayRule || 'last';
+                dayRuleSelect.disabled = false;
+            }
+
+            dayRuleSelect.addEventListener('change', () => {
+                updateLivePreview();
+            });
+
+            // Función para actualizar badges de orden visual (1), (2), (3)
+            updateDateOrderBadges();
+        }
+
+        function updateDateOrderBadges() {
+            const items = columnsList.querySelectorAll('.nomai-custom-column-item');
+            items.forEach(item => {
+                const chk = item.querySelector('input');
+                const badge = item.querySelector('.nomai-date-order-badge');
+                if (badge) badge.remove();
+                
+                if (chk.checked) {
+                    const idx = currentSelection.indexOf(chk.value);
+                    if (idx !== -1) {
+                        const b = document.createElement('span');
+                        b.className = 'nomai-date-order-badge';
+                        b.style.cssText = 'margin-left:auto; background:#6C00D3; color:#ffffff; font-size:0.75rem; font-weight:700; border-radius:50%; width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center;';
+                        b.innerText = idx + 1;
+                        item.appendChild(b);
+                    }
+                }
+            });
+        }
+
         // Caja de Vista Previa
         const previewBox = document.createElement('div');
         previewBox.className = 'nomai-custom-preview-box';
         previewBox.innerHTML = `
             <div class="nomai-custom-preview-title">Vista Previa del Valor Resultante</div>
-            <div class="nomai-custom-preview-value" id="nomai-custom-preview-val">Selecciona alguna columna...</div>
+            <div class="nomai-custom-preview-value" id="nomai-custom-preview-val" style="font-size: 1.15rem !important; font-weight: 800 !important; color: #111827 !important;">Selecciona alguna columna...</div>
         `;
         body.appendChild(previewBox);
 
@@ -2062,10 +2139,11 @@
             const rowSample = appState.rawRows[0];
             if (targetKey === 'fecha_acumulado' && currentSelection.length >= 2) {
                 let parsed;
+                const ruleToUse = currentSelection.length === 3 ? 'none' : (dayRuleSelect ? dayRuleSelect.value : 'last');
                 if (currentSelection.length === 2) {
-                    parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', 'last');
+                    parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', ruleToUse);
                 } else {
-                    parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', 'none', rowSample[currentSelection[0]]);
+                    parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', ruleToUse, rowSample[currentSelection[0]]);
                 }
                 previewValEl.innerText = parsed.formattedString || 'FECHA INVÁLIDA';
             } else {
@@ -2096,7 +2174,7 @@
             </svg>
         `;
         
-        btnSave.innerHTML = targetKey === 'quincena' ? `Aceptar ${saveCheckSvg}` : `Guardar ${saveCheckSvg}`;
+        btnSave.innerHTML = `Aceptar ${saveCheckSvg}`;
         btnSave.addEventListener('click', () => {
             let hasConstant = false;
             let constantValue = '';
@@ -2141,6 +2219,9 @@
                         appState.combineNamesList = [...currentSelection];
                     } else if (targetKey === 'fecha_acumulado') {
                         appState.combineMonthYear = true;
+                        if (dayRuleSelect) {
+                            appState.monthYearDayRule = dayRuleSelect.value;
+                        }
                         if (currentSelection.length === 2) {
                             appState.monthColumn = currentSelection[0];
                             appState.yearColumn = currentSelection[1];
