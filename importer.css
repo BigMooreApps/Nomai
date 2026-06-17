@@ -95,11 +95,7 @@
 
 
 .payroll-adapter-scope .app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.25rem;
+    display: none !important;
 }
 
 .payroll-adapter-scope .logo-area {
@@ -640,17 +636,17 @@
 
 .payroll-adapter-scope .mapping-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.35rem 0.75rem;
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
 }
 
 .payroll-adapter-scope .mapping-row {
     background: #FFFFFF;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 0.25rem 0.6rem;
+    padding: 0.15rem 0.5rem;
     display: grid;
-    grid-template-columns: 1fr 140px 170px;
+    grid-template-columns: 1fr 180px 220px;
     align-items: center;
     gap: 0.5rem;
     transition: all var(--transition-fast);
@@ -671,7 +667,7 @@
 .payroll-adapter-scope .mapping-dest-name {
     font-family: var(--font-heading);
     font-weight: 600;
-    font-size: 0.825rem;
+    font-size: 0.8rem;
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -684,7 +680,7 @@
 }
 
 .payroll-adapter-scope .mapping-dest-desc {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
     line-height: 1.2;
     white-space: nowrap;
@@ -703,12 +699,12 @@
 
 .payroll-adapter-scope .mapping-select {
     width: 100%;
-    padding: 0.2rem 0.4rem;
+    padding: 0.15rem 0.35rem;
     background: #FFFFFF;
     border: 1.5px solid var(--border-color);
     border-radius: var(--radius-sm);
     color: var(--text-main);
-    font-size: 0.775rem;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all var(--transition-fast);
 }
@@ -724,8 +720,8 @@
     background: #FFFFFF;
     border: 1.5px solid var(--border-color);
     color: var(--text-muted);
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: var(--radius-sm);
     display: inline-flex;
     align-items: center;
@@ -752,25 +748,25 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
 }
 
 .payroll-adapter-scope .alert-status-icon i {
-    width: 18px;
-    height: 18px;
+    width: 12px;
+    height: 12px;
 }
 
 
 .payroll-adapter-scope .mapping-single-preview {
-    font-size: 0.7rem;
+    font-size: 0.675rem;
     color: var(--text-muted);
     background: #F5F2FA;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 0.2rem 0.4rem;
-    max-width: 100px;
+    padding: 0.15rem 0.35rem;
+    max-width: 120px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1346,18 +1342,12 @@
 @media (max-width: 1024px) {
 
     .payroll-adapter-scope .mapping-row {
-        grid-template-columns: 1fr 140px 170px;
+        grid-template-columns: 1fr 140px 180px;
     }
     .payroll-adapter-scope .summary-stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 
-}
-
-@media (max-width: 850px) {
-    .payroll-adapter-scope .mapping-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 @media (max-width: 768px) {
