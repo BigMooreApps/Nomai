@@ -642,6 +642,7 @@
             const desc = document.createElement('div');
             desc.className = 'mapping-dest-desc';
             desc.innerText = target.desc;
+            desc.title = target.desc;
             
             info.appendChild(name);
             info.appendChild(desc);
