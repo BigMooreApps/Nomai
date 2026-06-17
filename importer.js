@@ -809,8 +809,30 @@
         }
     }
 
+    function appendModalToBody(overlay) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'payroll-adapter-scope';
+        wrapper.style.position = 'absolute';
+        wrapper.style.top = '0';
+        wrapper.style.left = '0';
+        wrapper.style.width = '0';
+        wrapper.style.height = '0';
+        wrapper.style.minHeight = '0';
+        wrapper.style.background = 'transparent';
+        wrapper.style.border = 'none';
+        wrapper.style.padding = '0';
+        wrapper.style.margin = '0';
+        wrapper.style.overflow = 'visible';
+        wrapper.style.display = 'block';
+        
+        wrapper.appendChild(overlay);
+        document.body.appendChild(wrapper);
+        return wrapper;
+    }
+
     // Modal: Unión de Nombres
     function openCombineNamesModal() {
+        let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'names-unification-modal';
@@ -953,7 +975,7 @@
         btnCancel.className = 'btn btn-secondary';
         btnCancel.innerText = 'Cancelar';
         btnCancel.addEventListener('click', () => {
-            overlay.remove();
+            wrapper.remove();
         });
         
         const btnAccept = document.createElement('button');
@@ -968,7 +990,7 @@
             appState.combineSurnamesList = [];
             appState.combineNamesList = tempOrderedList;
             
-            overlay.remove();
+            wrapper.remove();
             renderMappingUI();
         });
         
@@ -978,7 +1000,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -987,6 +1009,7 @@
 
     // Modal: Unión de Fechas
     function openCombineMonthYearModal() {
+        let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'dates-unification-modal';
@@ -1136,7 +1159,7 @@
         btnCancel.className = 'btn btn-secondary';
         btnCancel.innerText = 'Cancelar';
         btnCancel.addEventListener('click', () => {
-            overlay.remove();
+            wrapper.remove();
         });
         
         const btnAccept = document.createElement('button');
@@ -1159,7 +1182,7 @@
             }
             appState.monthYearDayRule = tempDayRule;
             
-            overlay.remove();
+            wrapper.remove();
             renderMappingUI();
         });
         
@@ -1169,7 +1192,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1178,6 +1201,7 @@
 
     // Modal: Unificaciones Genéricas
     function openGenericUnificationModal(targetKey) {
+        let wrapper;
         const target = TARGET_COLUMNS.find(t => t.key === targetKey);
         if (!target) return;
         
@@ -1350,7 +1374,7 @@
         btnCancel.className = 'btn btn-secondary';
         btnCancel.innerText = 'Cancelar';
         btnCancel.addEventListener('click', () => {
-            overlay.remove();
+            wrapper.remove();
         });
         
         const btnAccept = document.createElement('button');
@@ -1367,7 +1391,7 @@
                 separator: tempSeparator
             };
             
-            overlay.remove();
+            wrapper.remove();
             renderMappingUI();
         });
         
@@ -1377,7 +1401,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1386,6 +1410,7 @@
 
     // Modal: Personalización Tipo Nómina por defecto
     function openTipoNominaCustomizationModal() {
+        let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'tipo-nomina-customization-modal';
@@ -1427,7 +1452,7 @@
         const btnCancel = document.createElement('button');
         btnCancel.className = 'btn btn-secondary';
         btnCancel.innerText = 'Cancelar';
-        btnCancel.addEventListener('click', () => overlay.remove());
+        btnCancel.addEventListener('click', () => wrapper.remove());
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
@@ -1435,7 +1460,7 @@
         btnAccept.addEventListener('click', () => {
             appState.defaultTipoNomina = select.value;
             appState.columnMappings['tipo_nomina'] = '__unified__';
-            overlay.remove();
+            wrapper.remove();
             renderMappingUI();
         });
         
@@ -1445,7 +1470,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1454,6 +1479,7 @@
 
     // Modal: Personalización regla de Quincena
     function openQuincenaCustomizationModal() {
+        let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'quincena-customization-modal';
@@ -1497,7 +1523,7 @@
         const btnCancel = document.createElement('button');
         btnCancel.className = 'btn btn-secondary';
         btnCancel.innerText = 'Cancelar';
-        btnCancel.addEventListener('click', () => overlay.remove());
+        btnCancel.addEventListener('click', () => wrapper.remove());
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
@@ -1508,7 +1534,7 @@
                 appState.quincenaRule = checked.value;
             }
             appState.columnMappings['quincena'] = '__unified__';
-            overlay.remove();
+            wrapper.remove();
             renderMappingUI();
         });
         
@@ -1518,7 +1544,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1527,6 +1553,7 @@
 
     // Modal: Info Naturaleza
     function openNaturalezaInfoModal() {
+        let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'naturaleza-info-modal';
@@ -1590,14 +1617,14 @@
         const btnClose = document.createElement('button');
         btnClose.className = 'btn btn-primary';
         btnClose.innerHTML = 'Entendido &nbsp; ✔';
-        btnClose.addEventListener('click', () => overlay.remove());
+        btnClose.addEventListener('click', () => wrapper.remove());
 
         footer.appendChild(btnClose);
         card.appendChild(header);
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1606,6 +1633,7 @@
 
     // Modal interactivo inicial de sugerencias de unificación
     function showUnificationModal(hasSplitNames, hasSplitMonthYear, callback) {
+        let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.id = 'unification-modal-overlay';
@@ -1666,7 +1694,7 @@
         btnCancel.className = 'btn btn-secondary';
         btnCancel.innerText = 'Mapear Manualmente';
         btnCancel.addEventListener('click', () => {
-            overlay.remove();
+            wrapper.remove();
             callback();
         });
         
@@ -1682,7 +1710,7 @@
                 const chkDates = document.getElementById('modal-chk-dates');
                 appState.combineMonthYear = chkDates ? chkDates.checked : false;
             }
-            overlay.remove();
+            wrapper.remove();
             callback();
         });
         
@@ -1693,7 +1721,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
+        wrapper = appendModalToBody(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
