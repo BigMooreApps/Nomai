@@ -811,20 +811,7 @@
 
     function appendModalToBody(overlay) {
         const wrapper = document.createElement('div');
-        wrapper.className = 'payroll-adapter-scope';
-        wrapper.style.position = 'absolute';
-        wrapper.style.top = '0';
-        wrapper.style.left = '0';
-        wrapper.style.width = '0';
-        wrapper.style.height = '0';
-        wrapper.style.minHeight = '0';
-        wrapper.style.background = 'transparent';
-        wrapper.style.border = 'none';
-        wrapper.style.padding = '0';
-        wrapper.style.margin = '0';
-        wrapper.style.overflow = 'visible';
-        wrapper.style.display = 'block';
-        
+        wrapper.className = 'nomai-modal-scope';
         wrapper.appendChild(overlay);
         document.body.appendChild(wrapper);
         return wrapper;
