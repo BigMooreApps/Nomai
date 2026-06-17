@@ -1,6 +1,6 @@
 /**
  * Logica del Dashboard de Nomina y Netos
- * Utiliza Chart.js para graficos, SheetJS para importacion de Excel y Lucide para iconos.
+ * Utiliza Chart.js para graficos y Lucide para iconos.
  */
 
 // Mapeo ordenado de meses para ordenar cronologicamente
