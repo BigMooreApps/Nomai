@@ -2341,5 +2341,12 @@
 
         document.body.appendChild(overlay);
     }
+
+    // Exponer para depuración y pruebas automatizadas
+    window.NomaiImporterDebug = {
+        appState: appState,
+        loadDataToDashboard: loadDataToDashboard,
+        transformData: transformData
+    };
     
 })();
