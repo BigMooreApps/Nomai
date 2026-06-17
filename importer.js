@@ -700,18 +700,23 @@
             btnUnify.innerHTML = `<i data-lucide="sliders-horizontal"></i>`;
             
             btnUnify.addEventListener('click', () => {
-                if (target.key === 'nombre_completo') {
-                    openCombineNamesModal();
-                } else if (target.key === 'fecha_acumulado') {
-                    openCombineMonthYearModal();
-                } else if (target.key === 'tipo_nomina') {
-                    openTipoNominaCustomizationModal();
-                } else if (target.key === 'quincena') {
-                    openQuincenaCustomizationModal();
-                } else if (target.key === 'naturaleza') {
-                    openNaturalezaInfoModal();
-                } else {
-                    openGenericUnificationModal(target.key);
+                try {
+                    if (target.key === 'nombre_completo') {
+                        openCombineNamesModal();
+                    } else if (target.key === 'fecha_acumulado') {
+                        openCombineMonthYearModal();
+                    } else if (target.key === 'tipo_nomina') {
+                        openTipoNominaCustomizationModal();
+                    } else if (target.key === 'quincena') {
+                        openQuincenaCustomizationModal();
+                    } else if (target.key === 'naturaleza') {
+                        openNaturalezaInfoModal();
+                    } else {
+                        openGenericUnificationModal(target.key);
+                    }
+                } catch(err) {
+                    console.error('[NOMAI MODAL ERROR]', err);
+                    alert('Error al abrir ventana: ' + err.message);
                 }
             });
             actionsPreview.appendChild(btnUnify);
@@ -872,6 +877,7 @@
 
     // Modal: Unión de Nombres
     function openCombineNamesModal() {
+        console.log('[NOMAI] openCombineNamesModal() called');
         let wrapper;
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
