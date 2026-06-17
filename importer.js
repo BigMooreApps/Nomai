@@ -848,52 +848,12 @@
             tempOrderedList = [...appState.combineSurnamesList, ...appState.combineNamesList];
         }
         
-        function renderColumns() {
-            columnsList.innerHTML = '';
-            appState.rawHeaders.forEach(headerName => {
-                const isChecked = tempOrderedList.includes(headerName);
-                const orderIndex = tempOrderedList.indexOf(headerName);
-                
-                const label = document.createElement('label');
-                label.className = `column-list-item ${isChecked ? 'selected' : ''}`;
-                
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.value = headerName;
-                input.checked = isChecked;
-                
-                input.addEventListener('change', () => {
-                    if (input.checked) {
-                        if (!tempOrderedList.includes(headerName)) {
-                            tempOrderedList.push(headerName);
-                        }
-                    } else {
-                        tempOrderedList = tempOrderedList.filter(item => item !== headerName);
-                    }
-                    renderColumns();
-                    updateLivePreview();
-                });
-                
-                label.appendChild(input);
-                
-                const nameSpan = document.createElement('span');
-                if (isChecked) {
-                    nameSpan.innerText = `${headerName} (${orderIndex + 1})`;
-                } else {
-                    nameSpan.innerText = headerName;
-                }
-                label.appendChild(nameSpan);
-                
-                columnsList.appendChild(label);
-            });
-        }
-        
         const previewBox = document.createElement('div');
         previewBox.className = 'modal-preview-box';
         
         const previewTitle = document.createElement('div');
         previewTitle.className = 'modal-preview-title';
-        previewTitle.innerText = 'Vista previa del Nombre Completo';
+        previewTitle.innerText = 'VISTA PREVIA DEL NOMBRE COMPLETO';
         
         const previewValue = document.createElement('div');
         previewValue.className = 'modal-preview-value';
@@ -905,6 +865,27 @@
         body.appendChild(selectionContainer);
         body.appendChild(previewBox);
         
+        function updateColumnsState() {
+            const items = columnsList.querySelectorAll('.column-list-item');
+            items.forEach(label => {
+                const headerName = label.dataset.header;
+                const input = label.querySelector('input');
+                const nameSpan = label.querySelector('.column-name-span');
+                
+                const isChecked = tempOrderedList.includes(headerName);
+                const orderIndex = tempOrderedList.indexOf(headerName);
+                
+                input.checked = isChecked;
+                if (isChecked) {
+                    label.classList.add('selected');
+                    nameSpan.innerText = `${headerName} (${orderIndex + 1})`;
+                } else {
+                    label.classList.remove('selected');
+                    nameSpan.innerText = headerName;
+                }
+            });
+        }
+
         function updateLivePreview() {
             if (tempOrderedList.length === 0) {
                 previewValue.innerText = 'Selecciona alguna columna para ver el resultado.';
@@ -928,8 +909,42 @@
             }
         }
         
+        function renderColumns() {
+            columnsList.innerHTML = '';
+            appState.rawHeaders.forEach(headerName => {
+                const label = document.createElement('label');
+                label.className = 'column-list-item';
+                label.dataset.header = headerName;
+                
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = headerName;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'column-name-span';
+                
+                input.addEventListener('change', () => {
+                    if (input.checked) {
+                        if (!tempOrderedList.includes(headerName)) {
+                            tempOrderedList.push(headerName);
+                        }
+                    } else {
+                        tempOrderedList = tempOrderedList.filter(item => item !== headerName);
+                    }
+                    updateColumnsState();
+                    updateLivePreview();
+                });
+                
+                label.appendChild(input);
+                label.appendChild(nameSpan);
+                columnsList.appendChild(label);
+            });
+            
+            updateColumnsState();
+            updateLivePreview();
+        }
+        
         renderColumns();
-        updateLivePreview();
         
         const footer = document.createElement('div');
         footer.className = 'modal-footer';
@@ -943,7 +958,7 @@
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
-        btnAccept.innerHTML = 'Aceptar <i data-lucide="check"></i>';
+        btnAccept.innerHTML = 'Aceptar &nbsp; ✔';
         btnAccept.addEventListener('click', () => {
             if (tempOrderedList.length === 0) {
                 alert('Por favor selecciona al menos una columna para unificar.');
@@ -1013,19 +1028,71 @@
             }
         }
         
-        function renderColumns() {
-            columnsList.innerHTML = '';
-            appState.rawHeaders.forEach(headerName => {
+        const formDay = document.createElement('div');
+        formDay.className = 'form-group';
+        formDay.style.marginTop = '0.5rem';
+        formDay.innerHTML = '<label style="font-weight: 600; color: #374151; margin-bottom: 0.5rem; display: block;">Día del Mes a Asignar</label>';
+        
+        const selectDay = document.createElement('select');
+        selectDay.className = 'mapping-select';
+        selectDay.style.width = '100%';
+        
+        const dayOptions = [
+            { value: 'none', text: 'No aplica (El día está en las columnas)' },
+            { value: '30', text: 'Día 30' },
+            { value: 'last', text: 'Fin de mes (Día 28, 30, 31)' }
+        ];
+        dayOptions.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.innerText = opt.text;
+            if (opt.value === appState.monthYearDayRule) el.selected = true;
+            selectDay.appendChild(el);
+        });
+        formDay.appendChild(selectDay);
+        
+        let tempDayRule = appState.monthYearDayRule;
+        selectDay.addEventListener('change', (e) => {
+            tempDayRule = e.target.value;
+        });
+        
+        body.appendChild(selectionContainer);
+        body.appendChild(formDay);
+        
+        function updateColumnsState() {
+            const items = columnsList.querySelectorAll('.column-list-item');
+            items.forEach(label => {
+                const headerName = label.dataset.header;
+                const input = label.querySelector('input');
+                const nameSpan = label.querySelector('.column-name-span');
+                
                 const isChecked = tempOrderedList.includes(headerName);
                 const orderIndex = tempOrderedList.indexOf(headerName);
                 
+                input.checked = isChecked;
+                if (isChecked) {
+                    label.classList.add('selected');
+                    nameSpan.innerText = `${headerName} (${orderIndex + 1})`;
+                } else {
+                    label.classList.remove('selected');
+                    nameSpan.innerText = headerName;
+                }
+            });
+        }
+        
+        function renderColumns() {
+            columnsList.innerHTML = '';
+            appState.rawHeaders.forEach(headerName => {
                 const label = document.createElement('label');
-                label.className = `column-list-item ${isChecked ? 'selected' : ''}`;
+                label.className = 'column-list-item';
+                label.dataset.header = headerName;
                 
                 const input = document.createElement('input');
                 input.type = 'checkbox';
                 input.value = headerName;
-                input.checked = isChecked;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'column-name-span';
                 
                 input.addEventListener('change', () => {
                     if (input.checked) {
@@ -1049,117 +1116,18 @@
                         tempDayRule = 'last';
                     }
                     
-                    renderColumns();
-                    updateLivePreview();
+                    updateColumnsState();
                 });
                 
                 label.appendChild(input);
-                
-                const nameSpan = document.createElement('span');
-                if (isChecked) {
-                    nameSpan.innerText = `${headerName} (${orderIndex + 1})`;
-                } else {
-                    nameSpan.innerText = headerName;
-                }
                 label.appendChild(nameSpan);
-                
                 columnsList.appendChild(label);
             });
-        }
-        
-        const formDay = document.createElement('div');
-        formDay.className = 'form-group';
-        formDay.style.marginTop = '0.5rem';
-        formDay.innerHTML = '<label style="font-weight: 600; color: #374151;">Día del Mes a Asignar</label>';
-        
-        const selectDay = document.createElement('select');
-        selectDay.className = 'mapping-select';
-        selectDay.style.width = '100%';
-        
-        const dayOptions = [
-            { value: 'none', text: 'No aplica (El día está en las columnas)' },
-            { value: '30', text: 'Día 30' },
-            { value: 'last', text: 'Fin de mes (Día 28, 30, 31)' }
-        ];
-        dayOptions.forEach(opt => {
-            const el = document.createElement('option');
-            el.value = opt.value;
-            el.innerText = opt.text;
-            if (opt.value === appState.monthYearDayRule) el.selected = true;
-            selectDay.appendChild(el);
-        });
-        formDay.appendChild(selectDay);
-        
-        let tempDayRule = appState.monthYearDayRule;
-        selectDay.addEventListener('change', (e) => {
-            tempDayRule = e.target.value;
-            updateLivePreview();
-        });
-        
-        const previewBox = document.createElement('div');
-        previewBox.className = 'modal-preview-box';
-        
-        const previewTitle = document.createElement('div');
-        previewTitle.className = 'modal-preview-title';
-        previewTitle.innerText = 'Vista previa de Fecha Formateada';
-        
-        const previewValue = document.createElement('div');
-        previewValue.className = 'modal-preview-value';
-        previewValue.innerText = 'Selecciona las columnas de fecha (Día, Mes, Año).';
-        
-        previewBox.appendChild(previewTitle);
-        previewBox.appendChild(previewValue);
-        
-        body.appendChild(selectionContainer);
-        body.appendChild(formDay);
-        body.appendChild(previewBox);
-        
-        function updateLivePreview() {
-            if (tempOrderedList.length < 2) {
-                previewValue.innerText = 'Selecciona al menos las columnas de mes y año.';
-                return;
-            }
             
-            let tempDay = '';
-            let tempMonth = '';
-            let tempYear = '';
-            
-            if (tempOrderedList.length === 3) {
-                tempDay = tempOrderedList[0];
-                tempMonth = tempOrderedList[1];
-                tempYear = tempOrderedList[2];
-            } else {
-                tempMonth = tempOrderedList[0];
-                tempYear = tempOrderedList[1];
-            }
-            
-            const previewValues = [];
-            for (let row of appState.rawRows) {
-                const rawMonth = row[tempMonth];
-                const rawYear = row[tempYear];
-                const rawDayVal = tempDay ? row[tempDay] : '';
-                
-                if (rawMonth !== undefined && rawMonth !== null && String(rawMonth).trim() !== '') {
-                    const parsed = parseMonthNameToDate(rawMonth, rawYear || '2026', tempDayRule, rawDayVal);
-                    if (parsed.isValid) {
-                        previewValues.push(parsed.formattedString);
-                        break; 
-                    } else {
-                        previewValues.push(`[Error: ${rawMonth}-${rawYear}]`);
-                        break;
-                    }
-                }
-            }
-            
-            if (previewValues.length === 0) {
-                previewValue.innerText = 'Sin datos';
-            } else {
-                previewValue.innerHTML = `<span>${previewValues[0]}</span>`;
-            }
+            updateColumnsState();
         }
         
         renderColumns();
-        updateLivePreview();
         
         const footer = document.createElement('div');
         footer.className = 'modal-footer';
@@ -1173,7 +1141,7 @@
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
-        btnAccept.innerHTML = 'Aceptar <i data-lucide="check"></i>';
+        btnAccept.innerHTML = 'Aceptar &nbsp; ✔';
         btnAccept.addEventListener('click', () => {
             if (tempOrderedList.length < 2) {
                 alert('Por favor selecciona al menos las columnas de Mes y Año.');
@@ -1247,50 +1215,10 @@
             tempSeparator = appState.genericUnifications[targetKey].separator || ' ';
         }
         
-        function renderColumns() {
-            columnsList.innerHTML = '';
-            appState.rawHeaders.forEach(headerName => {
-                const isChecked = tempOrderedList.includes(headerName);
-                const orderIndex = tempOrderedList.indexOf(headerName);
-                
-                const label = document.createElement('label');
-                label.className = `column-list-item ${isChecked ? 'selected' : ''}`;
-                
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.value = headerName;
-                input.checked = isChecked;
-                
-                input.addEventListener('change', () => {
-                    if (input.checked) {
-                        if (!tempOrderedList.includes(headerName)) {
-                            tempOrderedList.push(headerName);
-                        }
-                    } else {
-                        tempOrderedList = tempOrderedList.filter(item => item !== headerName);
-                    }
-                    renderColumns();
-                    updateLivePreview();
-                });
-                
-                label.appendChild(input);
-                
-                const nameSpan = document.createElement('span');
-                if (isChecked) {
-                    nameSpan.innerText = `${headerName} (${orderIndex + 1})`;
-                } else {
-                    nameSpan.innerText = headerName;
-                }
-                label.appendChild(nameSpan);
-                
-                columnsList.appendChild(label);
-            });
-        }
-        
         const formSeparator = document.createElement('div');
         formSeparator.className = 'form-group';
         formSeparator.style.marginTop = '0.5rem';
-        formSeparator.innerHTML = '<label style="font-weight: 600; color: #374151;">Separador de Columnas</label>';
+        formSeparator.innerHTML = '<label style="font-weight: 600; color: #374151; margin-bottom: 0.5rem; display: block;">Separador de Columnas</label>';
         
         const selectSeparator = document.createElement('select');
         selectSeparator.className = 'mapping-select';
@@ -1321,7 +1249,7 @@
         
         const previewTitle = document.createElement('div');
         previewTitle.className = 'modal-preview-title';
-        previewTitle.innerText = 'Vista previa del valor unificado';
+        previewTitle.innerText = 'VISTA PREVIA DEL VALOR UNIFICADO';
         
         const previewValue = document.createElement('div');
         previewValue.className = 'modal-preview-value';
@@ -1334,6 +1262,27 @@
         body.appendChild(formSeparator);
         body.appendChild(previewBox);
         
+        function updateColumnsState() {
+            const items = columnsList.querySelectorAll('.column-list-item');
+            items.forEach(label => {
+                const headerName = label.dataset.header;
+                const input = label.querySelector('input');
+                const nameSpan = label.querySelector('.column-name-span');
+                
+                const isChecked = tempOrderedList.includes(headerName);
+                const orderIndex = tempOrderedList.indexOf(headerName);
+                
+                input.checked = isChecked;
+                if (isChecked) {
+                    label.classList.add('selected');
+                    nameSpan.innerText = `${headerName} (${orderIndex + 1})`;
+                } else {
+                    label.classList.remove('selected');
+                    nameSpan.innerText = headerName;
+                }
+            });
+        }
+
         function updateLivePreview() {
             if (tempOrderedList.length === 0) {
                 previewValue.innerText = 'Selecciona alguna columna para ver el resultado.';
@@ -1357,8 +1306,42 @@
             }
         }
         
+        function renderColumns() {
+            columnsList.innerHTML = '';
+            appState.rawHeaders.forEach(headerName => {
+                const label = document.createElement('label');
+                label.className = 'column-list-item';
+                label.dataset.header = headerName;
+                
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = headerName;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'column-name-span';
+                
+                input.addEventListener('change', () => {
+                    if (input.checked) {
+                        if (!tempOrderedList.includes(headerName)) {
+                            tempOrderedList.push(headerName);
+                        }
+                    } else {
+                        tempOrderedList = tempOrderedList.filter(item => item !== headerName);
+                    }
+                    updateColumnsState();
+                    updateLivePreview();
+                });
+                
+                label.appendChild(input);
+                label.appendChild(nameSpan);
+                columnsList.appendChild(label);
+            });
+            
+            updateColumnsState();
+            updateLivePreview();
+        }
+        
         renderColumns();
-        updateLivePreview();
         
         const footer = document.createElement('div');
         footer.className = 'modal-footer';
@@ -1372,7 +1355,7 @@
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
-        btnAccept.innerHTML = 'Aceptar <i data-lucide="check"></i>';
+        btnAccept.innerHTML = 'Aceptar &nbsp; ✔';
         btnAccept.addEventListener('click', () => {
             if (tempOrderedList.length === 0) {
                 alert('Por favor selecciona al menos una columna para unificar.');
@@ -1448,7 +1431,7 @@
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
-        btnAccept.innerHTML = 'Aceptar <i data-lucide="check"></i>';
+        btnAccept.innerHTML = 'Aceptar &nbsp; ✔';
         btnAccept.addEventListener('click', () => {
             appState.defaultTipoNomina = select.value;
             appState.columnMappings['tipo_nomina'] = '__unified__';
@@ -1518,7 +1501,7 @@
         
         const btnAccept = document.createElement('button');
         btnAccept.className = 'btn btn-primary';
-        btnAccept.innerHTML = 'Aceptar <i data-lucide="check"></i>';
+        btnAccept.innerHTML = 'Aceptar &nbsp; ✔';
         btnAccept.addEventListener('click', () => {
             const checked = body.querySelector('input[name="modal-quincena-rule"]:checked');
             if (checked) {
@@ -1606,7 +1589,7 @@
 
         const btnClose = document.createElement('button');
         btnClose.className = 'btn btn-primary';
-        btnClose.innerHTML = 'Entendido <i data-lucide="check"></i>';
+        btnClose.innerHTML = 'Entendido &nbsp; ✔';
         btnClose.addEventListener('click', () => overlay.remove());
 
         footer.appendChild(btnClose);
@@ -1689,7 +1672,7 @@
         
         const btnConfirm = document.createElement('button');
         btnConfirm.className = 'btn btn-primary';
-        btnConfirm.innerHTML = 'Aplicar Selección <i data-lucide="check"></i>';
+        btnConfirm.innerHTML = 'Aplicar Selección &nbsp; ✔';
         btnConfirm.addEventListener('click', () => {
             if (hasSplitNames) {
                 const chkNames = document.getElementById('modal-chk-names');
