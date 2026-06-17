@@ -1170,6 +1170,31 @@
                 }
             }
         }
+
+        // NUEVO: Intentar parsear como un nombre de mes o número de mes directo si falla lo anterior
+        const cleanVal = cleanString(strVal);
+        let monthIndex = -1;
+        if (MONTHS_MAP[cleanVal] !== undefined) {
+            monthIndex = MONTHS_MAP[cleanVal];
+        } else {
+            const num = parseInt(cleanVal);
+            if (!isNaN(num) && num >= 1 && num <= 12) {
+                monthIndex = num - 1;
+            }
+        }
+        
+        if (monthIndex !== -1) {
+            const year = parseInt(appState.convertMonthYear) || new Date().getFullYear();
+            const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+            let day = lastDay;
+            if (appState.monthYearDayRule === '30') {
+                day = Math.min(30, lastDay);
+            } else if (appState.monthYearDayRule === 'none' || appState.monthYearDayRule === 'no_aplica') {
+                day = 1;
+            }
+            const d = new Date(year, monthIndex, day);
+            return formatJSDate(d);
+        }
         
         return { isValid: false, formattedString: 'FECHA INVÁLIDA', dateObject: null };
     }
@@ -2137,15 +2162,24 @@
             }
 
             const rowSample = appState.rawRows[0];
-            if (targetKey === 'fecha_acumulado' && currentSelection.length >= 2) {
+            if (targetKey === 'fecha_acumulado') {
                 let parsed;
-                const ruleToUse = currentSelection.length === 3 ? 'none' : (dayRuleSelect ? dayRuleSelect.value : 'last');
-                if (currentSelection.length === 2) {
-                    parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', ruleToUse);
-                } else {
-                    parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', ruleToUse, rowSample[currentSelection[0]]);
+                if (currentSelection.length === 1) {
+                    const rawVal = rowSample[currentSelection[0]];
+                    const ruleToUse = dayRuleSelect ? dayRuleSelect.value : 'last';
+                    parsed = parseMonthNameToDate(rawVal, appState.convertMonthYear || '2026', ruleToUse);
+                    if (!parsed.isValid) {
+                        parsed = parseDate(rawVal);
+                    }
+                } else if (currentSelection.length >= 2) {
+                    const ruleToUse = currentSelection.length === 3 ? 'none' : (dayRuleSelect ? dayRuleSelect.value : 'last');
+                    if (currentSelection.length === 2) {
+                        parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', ruleToUse);
+                    } else {
+                        parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', ruleToUse, rowSample[currentSelection[0]]);
+                    }
                 }
-                previewValEl.innerText = parsed.formattedString || 'FECHA INVÁLIDA';
+                previewValEl.innerText = parsed ? (parsed.formattedString || 'FECHA INVÁLIDA') : 'FECHA INVÁLIDA';
             } else {
                 const values = currentSelection.map(col => String(rowSample[col] || '').trim()).filter(v => v !== '');
                 previewValEl.innerText = values.join(' ').trim() || '[Vacío en fila 1]';
@@ -2210,6 +2244,9 @@
                         appState.combineNames = false;
                     } else if (targetKey === 'fecha_acumulado') {
                         appState.combineMonthYear = false;
+                        if (dayRuleSelect) {
+                            appState.convertMonthDayRule = dayRuleSelect.value;
+                        }
                     }
                 } else {
                     appState.columnMappings[targetKey] = '__unified__';
