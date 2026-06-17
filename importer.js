@@ -978,7 +978,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1169,7 +1169,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1377,7 +1377,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1445,7 +1445,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1518,7 +1518,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1597,7 +1597,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -1693,7 +1693,7 @@
         card.appendChild(body);
         card.appendChild(footer);
         overlay.appendChild(card);
-        document.body.appendChild(overlay);
+        (document.querySelector('.payroll-adapter-scope') || document.body).appendChild(overlay);
         
         if (window.lucide) {
             window.lucide.createIcons();
@@ -2472,4 +2472,5 @@
             }
         }, 300);
     }
+    
 })();
