@@ -1605,19 +1605,23 @@
                     to { opacity: 1; transform: translateY(0); }
                 }
                 #nomai-custom-modal-header {
-                    background: linear-gradient(135deg, #6C00D3, #8B2FEF) !important;
-                    padding: 1.15rem 1.5rem !important;
-                    color: #ffffff !important;
+                    background: #ffffff !important;
+                    padding: 1.25rem 1.5rem !important;
+                    color: #1F2937 !important;
                     display: flex !important;
                     align-items: center !important;
                     gap: 0.75rem !important;
-                    border-radius: 14px 14px 0 0 !important;
+                    border-radius: 16px 16px 0 0 !important;
+                    border-bottom: 1.5px solid #F3F4F6 !important;
                 }
                 #nomai-custom-modal-header h3 {
                     margin: 0 !important;
-                    font-size: 1.1rem !important;
+                    font-size: 1.15rem !important;
                     font-weight: 700 !important;
-                    color: #ffffff !important;
+                    color: #1E1B4B !important;
+                }
+                #nomai-custom-modal-header svg {
+                    color: #6C00D3 !important;
                 }
                 #nomai-custom-modal-body {
                     padding: 1.25rem 1.5rem !important;
@@ -1703,32 +1707,91 @@
                     display: flex !important;
                     justify-content: flex-end !important;
                     gap: 0.75rem !important;
-                    border-top: 1.5px solid #E5E7EB !important;
-                    padding: 1rem 1.5rem !important;
-                    background: #F9FAFB !important;
+                    border-top: 1.5px solid #F3F4F6 !important;
+                    padding: 1.15rem 1.5rem !important;
+                    background: #ffffff !important;
                     border-radius: 0 0 16px 16px !important;
                 }
                 .nomai-custom-btn {
-                    padding: 0.5rem 1.25rem !important;
-                    font-size: 0.85rem !important;
+                    padding: 0.6rem 1.5rem !important;
+                    font-size: 0.875rem !important;
                     font-weight: 600 !important;
-                    border-radius: 8px !important;
+                    border-radius: 10px !important;
                     border: none !important;
                     cursor: pointer !important;
-                    line-height: 1.2 !important;
+                    line-height: 1.25 !important;
                     display: inline-flex !important;
                     align-items: center !important;
                     justify-content: center !important;
+                    transition: all 0.15s ease !important;
                 }
                 .nomai-custom-btn-primary {
-                    background: linear-gradient(135deg, #6C00D3, #8B2FEF) !important;
+                    background: #6C00D3 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(108, 0, 211, 0.3) !important;
+                    box-shadow: 0 4px 12px rgba(108, 0, 211, 0.18) !important;
+                }
+                .nomai-custom-btn-primary:hover {
+                    background: #5900B3 !important;
+                    box-shadow: 0 4px 16px rgba(108, 0, 211, 0.3) !important;
                 }
                 .nomai-custom-btn-secondary {
                     background: #ffffff !important;
-                    color: #4B5563 !important;
+                    color: #1F2937 !important;
                     border: 1.5px solid #D1D5DB !important;
+                }
+                .nomai-custom-btn-secondary:hover {
+                    background: #F9FAFB !important;
+                    border-color: #9CA3AF !important;
+                }
+                /* Estilos específicos de las tarjetas de selección para quincena */
+                .nomai-card-radio-group {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 0.75rem !important;
+                    margin-bottom: 0.5rem !important;
+                }
+                .nomai-card-radio {
+                    display: flex !important;
+                    align-items: flex-start !important;
+                    gap: 1rem !important;
+                    padding: 1.15rem !important;
+                    background: #F9FAFB !important;
+                    border: 1.5px solid #E5E7EB !important;
+                    border-radius: 12px !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    user-select: none !important;
+                }
+                .nomai-card-radio:hover {
+                    border-color: #A78BFA !important;
+                    background: #F5F3FF !important;
+                }
+                .nomai-card-radio.active {
+                    background: #EDE9FE !important;
+                    border-color: #6C00D3 !important;
+                    box-shadow: 0 4px 12px rgba(108, 0, 211, 0.08) !important;
+                }
+                .nomai-card-radio-input {
+                    margin-top: 0.2rem !important;
+                    accent-color: #6C00D3 !important;
+                    cursor: pointer !important;
+                    width: 18px !important;
+                    height: 18px !important;
+                }
+                .nomai-card-radio-content {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 0.3rem !important;
+                }
+                .nomai-card-radio-title {
+                    font-size: 0.92rem !important;
+                    font-weight: 700 !important;
+                    color: #1E1B4B !important;
+                }
+                .nomai-card-radio-desc {
+                    font-size: 0.82rem !important;
+                    color: #4B5563 !important;
+                    line-height: 1.45 !important;
                 }
             `;
             document.head.appendChild(s);
@@ -1761,7 +1824,27 @@
         // Header
         const header = document.createElement('div');
         header.id = 'nomai-custom-modal-header';
-        header.innerHTML = `<h3>Personalizar: ${target.name}</h3>`;
+
+        const iconSvg = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <line x1="4" y1="21" x2="4" y2="14"></line>
+                <line x1="4" y1="10" x2="4" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12" y2="3"></line>
+                <line x1="20" y1="21" x2="20" y2="16"></line>
+                <line x1="20" y1="12" x2="20" y2="3"></line>
+                <line x1="1" y1="14" x2="7" y2="14"></line>
+                <line x1="9" y1="8" x2="15" y2="8"></line>
+                <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+        `;
+
+        let headerTitle = `Personalizar: ${target.name}`;
+        if (targetKey === 'quincena') {
+            headerTitle = `Personalizar columna: Quincena`;
+        }
+
+        header.innerHTML = `${iconSvg} <h3>${headerTitle}</h3>`;
 
         // Body
         const body = document.createElement('div');
@@ -1788,16 +1871,24 @@
             `;
         } else if (targetKey === 'quincena') {
             body.innerHTML = `
-                <p>Configura la regla de <b>Quincena</b> por defecto o mapea desde el archivo:</p>
-                <div class="form-group" style="display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-bottom: 0.5rem;">
-                    <label style="font-weight:600; font-size:0.82rem; color:#374151;">Regla de cálculo por defecto:</label>
-                    <select id="nomai-custom-constant-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem;">
-                        <option value="">-- No usar regla por defecto (Mapear columna) --</option>
-                        <option value="quincenal">Nómina Quincenal (Día 1-15: 1Q, Día 16+: 2Q)</option>
-                        <option value="mensual">Nómina Mensual (Todo el mes: Mensual)</option>
-                    </select>
+                <p style="margin-bottom: 0.5rem; color: #4B5563;">No se identificó la columna de Quincena en el archivo origen. Selecciona la regla de cálculo del periodo de pago:</p>
+                <div class="nomai-card-radio-group">
+                    <label class="nomai-card-radio" id="nomai-card-quincenal">
+                        <input type="radio" name="nomai-quincena-rule" value="quincenal" class="nomai-card-radio-input" />
+                        <div class="nomai-card-radio-content">
+                            <span class="nomai-card-radio-title">Nómina Quincenal</span>
+                            <span class="nomai-card-radio-desc">Día 1-15 se asigna como "1Q". Día 16-fin de mes se asigna como "2Q" (usando Fecha de Acumulado).</span>
+                        </div>
+                    </label>
+                    <label class="nomai-card-radio" id="nomai-card-mensual">
+                        <input type="radio" name="nomai-quincena-rule" value="mensual" class="nomai-card-radio-input" />
+                        <div class="nomai-card-radio-content">
+                            <span class="nomai-card-radio-title">Nómina Mensual</span>
+                            <span class="nomai-card-radio-desc">Toda la nómina se asigna con el valor de periodo "Mensual".</span>
+                        </div>
+                    </label>
                 </div>
-                <p style="margin-top: 0.25rem;">O selecciona una columna del archivo origen:</p>
+                <p style="margin-top: 0.5rem; margin-bottom: 0.4rem; color: #4B5563;">O selecciona una columna del archivo origen:</p>
             `;
         } else {
             body.innerHTML = `
@@ -1808,14 +1899,54 @@
         const columnsList = document.createElement('div');
         columnsList.className = 'nomai-custom-columns-list';
 
-        // Inicializar select constante
+        // Inicializar select constante o radio cards
         constantSelect = body.querySelector('#nomai-custom-constant-select');
-        if (constantSelect) {
+        if (targetKey === 'quincena') {
+            const radioQuincenal = body.querySelector('#nomai-card-quincenal input');
+            const radioMensual = body.querySelector('#nomai-card-mensual input');
+            const cards = body.querySelectorAll('.nomai-card-radio');
+
+            let currentRule = '';
+            if (mappedVal === '__unified__' || mappedVal === '') {
+                currentRule = appState.quincenaRule || 'quincenal';
+            }
+
+            // Establecer estado inicial
+            if (currentRule === 'quincenal') {
+                radioQuincenal.checked = true;
+                body.querySelector('#nomai-card-quincenal').classList.add('active');
+            } else if (currentRule === 'mensual') {
+                radioMensual.checked = true;
+                body.querySelector('#nomai-card-mensual').classList.add('active');
+            }
+
+            // Event listener para cambios en los radio buttons
+            cards.forEach(card => {
+                const radio = card.querySelector('input');
+                card.addEventListener('click', (e) => {
+                    // Si el click no fue en el input, disparar el click en el input
+                    if (e.target !== radio) {
+                        radio.checked = true;
+                    }
+                    
+                    // Actualizar clases active
+                    cards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+
+                    // Desmarcar todos los checkboxes de columnas origen
+                    const chks = columnsList.querySelectorAll('input[type=checkbox]');
+                    chks.forEach(chk => {
+                        chk.checked = false;
+                        chk.parentElement.classList.remove('selected');
+                    });
+                    currentSelection = [];
+                    updateLivePreview();
+                });
+            });
+        } else if (constantSelect) {
             if (mappedVal === '__unified__' || mappedVal === '') {
                 if (targetKey === 'tipo_nomina') {
                     constantSelect.value = appState.defaultTipoNomina || 'Normal';
-                } else if (targetKey === 'quincena') {
-                    constantSelect.value = appState.quincenaRule || 'quincenal';
                 }
             } else {
                 constantSelect.value = '';
@@ -1842,7 +1973,15 @@
             
             // Si el mapeo actual es de columna simple y coincide, o si está en unificación, pre-seleccionar
             // Pero si el mapeo actual es unificado con constante de tipo_nomina/quincena, no marcar checkboxes
-            const isColSelected = currentSelection.includes(colHeader) && !(constantSelect && constantSelect.value !== '');
+            let isColSelected = currentSelection.includes(colHeader);
+            if (targetKey === 'quincena') {
+                const hasQuincenaRule = (mappedVal === '__unified__' || mappedVal === '') && appState.quincenaRule;
+                if (hasQuincenaRule) {
+                    isColSelected = false;
+                }
+            } else if (constantSelect && constantSelect.value !== '') {
+                isColSelected = false;
+            }
             
             if (isColSelected) {
                 item.classList.add('selected');
@@ -1864,6 +2003,13 @@
                     }
                     if (constantSelect) {
                         constantSelect.value = '';
+                    }
+                    if (targetKey === 'quincena') {
+                        // Desmarcar radios y quitar clase active
+                        const radios = body.querySelectorAll('input[name="nomai-quincena-rule"]');
+                        radios.forEach(r => r.checked = false);
+                        const cards = body.querySelectorAll('.nomai-card-radio');
+                        cards.forEach(c => c.classList.remove('active'));
                     }
                 } else {
                     item.classList.remove('selected');
@@ -1890,11 +2036,15 @@
         const previewValEl = previewBox.querySelector('#nomai-custom-preview-val');
 
         function updateLivePreview() {
-            if (constantSelect && constantSelect.value !== '') {
+            if (targetKey === 'quincena') {
+                const checkedRadio = body.querySelector('input[name="nomai-quincena-rule"]:checked');
+                if (checkedRadio) {
+                    previewValEl.innerText = `Regla por defecto: ${checkedRadio.value === 'quincenal' ? 'Nómina Quincenal (1Q/2Q)' : 'Nómina Mensual'}`;
+                    return;
+                }
+            } else if (constantSelect && constantSelect.value !== '') {
                 if (targetKey === 'tipo_nomina') {
                     previewValEl.innerText = `Valor Constante: ${constantSelect.value}`;
-                } else if (targetKey === 'quincena') {
-                    previewValEl.innerText = `Regla por defecto: ${constantSelect.value === 'quincenal' ? 'Nómina Quincenal (1Q/2Q)' : 'Nómina Mensual'}`;
                 }
                 return;
             }
@@ -1939,9 +2089,29 @@
 
         const btnSave = document.createElement('button');
         btnSave.className = 'nomai-custom-btn nomai-custom-btn-primary';
-        btnSave.innerText = 'Guardar';
+        
+        const saveCheckSvg = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 8px; flex-shrink: 0;">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        `;
+        
+        btnSave.innerHTML = targetKey === 'quincena' ? `Aceptar ${saveCheckSvg}` : `Guardar ${saveCheckSvg}`;
         btnSave.addEventListener('click', () => {
-            const hasConstant = constantSelect && constantSelect.value !== '';
+            let hasConstant = false;
+            let constantValue = '';
+
+            if (targetKey === 'quincena') {
+                const checkedRadio = body.querySelector('input[name="nomai-quincena-rule"]:checked');
+                if (checkedRadio) {
+                    hasConstant = true;
+                    constantValue = checkedRadio.value;
+                }
+            } else if (constantSelect && constantSelect.value !== '') {
+                hasConstant = true;
+                constantValue = constantSelect.value;
+            }
+
             if (currentSelection.length === 0 && !hasConstant) {
                 alert('Por favor selecciona al menos una columna o define un valor/regla por defecto.');
                 return;
@@ -1950,9 +2120,9 @@
             if (hasConstant) {
                 appState.columnMappings[targetKey] = '__unified__';
                 if (targetKey === 'tipo_nomina') {
-                    appState.defaultTipoNomina = constantSelect.value;
+                    appState.defaultTipoNomina = constantValue;
                 } else if (targetKey === 'quincena') {
-                    appState.quincenaRule = constantSelect.value;
+                    appState.quincenaRule = constantValue;
                 }
             } else {
                 if (currentSelection.length === 1) {
