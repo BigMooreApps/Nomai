@@ -119,6 +119,9 @@ const state = {
     periodDataMap: {}
 };
 
+// Exponer el estado globalmente para integracion con el importador
+window.state = state;
+
 // Inicializacion de la Aplicacion al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Cargar datos iniciales desde data.js si existen
