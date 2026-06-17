@@ -1766,25 +1766,92 @@
         // Body
         const body = document.createElement('div');
         body.id = 'nomai-custom-modal-body';
-        body.innerHTML = `
-            <p>Selecciona una o más columnas del archivo de origen para mapear o unificar al campo de destino <b>${target.name}</b>:</p>
-        `;
+        
+        let constantSelect = null;
+        if (targetKey === 'tipo_nomina') {
+            body.innerHTML = `
+                <p>Configura el <b>Tipo de Nómina</b> por defecto o mapea desde el archivo:</p>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-bottom: 0.5rem;">
+                    <label style="font-weight:600; font-size:0.82rem; color:#374151;">Asignar un valor constante (Por Defecto):</label>
+                    <select id="nomai-custom-constant-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem;">
+                        <option value="">-- No usar valor constante (Mapear columna) --</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Adicional">Adicional</option>
+                        <option value="Vacaciones">Vacaciones</option>
+                        <option value="Definitiva">Definitiva</option>
+                        <option value="Prima">Prima</option>
+                        <option value="Cesantias">Cesantías</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                </div>
+                <p style="margin-top: 0.25rem;">O selecciona una columna del archivo origen:</p>
+            `;
+        } else if (targetKey === 'quincena') {
+            body.innerHTML = `
+                <p>Configura la regla de <b>Quincena</b> por defecto o mapea desde el archivo:</p>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-bottom: 0.5rem;">
+                    <label style="font-weight:600; font-size:0.82rem; color:#374151;">Regla de cálculo por defecto:</label>
+                    <select id="nomai-custom-constant-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem;">
+                        <option value="">-- No usar regla por defecto (Mapear columna) --</option>
+                        <option value="quincenal">Nómina Quincenal (Día 1-15: 1Q, Día 16+: 2Q)</option>
+                        <option value="mensual">Nómina Mensual (Todo el mes: Mensual)</option>
+                    </select>
+                </div>
+                <p style="margin-top: 0.25rem;">O selecciona una columna del archivo origen:</p>
+            `;
+        } else {
+            body.innerHTML = `
+                <p>Selecciona una o más columnas del archivo de origen para mapear o unificar al campo de destino <b>${target.name}</b>:</p>
+            `;
+        }
 
         const columnsList = document.createElement('div');
         columnsList.className = 'nomai-custom-columns-list';
+
+        // Inicializar select constante
+        constantSelect = body.querySelector('#nomai-custom-constant-select');
+        if (constantSelect) {
+            if (mappedVal === '__unified__' || mappedVal === '') {
+                if (targetKey === 'tipo_nomina') {
+                    constantSelect.value = appState.defaultTipoNomina || 'Normal';
+                } else if (targetKey === 'quincena') {
+                    constantSelect.value = appState.quincenaRule || 'quincenal';
+                }
+            } else {
+                constantSelect.value = '';
+            }
+
+            constantSelect.addEventListener('change', () => {
+                if (constantSelect.value !== '') {
+                    // Desmarcar todos los checkboxes
+                    const chks = columnsList.querySelectorAll('input[type=checkbox]');
+                    chks.forEach(chk => {
+                        chk.checked = false;
+                        chk.parentElement.classList.remove('selected');
+                    });
+                    currentSelection = [];
+                }
+                updateLivePreview();
+            });
+        }
 
         // Agregar checkboxes para cada columna origen
         appState.rawHeaders.forEach(colHeader => {
             const item = document.createElement('label');
             item.className = 'nomai-custom-column-item';
-            if (currentSelection.includes(colHeader)) {
+            
+            // Si el mapeo actual es de columna simple y coincide, o si está en unificación, pre-seleccionar
+            // Pero si el mapeo actual es unificado con constante de tipo_nomina/quincena, no marcar checkboxes
+            const isColSelected = currentSelection.includes(colHeader) && !(constantSelect && constantSelect.value !== '');
+            
+            if (isColSelected) {
                 item.classList.add('selected');
             }
 
             const chk = document.createElement('input');
             chk.type = 'checkbox';
             chk.value = colHeader;
-            chk.checked = currentSelection.includes(colHeader);
+            chk.checked = isColSelected;
 
             const labelText = document.createElement('span');
             labelText.innerText = colHeader;
@@ -1794,6 +1861,9 @@
                     item.classList.add('selected');
                     if (!currentSelection.includes(colHeader)) {
                         currentSelection.push(colHeader);
+                    }
+                    if (constantSelect) {
+                        constantSelect.value = '';
                     }
                 } else {
                     item.classList.remove('selected');
@@ -1820,6 +1890,15 @@
         const previewValEl = previewBox.querySelector('#nomai-custom-preview-val');
 
         function updateLivePreview() {
+            if (constantSelect && constantSelect.value !== '') {
+                if (targetKey === 'tipo_nomina') {
+                    previewValEl.innerText = `Valor Constante: ${constantSelect.value}`;
+                } else if (targetKey === 'quincena') {
+                    previewValEl.innerText = `Regla por defecto: ${constantSelect.value === 'quincenal' ? 'Nómina Quincenal (1Q/2Q)' : 'Nómina Mensual'}`;
+                }
+                return;
+            }
+
             if (currentSelection.length === 0) {
                 previewValEl.innerText = 'Sin columnas seleccionadas';
                 return;
@@ -1862,41 +1941,51 @@
         btnSave.className = 'nomai-custom-btn nomai-custom-btn-primary';
         btnSave.innerText = 'Guardar';
         btnSave.addEventListener('click', () => {
-            if (currentSelection.length === 0) {
-                alert('Por favor selecciona al menos una columna.');
+            const hasConstant = constantSelect && constantSelect.value !== '';
+            if (currentSelection.length === 0 && !hasConstant) {
+                alert('Por favor selecciona al menos una columna o define un valor/regla por defecto.');
                 return;
             }
 
-            if (currentSelection.length === 1) {
-                appState.columnMappings[targetKey] = currentSelection[0];
-                delete appState.genericUnifications[targetKey];
-                if (targetKey === 'nombre_completo') {
-                    appState.combineNames = false;
-                } else if (targetKey === 'fecha_acumulado') {
-                    appState.combineMonthYear = false;
+            if (hasConstant) {
+                appState.columnMappings[targetKey] = '__unified__';
+                if (targetKey === 'tipo_nomina') {
+                    appState.defaultTipoNomina = constantSelect.value;
+                } else if (targetKey === 'quincena') {
+                    appState.quincenaRule = constantSelect.value;
                 }
             } else {
-                appState.columnMappings[targetKey] = '__unified__';
-                if (targetKey === 'nombre_completo') {
-                    appState.combineNames = true;
-                    appState.combineSurnamesList = [];
-                    appState.combineNamesList = [...currentSelection];
-                } else if (targetKey === 'fecha_acumulado') {
-                    appState.combineMonthYear = true;
-                    if (currentSelection.length === 2) {
-                        appState.monthColumn = currentSelection[0];
-                        appState.yearColumn = currentSelection[1];
-                        appState.dayColumn = '';
-                    } else {
-                        appState.dayColumn = currentSelection[0];
-                        appState.monthColumn = currentSelection[1];
-                        appState.yearColumn = currentSelection[2];
+                if (currentSelection.length === 1) {
+                    appState.columnMappings[targetKey] = currentSelection[0];
+                    delete appState.genericUnifications[targetKey];
+                    if (targetKey === 'nombre_completo') {
+                        appState.combineNames = false;
+                    } else if (targetKey === 'fecha_acumulado') {
+                        appState.combineMonthYear = false;
                     }
                 } else {
-                    appState.genericUnifications[targetKey] = {
-                        columns: [...currentSelection],
-                        separator: ' '
-                    };
+                    appState.columnMappings[targetKey] = '__unified__';
+                    if (targetKey === 'nombre_completo') {
+                        appState.combineNames = true;
+                        appState.combineSurnamesList = [];
+                        appState.combineNamesList = [...currentSelection];
+                    } else if (targetKey === 'fecha_acumulado') {
+                        appState.combineMonthYear = true;
+                        if (currentSelection.length === 2) {
+                            appState.monthColumn = currentSelection[0];
+                            appState.yearColumn = currentSelection[1];
+                            appState.dayColumn = '';
+                        } else {
+                            appState.dayColumn = currentSelection[0];
+                            appState.monthColumn = currentSelection[1];
+                            appState.yearColumn = currentSelection[2];
+                        }
+                    } else {
+                        appState.genericUnifications[targetKey] = {
+                            columns: [...currentSelection],
+                            separator: ' '
+                        };
+                    }
                 }
             }
 
