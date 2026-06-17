@@ -119,8 +119,14 @@ const state = {
     periodDataMap: {}
 };
 
-// Exponer el estado globalmente para integracion con el importador
+// Exponer el estado y funciones globalmente para integración con el importador
 window.state = state;
+window.initUniqueValuesCache = initUniqueValuesCache;
+window.processData = processData;
+window.getUniqueYears = getUniqueYears;
+window.getUniqueMonths = getUniqueMonths;
+window.getUniqueQuincenas = getUniqueQuincenas;
+window.switchTab = switchTab;
 
 // Inicializacion de la Aplicacion al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
