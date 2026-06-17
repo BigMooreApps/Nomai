@@ -3629,130 +3629,214 @@ function populateProfilesDropdown(profileSelect, activeProfileName) {
     }
 }
 
+// Descripción corta por campo para el homologador
+const MAPPING_FIELD_DESCRIPTIONS = {
+    c:        'Identificación única del empleado.',
+    fullName: 'Apellidos y Nombres (en ese orden).',
+    ape:      'Solo apellidos, si el nombre está separado.',
+    nom:      'Solo nombres, si el apellido está separado.',
+    co:       'Nombre o descripción del concepto de nómina.',
+    v:        'Valor neto del concepto (ingreso o descuento).',
+    cant:     'Valor numérico de cantidad (ej. horas, días).',
+    cc:       'Código del centro de costos (opcional).',
+    dcc:      'Nombre del centro de costos.',
+    cg:       'Nombre del cargo.',
+    tn:       'Tipo de nómina (ej. Normal, Adicional).',
+    m:        'Mes al que pertenece el registro.',
+    a:        'Año al que pertenece el registro.',
+    pa:       'Periodo de pago (ej. 1Q, 2Q, Mensual).',
+    na:       'Auto-calculada: valor ≥ 0 → INGRESO · valor < 0 → DESCUENTO.'
+};
+
 function showMappingModal(headers, firstRows, fileName) {
     return new Promise((resolve) => {
-        const modal = document.getElementById('mapping-modal');
-        const fileNameEl = document.getElementById('mapping-modal-filename');
-        const container = document.getElementById('mapping-fields-container');
+        const modal        = document.getElementById('mapping-modal');
+        const fileNameEl   = document.getElementById('mapping-modal-filename');
+        const container    = document.getElementById('mapping-fields-container');
         const profileSelect = document.getElementById('mapping-profile-select');
-        const btnSave = document.getElementById('btn-save-mapping-profile');
-        const btnDelete = document.getElementById('btn-delete-mapping-profile');
+        const btnSave      = document.getElementById('btn-save-mapping-profile');
+        const btnDelete    = document.getElementById('btn-delete-mapping-profile');
         const validationMsg = document.getElementById('mapping-validation-msg');
-        const btnApply = document.getElementById('btn-apply-mapping');
-        const btnCancel = document.getElementById('btn-cancel-mapping');
-        const btnClose = document.getElementById('btn-close-mapping-modal');
-        
-        if (!modal || !container) {
-            console.error('El modal de mapeo no está en el DOM.');
-            resolve(null);
-            return;
-        }
-        
-        fileNameEl.innerText = `Archivo: ${fileName}`;
+        const btnApply     = document.getElementById('btn-apply-mapping');
+        const btnCancel    = document.getElementById('btn-cancel-mapping');
+        const btnClose     = document.getElementById('btn-close-mapping-modal');
+        const counterBadge = document.getElementById('hml-counter-badge');
+
+        if (!modal || !container) { resolve(null); return; }
+
+        // Actualizar subtítulo con el nombre del archivo
+        fileNameEl.textContent = `Archivo: ${fileName} — Revisa que el mapeo sea correcto o ajústalo.`;
         container.innerHTML = '';
-        
+
         populateProfilesDropdown(profileSelect, 'auto');
-        
+
         const selectors = {};
-        
-        const checkValidation = () => {
-            const missingRequired = [];
-            MAPPING_FIELDS.forEach(field => {
-                if (field.type === 'required') {
-                    const select = selectors[field.id];
-                    if (!select || !select.value) {
-                        missingRequired.push(field.name);
-                    }
-                }
-            });
-            
-            if (missingRequired.length > 0) {
-                validationMsg.innerHTML = `<i data-lucide="alert-circle" style="width: 14px; height: 14px; color:#EF4444; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> Faltan requeridos: ${missingRequired.join(', ')}`;
+        const requiredFields = MAPPING_FIELDS.filter(f => f.type === 'required');
+
+        // ── Actualizar badge contador y estado del botón ──────────────────
+        const updateCounter = () => {
+            const total    = requiredFields.length;
+            const mapped   = requiredFields.filter(f => selectors[f.id] && selectors[f.id].value).length;
+            const allOk    = mapped === total;
+
+            counterBadge.textContent = `${mapped} / ${total} OBLIGATORIOS`;
+            counterBadge.classList.toggle('all-ok', allOk);
+
+            if (!allOk) {
+                const missing = requiredFields
+                    .filter(f => !selectors[f.id] || !selectors[f.id].value)
+                    .map(f => f.name).join(', ');
+                validationMsg.innerHTML =
+                    `<i data-lucide="alert-circle" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-right:4px;color:#EF4444;"></i>Requeridos sin asignar: ${missing}`;
                 btnApply.disabled = true;
-                btnApply.style.opacity = '0.5';
-                btnApply.style.cursor = 'not-allowed';
             } else {
                 validationMsg.innerHTML = '';
                 btnApply.disabled = false;
-                btnApply.style.opacity = '1';
-                btnApply.style.cursor = 'pointer';
             }
             if (window.lucide) window.lucide.createIcons();
         };
 
+        // ── Función para actualizar la fila visualmente ───────────────────
+        const updateRow = (row, select, fieldId, isMapped) => {
+            const statusEl = row.querySelector('.hml-status-icon');
+            const previewEl = row.querySelector('.hml-preview-chip');
+            const field = MAPPING_FIELDS.find(f => f.id === fieldId);
+            const isRequired = field && field.type === 'required';
+
+            // Actualizar select
+            select.className = `hml-col-select ${isMapped ? 'hml-sel-mapped' : (isRequired ? 'hml-sel-unmapped' : '')}`;
+
+            // Actualizar status icon
+            if (isMapped) {
+                statusEl.className = 'hml-status-icon mapped';
+                statusEl.innerHTML = '<i data-lucide="check" style="width:12px;height:12px;"></i>';
+            } else {
+                statusEl.className = `hml-status-icon ${isRequired ? 'required-unmapped' : 'unmapped'}`;
+                statusEl.innerHTML = '';
+            }
+
+            // Actualizar fila border
+            row.className = `hml-row${isMapped ? ' hml-row-mapped' : (isRequired ? ' hml-row-required-unmapped' : '')}`;
+
+            // Actualizar chip de muestra
+            if (isMapped) {
+                const colName = select.value;
+                let sample = null;
+                for (const r of firstRows) {
+                    const v = r[colName];
+                    if (v !== null && v !== undefined && v.toString().trim() !== '') {
+                        sample = v.toString().trim(); break;
+                    }
+                }
+                if (sample) {
+                    const maxLen = 18;
+                    const display = sample.length > maxLen ? sample.substring(0, maxLen) + '…' : sample;
+                    previewEl.className = 'hml-preview-chip';
+                    previewEl.innerHTML = `<span class="hml-preview-label">Muestra:</span><strong>${display}</strong>`;
+                    previewEl.title = sample;
+                } else {
+                    previewEl.className = 'hml-preview-chip empty';
+                    previewEl.textContent = 'Sin datos';
+                    previewEl.title = '';
+                }
+            } else {
+                previewEl.className = 'hml-preview-chip empty';
+                previewEl.textContent = 'Omitir';
+                previewEl.title = '';
+            }
+
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        // ── Generar filas ─────────────────────────────────────────────────
         MAPPING_FIELDS.forEach(field => {
             const row = document.createElement('div');
-            row.className = 'mapping-row';
-            
-            const targetCol = document.createElement('div');
-            targetCol.className = 'mapping-target-info';
-            
-            const badgeClass = field.type === 'required' ? 'required' : (field.type === 'recommended' ? 'recommended' : 'optional');
-            const badgeText = field.type === 'required' ? 'Requerido' : (field.type === 'recommended' ? 'Recomendado' : 'Opcional');
-            
-            targetCol.innerHTML = `
-                <div style="display: flex; flex-direction: column; gap: 2px;">
-                    <span class="mapping-target-name">${field.name}</span>
-                    <span class="mapping-badge ${badgeClass}" style="width: fit-content;">${badgeText}</span>
-                </div>
+            const detected = detectFieldHeader(field, headers);
+            const isMapped = !!detected;
+
+            // Columna 1: Info del campo
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'hml-field-info';
+            const starHtml = (field.type === 'required') ? '<span class="hml-req-star">*</span>' : '';
+            const desc = MAPPING_FIELD_DESCRIPTIONS[field.id] || '';
+            infoDiv.innerHTML = `
+                <div class="hml-field-name">${field.name}${starHtml}</div>
+                <div class="hml-field-desc" title="${desc}">${desc}</div>
             `;
-            
-            const selectCol = document.createElement('div');
+
+            // Columna 2: Select de columna Excel
             const select = document.createElement('select');
-            select.className = 'mapping-select unmapped';
+            select.className = `hml-col-select ${isMapped ? 'hml-sel-mapped' : (field.type === 'required' ? 'hml-sel-unmapped' : '')}`;
             select.id = `select-mapping-${field.id}`;
-            
+
             const defaultOpt = document.createElement('option');
             defaultOpt.value = '';
-            defaultOpt.innerText = field.type === 'required' ? '-- Seleccionar columna --' : '-- Omitir campo --';
+            defaultOpt.textContent = 'Omitir';
             select.appendChild(defaultOpt);
-            
-            headers.forEach(header => {
+
+            headers.forEach(h => {
                 const opt = document.createElement('option');
-                opt.value = header;
-                opt.innerText = header;
+                opt.value = h; opt.textContent = h;
                 select.appendChild(opt);
             });
-            
-            const detected = detectFieldHeader(field, headers);
-            if (detected) {
-                select.value = detected;
-                select.className = 'mapping-select mapped';
-            }
-            
-            selectCol.appendChild(select);
+            if (detected) select.value = detected;
             selectors[field.id] = select;
-            
-            const previewCol = document.createElement('div');
-            previewCol.className = 'preview-data-box';
-            previewCol.id = `preview-field-${field.id}`;
-            
-            row.appendChild(targetCol);
-            row.appendChild(selectCol);
-            row.appendChild(previewCol);
-            container.appendChild(row);
-            
-            select.addEventListener('change', () => {
-                updateDataPreview(select, field.id, firstRows);
-                checkValidation();
+
+            // Columna 3: Botón de ajuste (tune)
+            const tuneBtn = document.createElement('button');
+            tuneBtn.type = 'button';
+            tuneBtn.className = 'hml-tune-btn';
+            tuneBtn.title = 'Ver alias detectados';
+            tuneBtn.setAttribute('data-field-id', field.id);
+            tuneBtn.innerHTML = '<i data-lucide="sliders-horizontal" style="width:13px;height:13px;"></i>';
+            tuneBtn.addEventListener('click', () => {
+                const aliasesList = field.aliases.join(', ');
+                alert(`Alias reconocidos para "${field.name}":\n\n${aliasesList}`);
             });
-            
-            updateDataPreview(select, field.id, firstRows);
+
+            // Columna 4: Icono estado
+            const statusIcon = document.createElement('div');
+            statusIcon.className = `hml-status-icon ${isMapped ? 'mapped' : (field.type === 'required' ? 'required-unmapped' : 'unmapped')}`;
+            if (isMapped) statusIcon.innerHTML = '<i data-lucide="check" style="width:12px;height:12px;"></i>';
+
+            // Columna 5: Chip de muestra
+            const previewChip = document.createElement('div');
+            previewChip.className = 'hml-preview-chip empty';
+            previewChip.textContent = 'Omitir';
+
+            // Ensamblar fila
+            row.className = `hml-row${isMapped ? ' hml-row-mapped' : (field.type === 'required' ? ' hml-row-required-unmapped' : '')}`;
+            row.appendChild(infoDiv);
+            row.appendChild(select);
+            row.appendChild(tuneBtn);
+            row.appendChild(statusIcon);
+            row.appendChild(previewChip);
+            container.appendChild(row);
+
+            // Inicializar chip
+            updateRow(row, select, field.id, isMapped);
+
+            // Listener de cambio
+            select.addEventListener('change', () => {
+                const nowMapped = !!select.value;
+                updateRow(row, select, field.id, nowMapped);
+                updateCounter();
+            });
         });
-        
-        checkValidation();
-        
-        const onProfileChange = () => {
-            const pValue = profileSelect.value;
+
+        updateCounter();
+
+        // ── Perfil logic ──────────────────────────────────────────────────
+        const applyProfile = (pValue) => {
             if (pValue === 'auto') {
                 btnDelete.disabled = true;
                 MAPPING_FIELDS.forEach(field => {
                     const select = selectors[field.id];
-                    if (select) {
-                        const detected = detectFieldHeader(field, headers);
-                        select.value = detected || '';
-                        updateDataPreview(select, field.id, firstRows);
-                    }
+                    if (!select) return;
+                    const detected = detectFieldHeader(field, headers);
+                    select.value = detected || '';
+                    const row = select.closest('.hml-row');
+                    if (row) updateRow(row, select, field.id, !!detected);
                 });
             } else {
                 btnDelete.disabled = false;
@@ -3761,49 +3845,41 @@ function showMappingModal(headers, firstRows, fileName) {
                 if (mapping) {
                     MAPPING_FIELDS.forEach(field => {
                         const select = selectors[field.id];
-                        if (select) {
-                            const savedCol = mapping[field.id];
-                            if (savedCol && headers.includes(savedCol)) {
-                                select.value = savedCol;
-                            } else {
-                                select.value = '';
-                            }
-                            updateDataPreview(select, field.id, firstRows);
-                        }
+                        if (!select) return;
+                        const savedCol = mapping[field.id];
+                        select.value = (savedCol && headers.includes(savedCol)) ? savedCol : '';
+                        const row = select.closest('.hml-row');
+                        if (row) updateRow(row, select, field.id, !!select.value);
                     });
                 }
             }
-            checkValidation();
+            updateCounter();
         };
-        
-        profileSelect.onchange = onProfileChange;
-        
+
+        profileSelect.onchange = () => applyProfile(profileSelect.value);
+
         btnSave.onclick = () => {
-            const profileName = prompt('Ingresa el nombre para este perfil de mapeo (ej. Cliente A, Estructura X):');
+            const profileName = prompt('Nombre para este perfil de mapeo (ej. Cliente A, Estructura X):');
             if (!profileName || !profileName.trim()) return;
-            
             const currentMapping = {};
-            MAPPING_FIELDS.forEach(field => {
-                currentMapping[field.id] = selectors[field.id].value;
-            });
-            
+            MAPPING_FIELDS.forEach(f => { currentMapping[f.id] = selectors[f.id].value; });
             saveProfile(profileName.trim(), currentMapping);
             populateProfilesDropdown(profileSelect, profileName.trim());
             btnDelete.disabled = false;
             alert(`Perfil "${profileName.trim()}" guardado con éxito.`);
         };
-        
+
         btnDelete.onclick = () => {
             const pValue = profileSelect.value;
             if (pValue === 'auto') return;
-            
-            if (confirm(`¿Estás seguro de que deseas eliminar el perfil "${pValue}"?`)) {
+            if (confirm(`¿Eliminar el perfil "${pValue}"?`)) {
                 deleteProfile(pValue);
                 populateProfilesDropdown(profileSelect, 'auto');
-                onProfileChange();
+                applyProfile('auto');
             }
         };
-        
+
+        // ── Cleanup y resolución ──────────────────────────────────────────
         const cleanup = () => {
             modal.classList.remove('show');
             btnApply.onclick = null;
@@ -3813,26 +3889,16 @@ function showMappingModal(headers, firstRows, fileName) {
             btnDelete.onclick = null;
             profileSelect.onchange = null;
         };
-        
+
         btnApply.onclick = () => {
             const finalMapping = {};
-            MAPPING_FIELDS.forEach(field => {
-                finalMapping[field.id] = selectors[field.id].value || null;
-            });
+            MAPPING_FIELDS.forEach(f => { finalMapping[f.id] = selectors[f.id].value || null; });
             cleanup();
             resolve(finalMapping);
         };
-        
-        btnCancel.onclick = () => {
-            cleanup();
-            resolve(null);
-        };
-        
-        btnClose.onclick = () => {
-            cleanup();
-            resolve(null);
-        };
-        
+        btnCancel.onclick = () => { cleanup(); resolve(null); };
+        btnClose.onclick  = () => { cleanup(); resolve(null); };
+
         modal.classList.add('show');
         if (window.lucide) window.lucide.createIcons();
     });
