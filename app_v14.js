@@ -322,20 +322,7 @@ function initUniqueValuesCache() {
     state.uniqueMonths = Array.from(months).sort((a, b) => (MONTH_ORDER[a] || 0) - (MONTH_ORDER[b] || 0));
 
     // 3. Quincenas
-    const qSet = new Set();
-    state.data.forEach(d => {
-        if (d.pa !== undefined && d.pa !== null) {
-            const qStr = (parseInt(d.pa) % 2 === 1) ? 'Q1' : 'Q2';
-            qSet.add(qStr);
-        } else {
-            qSet.add('MES');
-        }
-    });
-    state.uniqueQuincenas = Array.from(qSet).sort((a, b) => {
-        if (a === 'MES') return -1;
-        if (b === 'MES') return 1;
-        return a.localeCompare(b);
-    });
+    state.uniqueQuincenas = ['Q1', 'Q2', 'MES'];
 
     // 4. People
     const peopleMap = {};
@@ -2576,9 +2563,9 @@ function getFilterOptions(type) {
         case 'quincenas': {
             return getUniqueQuincenas().map(q => {
                 let label = q;
-                if (q === 'Q1') label = 'Quincena 1 (Q1)';
-                else if (q === 'Q2') label = 'Quincena 2 (Q2)';
-                else if (q === 'MES') label = 'Mes Completo (MES)';
+                if (q === 'Q1') label = '1Q';
+                else if (q === 'Q2') label = '2Q';
+                else if (q === 'MES') label = 'Mensual';
                 return {
                     value: q,
                     label: label,
@@ -2858,22 +2845,22 @@ function openFilterModal(type) {
 
     // Configurar título
     const titles = {
-        years:     'ðŸ” Filtrar Años',
-        months:    'ðŸ” Filtrar Meses',
-        quincenas: 'ðŸ” Filtrar Quincenas',
-        types:     'ðŸ” Filtrar Tipo de Nómina',
-        employees: 'ðŸ” Filtrar Personas',
-        concepts:  'ðŸ” Filtrar Conceptos',
-        cargos:    'ðŸ” Filtrar por Cargo',
-        cecos:     'ðŸ” Filtrar Centros de Costo',
-        employee_single: 'ðŸ‘¤ Seleccionar Colaborador',
-        concept_single: 'ðŸ” Seleccionar Concepto',
-        p1: 'ðŸ“… Seleccionar Periodo 1 (Base)',
-        p2: 'ðŸ“… Seleccionar Periodo 2 (Comparado)',
-        period_compare_employees: 'ðŸ‘¤ Filtrar Colaborador',
-        concept_compare_concepts: 'ðŸ” Filtrar Concepto',
-        ceco_compare_cecos: 'ðŸ¢ Filtrar Centro de Costo',
-        cargo_compare_cargos: 'ðŸŽ–ï¸ Filtrar Cargo'
+        years:     '📅 Filtrar Años',
+        months:    '📅 Filtrar Meses',
+        quincenas: '📅 Filtrar Quincenas',
+        types:     '🏷️ Filtrar Tipo de Nómina',
+        employees: '👥 Filtrar Personas',
+        concepts:  '🔍 Filtrar Conceptos',
+        cargos:    '🎖️ Filtrar por Cargo',
+        cecos:     '🏢 Filtrar Centros de Costo',
+        employee_single: '👤 Seleccionar Colaborador',
+        concept_single: '🔍 Seleccionar Concepto',
+        p1: '📅 Seleccionar Periodo 1 (Base)',
+        p2: '📅 Seleccionar Periodo 2 (Comparado)',
+        period_compare_employees: '👤 Filtrar Colaborador',
+        concept_compare_concepts: '🔍 Filtrar Concepto',
+        ceco_compare_cecos: '🏢 Filtrar Centro de Costo',
+        cargo_compare_cargos: '🎖️ Filtrar Cargo'
     };
     titleEl.textContent = titles[type] || 'Filtrar Opciones';
 
