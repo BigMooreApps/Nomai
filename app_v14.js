@@ -509,7 +509,7 @@ function switchTab(tabId) {
     const divider = document.getElementById('filter-divider-1');
     
     if (filterToolbar) {
-        if (tabId === 'period-compare' || tabId === 'concept-compare' || tabId === 'ceco-compare' || tabId === 'cargo-compare') {
+        if (tabId === 'importer' || tabId === 'period-compare' || tabId === 'concept-compare' || tabId === 'ceco-compare' || tabId === 'cargo-compare') {
             // Ocultar toda la barra en importador y en análisis masivo (tienen sus propios filtros inline)
             filterToolbar.classList.add('hidden');
         } else {
@@ -582,7 +582,7 @@ function renderActiveTab() {
         }
     }, 50);
 
-    if (state.data.length === 0) {
+    if (state.data.length === 0 && state.activeTab !== 'importer') {
         showEmptyStateMessage();
         return;
     }
@@ -612,6 +612,9 @@ function renderActiveTab() {
         case 'cargo-compare':
             renderCargoComparison();
             break;
+        case 'importer':
+            // La inicialización y renderizado del importador está autocontenida
+            break;
     }
 }
 
@@ -628,6 +631,7 @@ function destroyCharts() {
 function showEmptyStateMessage() {
     const contents = document.querySelectorAll('.tab-content');
     contents.forEach(c => {
+        if (c.id === 'tab-importer') return;
         c.innerHTML = `
             <div class="chart-card" style="align-items: center; justify-content: center; padding: 60px; text-align: center;">
                 <i data-lucide="database" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
