@@ -686,6 +686,41 @@
                 renderMappingUI();
             });
             
+            // Botón Personalizar
+            const btnPersonalizar = document.createElement('button');
+            btnPersonalizar.className = 'btn btn-secondary btn-sm btn-personalizar';
+            btnPersonalizar.innerText = 'Personalizar';
+            btnPersonalizar.style.fontSize = '0.75rem';
+            btnPersonalizar.style.padding = '0.35rem 0.75rem';
+            btnPersonalizar.style.borderRadius = '6px';
+            btnPersonalizar.style.marginRight = '0.5rem';
+            btnPersonalizar.style.border = '1px solid #D1D5DB';
+            btnPersonalizar.style.background = '#FFFFFF';
+            btnPersonalizar.style.cursor = 'pointer';
+            btnPersonalizar.style.fontWeight = '600';
+            btnPersonalizar.style.color = '#4B5563';
+            btnPersonalizar.style.display = 'inline-flex';
+            btnPersonalizar.style.alignItems = 'center';
+            btnPersonalizar.style.transition = 'all 0.15s ease';
+            
+            btnPersonalizar.addEventListener('click', () => {
+                openCustomizeModal(target.key);
+            });
+            
+            // Hover styling
+            btnPersonalizar.addEventListener('mouseenter', () => {
+                btnPersonalizar.style.background = '#F3E8FF';
+                btnPersonalizar.style.borderColor = '#6C00D3';
+                btnPersonalizar.style.color = '#6C00D3';
+            });
+            btnPersonalizar.addEventListener('mouseleave', () => {
+                btnPersonalizar.style.background = '#FFFFFF';
+                btnPersonalizar.style.borderColor = '#D1D5DB';
+                btnPersonalizar.style.color = '#4B5563';
+            });
+            
+            actionsPreview.appendChild(btnPersonalizar);
+
             // Icono de estado
             const icon = document.createElement('span');
             icon.className = 'alert-status-icon';
@@ -1530,6 +1565,359 @@
                 hideLoading();
             }
         }, 300);
+    function openCustomizeModal(targetKey) {
+        const target = TARGET_COLUMNS.find(t => t.key === targetKey);
+        if (!target) return;
+
+        // Inyectar estilos CSS para el modal personalizado de unificación si no existen
+        if (!document.getElementById('nomai-custom-modal-styles')) {
+            const s = document.createElement('style');
+            s.id = 'nomai-custom-modal-styles';
+            s.textContent = `
+                #nomai-custom-modal-overlay {
+                    position: fixed !important;
+                    inset: 0 !important;
+                    z-index: 999999 !important;
+                    background: rgba(10, 0, 30, 0.72) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    padding: 1rem !important;
+                    font-family: 'Inter', sans-serif !important;
+                }
+                #nomai-custom-modal-card {
+                    background: #ffffff !important;
+                    border: 2px solid #6C00D3 !important;
+                    border-radius: 16px !important;
+                    width: 100% !important;
+                    max-width: 500px !important;
+                    box-shadow: 0 10px 30px rgba(108, 0, 211, 0.2), 0 32px 80px rgba(0, 0, 0, 0.5) !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    max-height: 90vh !important;
+                    overflow: hidden !important;
+                    animation: nomaiFadeIn 0.22s ease-out !important;
+                }
+                @keyframes nomaiFadeIn {
+                    from { opacity: 0; transform: translateY(12px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                #nomai-custom-modal-header {
+                    background: linear-gradient(135deg, #6C00D3, #8B2FEF) !important;
+                    padding: 1.15rem 1.5rem !important;
+                    color: #ffffff !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 0.75rem !important;
+                    border-radius: 14px 14px 0 0 !important;
+                }
+                #nomai-custom-modal-header h3 {
+                    margin: 0 !important;
+                    font-size: 1.1rem !important;
+                    font-weight: 700 !important;
+                    color: #ffffff !important;
+                }
+                #nomai-custom-modal-body {
+                    padding: 1.25rem 1.5rem !important;
+                    overflow-y: auto !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 0.9rem !important;
+                }
+                #nomai-custom-modal-body p {
+                    font-size: 0.85rem !important;
+                    color: #4B5563 !important;
+                    line-height: 1.45 !important;
+                    margin: 0 !important;
+                }
+                .nomai-custom-columns-list {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 0.4rem !important;
+                    padding: 0.6rem !important;
+                    background: #F9FAFB !important;
+                    border: 1.5px solid #E5E7EB !important;
+                    border-radius: 10px !important;
+                    max-height: 220px !important;
+                    overflow-y: auto !important;
+                }
+                .nomai-custom-column-item {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 0.6rem !important;
+                    padding: 0.45rem 0.65rem !important;
+                    background: #ffffff !important;
+                    border: 1px solid #E5E7EB !important;
+                    border-radius: 8px !important;
+                    font-size: 0.82rem !important;
+                    color: #374151 !important;
+                    cursor: pointer !important;
+                    user-select: none !important;
+                    transition: all 0.12s !important;
+                }
+                .nomai-custom-column-item:hover {
+                    background: #F3E8FF !important;
+                    border-color: #6C00D3 !important;
+                    color: #6C00D3 !important;
+                }
+                .nomai-custom-column-item.selected {
+                    background: #EDE9FE !important;
+                    border-color: #6C00D3 !important;
+                    color: #6C00D3 !important;
+                    font-weight: 600 !important;
+                }
+                .nomai-custom-column-item input[type=checkbox] {
+                    accent-color: #6C00D3 !important;
+                    cursor: pointer !important;
+                    width: 15px !important;
+                    height: 15px !important;
+                    margin: 0 !important;
+                }
+                .nomai-custom-preview-box {
+                    background: #F3E8FF !important;
+                    border: 1.5px dashed #6C00D3 !important;
+                    border-radius: 10px !important;
+                    padding: 0.8rem !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 0.25rem !important;
+                }
+                .nomai-custom-preview-title {
+                    font-size: 0.68rem !important;
+                    font-weight: 700 !important;
+                    text-transform: uppercase !important;
+                    color: #6C00D3 !important;
+                    letter-spacing: 0.5px !important;
+                    margin: 0 !important;
+                }
+                .nomai-custom-preview-value {
+                    font-size: 0.9rem !important;
+                    font-weight: 700 !important;
+                    color: #1F2937 !important;
+                    margin: 0 !important;
+                    word-break: break-all !important;
+                }
+                #nomai-custom-modal-footer {
+                    display: flex !important;
+                    justify-content: flex-end !important;
+                    gap: 0.75rem !important;
+                    border-top: 1.5px solid #E5E7EB !important;
+                    padding: 1rem 1.5rem !important;
+                    background: #F9FAFB !important;
+                    border-radius: 0 0 16px 16px !important;
+                }
+                .nomai-custom-btn {
+                    padding: 0.5rem 1.25rem !important;
+                    font-size: 0.85rem !important;
+                    font-weight: 600 !important;
+                    border-radius: 8px !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    line-height: 1.2 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+                .nomai-custom-btn-primary {
+                    background: linear-gradient(135deg, #6C00D3, #8B2FEF) !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(108, 0, 211, 0.3) !important;
+                }
+                .nomai-custom-btn-secondary {
+                    background: #ffffff !important;
+                    color: #4B5563 !important;
+                    border: 1.5px solid #D1D5DB !important;
+                }
+            `;
+            document.head.appendChild(s);
+        }
+
+        // Obtener las columnas seleccionadas actuales para este campo
+        let currentSelection = [];
+        const mappedVal = appState.columnMappings[targetKey] || '';
+        if (mappedVal === '__unified__') {
+            if (targetKey === 'nombre_completo') {
+                currentSelection = [...appState.combineNamesList];
+            } else if (targetKey === 'fecha_acumulado') {
+                if (appState.dayColumn) currentSelection.push(appState.dayColumn);
+                if (appState.monthColumn) currentSelection.push(appState.monthColumn);
+                if (appState.yearColumn) currentSelection.push(appState.yearColumn);
+            } else if (appState.genericUnifications[targetKey]) {
+                currentSelection = [...appState.genericUnifications[targetKey].columns];
+            }
+        } else if (mappedVal !== '') {
+            currentSelection = [mappedVal];
+        }
+
+        // Crear contenedor overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'nomai-custom-modal-overlay';
+
+        const card = document.createElement('div');
+        card.id = 'nomai-custom-modal-card';
+
+        // Header
+        const header = document.createElement('div');
+        header.id = 'nomai-custom-modal-header';
+        header.innerHTML = `<h3>Personalizar: ${target.name}</h3>`;
+
+        // Body
+        const body = document.createElement('div');
+        body.id = 'nomai-custom-modal-body';
+        body.innerHTML = `
+            <p>Selecciona una o más columnas del archivo de origen para mapear o unificar al campo de destino <b>${target.name}</b>:</p>
+        `;
+
+        const columnsList = document.createElement('div');
+        columnsList.className = 'nomai-custom-columns-list';
+
+        // Agregar checkboxes para cada columna origen
+        appState.rawHeaders.forEach(colHeader => {
+            const item = document.createElement('label');
+            item.className = 'nomai-custom-column-item';
+            if (currentSelection.includes(colHeader)) {
+                item.classList.add('selected');
+            }
+
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.value = colHeader;
+            chk.checked = currentSelection.includes(colHeader);
+
+            const labelText = document.createElement('span');
+            labelText.innerText = colHeader;
+
+            chk.addEventListener('change', () => {
+                if (chk.checked) {
+                    item.classList.add('selected');
+                    if (!currentSelection.includes(colHeader)) {
+                        currentSelection.push(colHeader);
+                    }
+                } else {
+                    item.classList.remove('selected');
+                    currentSelection = currentSelection.filter(c => c !== colHeader);
+                }
+                updateLivePreview();
+            });
+
+            item.appendChild(chk);
+            item.appendChild(labelText);
+            columnsList.appendChild(item);
+        });
+        body.appendChild(columnsList);
+
+        // Caja de Vista Previa
+        const previewBox = document.createElement('div');
+        previewBox.className = 'nomai-custom-preview-box';
+        previewBox.innerHTML = `
+            <div class="nomai-custom-preview-title">Vista Previa del Valor Resultante</div>
+            <div class="nomai-custom-preview-value" id="nomai-custom-preview-val">Selecciona alguna columna...</div>
+        `;
+        body.appendChild(previewBox);
+
+        const previewValEl = previewBox.querySelector('#nomai-custom-preview-val');
+
+        function updateLivePreview() {
+            if (currentSelection.length === 0) {
+                previewValEl.innerText = 'Sin columnas seleccionadas';
+                return;
+            }
+
+            if (appState.rawRows.length === 0) {
+                previewValEl.innerText = 'Sin filas de muestra';
+                return;
+            }
+
+            const rowSample = appState.rawRows[0];
+            if (targetKey === 'fecha_acumulado' && currentSelection.length >= 2) {
+                let parsed;
+                if (currentSelection.length === 2) {
+                    parsed = parseMonthNameToDate(rowSample[currentSelection[0]], rowSample[currentSelection[1]] || '2026', 'last');
+                } else {
+                    parsed = parseMonthNameToDate(rowSample[currentSelection[1]], rowSample[currentSelection[2]] || '2026', 'none', rowSample[currentSelection[0]]);
+                }
+                previewValEl.innerText = parsed.formattedString || 'FECHA INVÁLIDA';
+            } else {
+                const values = currentSelection.map(col => String(rowSample[col] || '').trim()).filter(v => v !== '');
+                previewValEl.innerText = values.join(' ').trim() || '[Vacío en fila 1]';
+            }
+        }
+
+        updateLivePreview();
+
+        // Footer
+        const footer = document.createElement('div');
+        footer.id = 'nomai-custom-modal-footer';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.className = 'nomai-custom-btn nomai-custom-btn-secondary';
+        btnCancel.innerText = 'Cancelar';
+        btnCancel.addEventListener('click', () => {
+            document.body.removeChild(overlay);
+        });
+
+        const btnSave = document.createElement('button');
+        btnSave.className = 'nomai-custom-btn nomai-custom-btn-primary';
+        btnSave.innerText = 'Guardar';
+        btnSave.addEventListener('click', () => {
+            if (currentSelection.length === 0) {
+                alert('Por favor selecciona al menos una columna.');
+                return;
+            }
+
+            if (currentSelection.length === 1) {
+                appState.columnMappings[targetKey] = currentSelection[0];
+                delete appState.genericUnifications[targetKey];
+                if (targetKey === 'nombre_completo') {
+                    appState.combineNames = false;
+                } else if (targetKey === 'fecha_acumulado') {
+                    appState.combineMonthYear = false;
+                }
+            } else {
+                appState.columnMappings[targetKey] = '__unified__';
+                if (targetKey === 'nombre_completo') {
+                    appState.combineNames = true;
+                    appState.combineSurnamesList = [];
+                    appState.combineNamesList = [...currentSelection];
+                } else if (targetKey === 'fecha_acumulado') {
+                    appState.combineMonthYear = true;
+                    if (currentSelection.length === 2) {
+                        appState.monthColumn = currentSelection[0];
+                        appState.yearColumn = currentSelection[1];
+                        appState.dayColumn = '';
+                    } else {
+                        appState.dayColumn = currentSelection[0];
+                        appState.monthColumn = currentSelection[1];
+                        appState.yearColumn = currentSelection[2];
+                    }
+                } else {
+                    appState.genericUnifications[targetKey] = {
+                        columns: [...currentSelection],
+                        separator: ' '
+                    };
+                }
+            }
+
+            document.body.removeChild(overlay);
+            renderMappingUI();
+        });
+
+        footer.appendChild(btnCancel);
+        footer.appendChild(btnSave);
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+        overlay.appendChild(card);
+
+        // Cerrar al hacer click fuera del card
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                document.body.removeChild(overlay);
+            }
+        });
+
+        document.body.appendChild(overlay);
     }
     
 })();
