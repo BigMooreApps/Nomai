@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Nómina e Ingresos Netos</title>
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=20260617_01">
 </head>
 
@@ -90,6 +93,13 @@
                                 </a>
                             </li>
                         </ul>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="importer">
+                            <i data-lucide="upload-cloud"></i>
+                            <span>Importar Excel</span>
+                        </a>
                     </li>
 
                 </ul>
@@ -920,6 +930,226 @@
                     </div>
                 </div>
 
+                <!-- PESTAÑA: IMPORTADOR DE NÓMINAS -->
+                <div id="tab-importer" class="tab-content">
+                    <div class="payroll-adapter-scope">
+                        <!-- Fondo con gradientes dinámicos -->
+                        <div class="bg-glow bg-glow-1"></div>
+                        <div class="bg-glow bg-glow-2"></div>
+
+                        <div class="app-container">
+                            <!-- Encabezado de la Aplicación -->
+                            <header class="app-header">
+                                <div class="logo-area">
+                                    <div class="logo-icon">
+                                        <i data-lucide="shuffle"></i>
+                                    </div>
+                                    <div class="logo-text">
+                                        <h1>Nomai<span>Importer</span></h1>
+                                        <p>Importador y Homologador Inteligente de Nóminas</p>
+                                    </div>
+                                </div>
+                                <div class="header-status">
+                                    <span class="badge badge-primary">Nomai Payroll Tool</span>
+                                </div>
+                            </header>
+
+                            <!-- Barra de Progreso del Asistente (Wizard) -->
+                            <div class="wizard-steps-container">
+                                <div class="wizard-progress-bar">
+                                    <div class="progress-fill" id="progress-fill" style="width: 16.6%;"></div>
+                                </div>
+                                <div class="wizard-steps">
+                                    <div class="step-item active" data-step="1" id="step-btn-1">
+                                        <div class="step-number"><i data-lucide="upload-cloud"></i></div>
+                                        <span class="step-label">Cargar Archivo</span>
+                                    </div>
+                                    <div class="step-item" data-step="2" id="step-btn-2">
+                                        <div class="step-number"><i data-lucide="git-merge"></i></div>
+                                        <span class="step-label">Mapear y Configurar</span>
+                                    </div>
+                                    <div class="step-item" data-step="3" id="step-btn-3">
+                                        <div class="step-number"><i data-lucide="download"></i></div>
+                                        <span class="step-label">Exportar</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Contenedor Principal de Contenido (Glassmorphism Card) -->
+                            <main class="main-card">
+                                
+                                <!-- ================= PASO 1: CARGA DE ARCHIVO ================= -->
+                                <section class="step-panel active" id="panel-1">
+                                    <div class="panel-header">
+                                        <h2>Cargar Archivo de Nómina</h2>
+                                        <p>Arrastra o selecciona el archivo descargado desde tu ERP (Excel o CSV). Nosotros nos encargamos del resto.</p>
+                                    </div>
+
+                                    <div class="upload-zone" id="drop-zone">
+                                        <input type="file" id="file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+                                        <div class="upload-icon-wrapper">
+                                            <i data-lucide="file-spreadsheet" class="upload-icon"></i>
+                                        </div>
+                                        <h3>Arrastra tu archivo aquí</h3>
+                                        <p class="upload-subtitle">Soporta formatos Excel (.xlsx, .xls) o archivos de texto delimitados (.csv)</p>
+                                        <button class="btn btn-outline" id="browse-btn">
+                                            <i data-lucide="folder-open"></i> Seleccionar Archivo
+                                        </button>
+                                    </div>
+
+                                    <!-- Selector de Hoja (Se muestra solo si hay varias pestañas en Excel) -->
+                                    <div class="sheet-selector-card card hide" id="sheet-selector-container">
+                                        <div class="card-header">
+                                            <i data-lucide="layers" class="text-primary"></i>
+                                            <div>
+                                                <h4>Se detectaron múltiples pestañas</h4>
+                                                <p>Por favor selecciona la pestaña que contiene los datos de la nómina:</p>
+                                            </div>
+                                        </div>
+                                        <div class="sheet-options" id="sheet-options-list">
+                                            <!-- Botones de hoja cargados dinámicamente -->
+                                        </div>
+                                    </div>
+
+                                    <div class="info-note">
+                                        <i data-lucide="info"></i>
+                                        <p><strong>Nota de privacidad:</strong> Tu archivo de nómina se procesa de manera segura y local en tu navegador. Los datos nunca se suben ni se almacenan en ningún servidor externo.</p>
+                                    </div>
+                                </section>
+
+
+                                <!-- ================= PASO 2: MAPEO DE COLUMNAS ================= -->
+                                <section class="step-panel hide" id="panel-2">
+                                    <div class="panel-header-split">
+                                        <div class="panel-header">
+                                            <h2>Homologación de Columnas</h2>
+                                            <p>Hemos sugerido un mapeo automático. Revisa que sea correcto o ajústalo si es necesario.</p>
+                                        </div>
+                                        <div class="mapping-stats">
+                                            <span class="badge badge-success" id="mapped-count-badge">0 / 0 Mapeados</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Grid de Mapeo -->
+                                    <div class="mapping-grid" id="mapping-grid-container">
+                                        <!-- Columnas destino y dropdowns cargados dinámicamente -->
+                                    </div>
+
+                                    <div class="panel-footer">
+                                        <button class="btn btn-secondary" id="back-to-1-btn">
+                                            <i data-lucide="arrow-left"></i> Atrás
+                                        </button>
+                                        <button class="btn btn-primary" id="go-to-3-btn">
+                                            Siguiente <i data-lucide="arrow-right"></i>
+                                        </button>
+                                    </div>
+                                </section>
+
+
+                                <!-- ================= PASO 3: VISTA PREVIA Y EXPORTACIÓN ================= -->
+                                <section class="step-panel hide" id="panel-3">
+                                    <div class="panel-header-split">
+                                        <div class="panel-header">
+                                            <h2>Estructura Adaptada y Lista para Descarga</h2>
+                                            <p>Hemos adaptado los datos a la estructura requerida. Revisa el resumen y la vista previa antes de exportar.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Resumen de Datos -->
+                                    <div class="summary-stats-grid">
+                                        <div class="stat-card">
+                                            <span class="stat-label">Total de Registros</span>
+                                            <span class="stat-value" id="stat-total-rows">0</span>
+                                        </div>
+                                        <div class="stat-card">
+                                            <span class="stat-label">Empleados Únicos</span>
+                                            <span class="stat-value" id="stat-unique-employees">0</span>
+                                        </div>
+                                        <div class="stat-card">
+                                            <span class="stat-label">Total Ingresos</span>
+                                            <span class="stat-value text-success" id="stat-total-earnings">$0.00</span>
+                                        </div>
+                                        <div class="stat-card">
+                                            <span class="stat-label">Total Descuentos</span>
+                                            <span class="stat-value text-danger" id="stat-total-deductions">$0.00</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Panel de Validaciones -->
+                                    <div class="validations-card card hide" id="validations-container">
+                                        <div class="card-header">
+                                            <i data-lucide="alert-triangle" class="text-warning"></i>
+                                            <div>
+                                                <h4>Validación de Formatos e Integridad</h4>
+                                                <p id="validation-summary-text">Se encontraron algunos problemas en los datos que pueden afectar la carga:</p>
+                                            </div>
+                                        </div>
+                                        <ul class="validation-list" id="validation-errors-list">
+                                            <!-- Errores/Advertencias de validación -->
+                                        </ul>
+                                    </div>
+
+                                    <!-- Vista Previa de Tabla Transformada -->
+                                    <div class="preview-table-container">
+                                        <div class="table-header-row">
+                                            <h3>Vista Previa del Archivo Resultante</h3>
+                                            <span class="table-subtitle">Mostrando las primeras 50 filas de datos adaptados</span>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="preview-table" id="preview-data-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Identificación</th>
+                                                        <th>Nombre Completo</th>
+                                                        <th>Fecha de Acumulado</th>
+                                                        <th>Código Concepto</th>
+                                                        <th>Nombre Concepto</th>
+                                                        <th>Cantidad</th>
+                                                        <th>Valor</th>
+                                                        <th>Cod Centro Costo</th>
+                                                        <th>Nombre Centro Costo</th>
+                                                        <th>Código Cargo</th>
+                                                        <th>Nombre Cargo</th>
+                                                        <th>Tipo de Nómina</th>
+                                                        <th>Mes Acumulado</th>
+                                                        <th>Quincena</th>
+                                                        <th>Naturaleza</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="preview-table-body">
+                                                    <!-- Filas de datos cargadas dinámicamente -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-footer">
+                                        <button class="btn btn-secondary" id="back-to-2-btn">
+                                            <i data-lucide="arrow-left"></i> Atrás
+                                        </button>
+                                        <div style="display: flex; gap: 10px;">
+                                            <button class="btn btn-success btn-lg" id="download-excel-btn">
+                                                <i data-lucide="download"></i> Descargar Excel Homologado
+                                            </button>
+                                            <button class="btn btn-primary btn-lg" id="load-to-dashboard-btn" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); border: none; color: white;">
+                                                <i data-lucide="play"></i> Cargar al Dashboard
+                                            </button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                            </main>
+                            
+                            <!-- Estado de Procesamiento / Cargador -->
+                            <div class="loading-overlay hide" id="loading-overlay">
+                                <div class="spinner-wrapper">
+                                    <div class="spinner"></div>
+                                    <p id="loading-text">Procesando archivo...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             </section>
         </main>
@@ -948,10 +1178,14 @@
     </div>
 
     <!-- Librerías de Terceros vía CDN -->
-    <!-- 1. Chart.js para visualización interactiva de gráficos -->
+    <!-- 1. SheetJS para procesamiento de Excel local -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 2. Chart.js para visualización interactiva de gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 3. Lucide Icons para iconos modernos -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 4. Canvas Confetti para animación de éxito -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <!-- Datos Pre-Cargados -->
     <script src="data.js?v=202606130038"></script>
