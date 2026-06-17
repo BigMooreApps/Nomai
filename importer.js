@@ -866,16 +866,24 @@
             document.head.appendChild(s);
         }
 
-        // Use native <dialog> for guaranteed top-layer rendering
+        // Use native <dialog> appended to <html> for maximum isolation
         let dlg = document.getElementById('nomai-dialog-modal');
         if (!dlg) {
             dlg = document.createElement('dialog');
             dlg.id = 'nomai-dialog-modal';
-            document.body.appendChild(dlg);
+            // Append to <html> element, not <body>, to escape all overflow/stacking contexts
+            document.documentElement.appendChild(dlg);
         }
         dlg.innerHTML = '';
         dlg.appendChild(overlay);
-        dlg.showModal();
+        try {
+            dlg.showModal();
+            console.log('[NOMAI] dialog.showModal() SUCCESS — dialog open:', dlg.open);
+        } catch(err) {
+            console.error('[NOMAI] dialog.showModal() FAILED:', err);
+            // Fallback: force visible via inline styles
+            dlg.style.cssText = 'display:flex!important;position:fixed!important;inset:0!important;z-index:2147483647!important;border:none!important;padding:0!important;margin:0!important;background:rgba(26,5,51,.55)!important;align-items:center!important;justify-content:center!important;width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;';
+        }
         // Close on backdrop click
         dlg.addEventListener('click', function(e) {
             if (e.target === dlg) closeModal();
