@@ -1538,7 +1538,7 @@
                         a: anio,
                         t: tipo,
                         tn: TIPO_MAP[tipoNominaClean] || "N",
-                        na: r.naturaleza || "INGRESO",
+                        na: (r.naturaleza === 'INGRESO' || r.naturaleza === 'DEVENGO') ? 'DEVENGO' : (r.naturaleza || 'DEVENGO'),
                         cc: r.codigo_ceco ? r.codigo_ceco.toString().trim() : "",
                         dcc: r.nombre_ceco ? r.nombre_ceco.toString().trim() : (r.codigo_ceco ? r.codigo_ceco.toString().trim() : ""),
                         cg: r.nombre_cargo ? r.nombre_cargo.toString().trim().toUpperCase() : "",
