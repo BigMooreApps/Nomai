@@ -74,7 +74,7 @@ async function handleSendMessage() {
     setTypingIndicator(true);
 
     try {
-        const context = generateDataContext();
+        const context = generateDataContext(message);
         const response = await fetchGeminiResponse(apiKey, message, context);
         addMessageToChat('AI', response);
     } catch (error) {
@@ -121,7 +121,7 @@ function setTypingIndicator(isTyping) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function generateDataContext() {
+function generateDataContext(userMessage) {
     const data = window.state ? window.state.data : null;
     if (!data) return "No hay datos.";
 
@@ -131,16 +131,16 @@ function generateDataContext() {
     let totalNomina = 0;
 
     data.forEach(row => {
-        const year = row.Periodo_Anio;
-        const month = row.Periodo_Mes;
+        const year = row.a || 'Desconocido';
+        const month = row.m || 'Desconocido';
         const key = `${year}-${month}`;
         
         if (!summary[year]) summary[year] = { total: 0, devengos: 0, deducciones: 0, empleados: new Set(), byMonth: {} };
         if (!summary[year].byMonth[month]) summary[year].byMonth[month] = { total: 0, devengos: 0, deducciones: 0, empleados: new Set() };
         
-        const valor = parseFloat(row.Valor) || 0;
-        const isDevengo = String(row.Concepto_Tipo).trim() === '1';
-        const isDeduccion = String(row.Concepto_Tipo).trim() === '2';
+        const valor = parseFloat(row.v) || 0;
+        const isDevengo = String(row.na).trim().toUpperCase() === 'DEVENGO';
+        const isDeduccion = String(row.na).trim().toUpperCase() === 'DESCUENTO';
         
         summary[year].total += valor;
         summary[year].byMonth[month].total += valor;
@@ -153,11 +153,15 @@ function generateDataContext() {
             summary[year].byMonth[month].deducciones += valor;
         }
         
-        const empId = row.ID_Empleado || row.Nombre_Empleado;
+        const empId = row.c || row.n;
         if (empId) {
             summary[year].empleados.add(empId);
             summary[year].byMonth[month].empleados.add(empId);
             totalEmpleados.add(empId);
+            if (row.c && row.n) {
+                if (!summary.empNames) summary.empNames = {};
+                summary.empNames[row.c] = row.n;
+            }
         }
     });
 
@@ -165,6 +169,7 @@ function generateDataContext() {
     contextStr += `- Total Empleados Únicos Históricos: ${totalEmpleados.size}\n`;
     
     for (const year in summary) {
+        if (year === 'empNames') continue;
         contextStr += `\nAño ${year}:\n`;
         contextStr += `- Devengos Totales (Ingresos): $${summary[year].devengos.toLocaleString('es-CO', {maximumFractionDigits:0})}\n`;
         contextStr += `- Deducciones Totales: $${summary[year].deducciones.toLocaleString('es-CO', {maximumFractionDigits:0})}\n`;
@@ -175,17 +180,28 @@ function generateDataContext() {
             const prom = summary[year].devengos / summary[year].empleados.size;
             contextStr += `- Ingreso Promedio Anual por Empleado: $${prom.toLocaleString('es-CO', {maximumFractionDigits:0})}\n`;
         }
-
-        // Months
-        const sortedMonths = Object.keys(summary[year].byMonth).sort((a,b) => parseInt(a) - parseInt(b));
-        contextStr += `  Por mes:\n`;
-        sortedMonths.forEach(m => {
-            const mData = summary[year].byMonth[m];
-            contextStr += `    Mes ${m}: Devengos $${mData.devengos.toLocaleString('es-CO', {maximumFractionDigits:0})} (${mData.empleados.size} emp)\n`;
-        });
     }
 
-    contextStr += `\nInstrucciones para la IA:\nEres el Asistente de IA oficial de Nomai, una plataforma premium de análisis de nómina. Usa EXCLUSIVAMENTE la información de contexto de arriba para responder a las preguntas del usuario sobre su nómina. Sé conciso, profesional y directo. Tu objetivo es generar "insights" precisos basados en matemáticas simples. Si preguntan por qué aumentaron los sueldos en un año, analiza los datos mensuales y el número de empleados para deducir si fue por incremento de personal o por aumento del ingreso promedio por empleado. NO inventes datos ni menciones que no tienes acceso a la base de datos completa.`;
+    // Filtrar pagos relevantes basados en la consulta del usuario
+    if (userMessage) {
+        const userWords = userMessage.toLowerCase().split(/\s+/).filter(w => w.length >= 3); // Ignorar palabras cortas
+        const relevantRows = data.filter(r => {
+            const cStr = String(r.c || '').toLowerCase();
+            const nStr = String(r.n || '').toLowerCase();
+            return userWords.some(w => cStr.includes(w) || nStr.includes(w));
+        });
+        
+        if (relevantRows.length > 0) {
+            contextStr += `\nDatos específicos de empleados extraídos para esta consulta (Basado en la pregunta del usuario):\n`;
+            // Limitar a 100 filas para no desbordar el token limit en consultas ambiguas
+            relevantRows.slice(0, 100).forEach(r => {
+                contextStr += `- ${r.a} ${r.m} Q${r.pa||'1'}: Cédula ${r.c} | Nombre: ${r.n} | ${r.na}: ${r.co} | Valor: $${parseFloat(r.v).toLocaleString('es-CO')}\n`;
+            });
+            if (relevantRows.length > 100) contextStr += `- ... (y ${relevantRows.length - 100} registros más omitidos)\n`;
+        }
+    }
+
+    contextStr += `\nInstrucciones para la IA:\nEres el Asistente de IA oficial de Nomai, una plataforma premium de análisis de nómina. Usa EXCLUSIVAMENTE la información de contexto de arriba para responder a las preguntas del usuario. Si el usuario pregunta por una persona específica, busca en los "Datos específicos extraídos" y suma o lista sus pagos de forma clara. Sé conciso y profesional.`;
     
     return contextStr;
 }
