@@ -957,9 +957,32 @@
                                 
                                 <!-- ================= PASO 1: CARGA DE ARCHIVO ================= -->
                                 <section class="step-panel active" id="panel-1">
-                                    <div class="panel-header">
-                                        <h2>Cargar Archivo de Nómina</h2>
-                                        <p>Arrastra o selecciona el archivo descargado desde tu ERP (Excel o CSV). Nosotros nos encargamos del resto.</p>
+                                    <div class="panel-header-split" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div class="panel-header">
+                                            <h2>Cargar Archivo de Nómina</h2>
+                                            <p>Arrastra o selecciona el archivo descargado desde tu ERP (Excel o CSV). Nosotros nos encargamos del resto.</p>
+                                        </div>
+                                        <div class="mapping-stats" style="margin-top: 1rem;">
+                                            <button class="btn btn-outline" id="view-history-btn" style="display: flex; align-items: center; gap: 0.5rem; border-color: #e2e8f0; color: #475569;">
+                                                <i data-lucide="history" style="width: 18px; height: 18px;"></i> Historial de Cargas
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Modal de Historial de Cargas (Oculto por defecto) -->
+                                    <div id="history-modal" class="modal hide" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.2s;">
+                                        <div class="modal-content" style="background: white; border-radius: 12px; width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; padding: 2rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;">
+                                                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i data-lucide="history"></i> Historial de Cargas al Dashboard</h3>
+                                                <button id="close-history-btn" style="background: none; border: none; cursor: pointer; color: #64748b;"><i data-lucide="x"></i></button>
+                                            </div>
+                                            <div id="history-table-container" style="margin-bottom: 1.5rem;">
+                                                <!-- Tabla insertada dinámicamente -->
+                                            </div>
+                                            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                                                <button class="btn btn-outline" id="clear-history-btn" style="color: #ef4444; border-color: #ef4444;">Limpiar Historial</button>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="upload-zone" id="drop-zone">
@@ -1004,6 +1027,20 @@
                                         <div class="mapping-stats">
                                             <span class="badge badge-success" id="mapped-count-badge">0 / 0 Mapeados</span>
                                         </div>
+                                    </div>
+
+                                    <!-- Panel de Plantillas de Configuración -->
+                                    <div class="templates-panel" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center; background: #f8fafc; padding: 1.2rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                                        <i data-lucide="save" class="text-primary" style="width: 24px; height: 24px; opacity: 0.8;"></i>
+                                        <div style="flex-grow: 1;">
+                                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Plantillas de Configuración</h4>
+                                            <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #64748b;">Guarda tus mapeos actuales o carga una plantilla existente.</p>
+                                        </div>
+                                        <select id="config-template-select" class="mapping-select" style="max-width: 220px; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                            <option value="">-- Seleccionar Plantilla --</option>
+                                        </select>
+                                        <button class="btn btn-outline" id="load-template-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i data-lucide="download" style="width: 14px; height: 14px; margin-right: 4px;"></i> Cargar</button>
+                                        <button class="btn btn-secondary" id="save-template-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i data-lucide="plus-circle" style="width: 14px; height: 14px; margin-right: 4px;"></i> Guardar Actual</button>
                                     </div>
 
                                     <!-- Grid de Mapeo -->
@@ -1163,9 +1200,9 @@
     <!-- Datos Pre-Cargados -->
     <script src="data.js?v=202606130038"></script>
     <!-- Lógica del Importador -->
-    <script src="importer.js?v=20260617_21"></script>
+    <script src="importer.js?v=20260617_22"></script>
     <!-- Código Lógico de la Aplicación -->
-    <script src="app_v14.js?v=20260617_21"></script>
+    <script src="app_v14.js?v=20260617_22"></script>
 </body>
 
 </html>

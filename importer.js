@@ -117,6 +117,24 @@
         
         const loadToDashboardBtn = document.getElementById('load-to-dashboard-btn');
         if (loadToDashboardBtn) loadToDashboardBtn.addEventListener('click', loadDataToDashboard);
+
+        // --- Configuración de Plantillas e Historial ---
+        const saveTplBtn = document.getElementById('save-template-btn');
+        if (saveTplBtn) saveTplBtn.addEventListener('click', saveCurrentTemplate);
+        
+        const loadTplBtn = document.getElementById('load-template-btn');
+        if (loadTplBtn) loadTplBtn.addEventListener('click', loadSelectedTemplate);
+        
+        const viewHistBtn = document.getElementById('view-history-btn');
+        if (viewHistBtn) viewHistBtn.addEventListener('click', showHistoryModal);
+        
+        const closeHistBtn = document.getElementById('close-history-btn');
+        if (closeHistBtn) closeHistBtn.addEventListener('click', hideHistoryModal);
+        
+        const clearHistBtn = document.getElementById('clear-history-btn');
+        if (clearHistBtn) clearHistBtn.addEventListener('click', clearHistory);
+        
+        setTimeout(loadConfigTemplates, 100);
     });
 
     // Control de Pasos (Wizard)
@@ -1579,6 +1597,27 @@
 
                 hideLoading();
 
+                // --- Guardar Historial de Cargas ---
+                try {
+                    const devengos = converted.filter(d => d.t === 'INGRESO' || d.na === 'DEVENGO').reduce((acc, curr) => acc + (parseFloat(curr.v) || 0), 0);
+                    const descuentos = converted.filter(d => d.t === 'DESCUENTO' || d.na === 'DESCUENTO').reduce((acc, curr) => acc + (parseFloat(curr.v) || 0), 0);
+                    const empIds = new Set(converted.map(d => d.c).filter(id => id !== ''));
+                    
+                    const historyEntry = {
+                        timestamp: Date.now(),
+                        fileName: appState.fileName,
+                        totalRows: converted.length,
+                        uniqueEmployees: empIds.size,
+                        totalIngresos: devengos,
+                        totalDescuentos: Math.abs(descuentos)
+                    };
+                    let history = [];
+                    const savedHist = localStorage.getItem('nomai_load_history');
+                    if (savedHist) history = JSON.parse(savedHist);
+                    history.push(historyEntry);
+                    localStorage.setItem('nomai_load_history', JSON.stringify(history));
+                } catch(e) { console.error('Error saving load history:', e); }
+
                 // Cambiar a la pestaña de resumen general
                 if (typeof window.switchTab === 'function') {
                     window.switchTab('overview');
@@ -2347,6 +2386,191 @@
         });
 
         document.body.appendChild(overlay);
+    }
+
+    // =========================================================================
+    // PLANTILLAS DE CONFIGURACIÓN Y MANTENIMIENTO DEL HISTORIAL
+    // =========================================================================
+
+    function loadConfigTemplates() {
+        const select = document.getElementById('config-template-select');
+        if (!select) return;
+        
+        let configs = [];
+        try {
+            const saved = localStorage.getItem('nomai_saved_configs');
+            if (saved) configs = JSON.parse(saved);
+        } catch (e) { console.error('Error loading configs:', e); }
+        
+        select.innerHTML = '<option value="">-- Seleccionar Plantilla --</option>';
+        configs.forEach((c, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = c.name;
+            select.appendChild(opt);
+        });
+    }
+
+    function saveCurrentTemplate() {
+        const name = prompt('Ingresa un nombre para esta plantilla de configuración:', 'Mi Plantilla');
+        if (!name) return;
+        
+        const template = {
+            name: name,
+            timestamp: Date.now(),
+            columnMappings: JSON.parse(JSON.stringify(appState.columnMappings)),
+            combineNames: appState.combineNames,
+            combineSurnamesList: [...appState.combineSurnamesList],
+            combineNamesList: [...appState.combineNamesList],
+            quincenaRule: appState.quincenaRule,
+            defaultTipoNomina: appState.defaultTipoNomina,
+            fechaAcumuladoIsMonthName: appState.fechaAcumuladoIsMonthName,
+            convertMonthToDate: appState.convertMonthToDate,
+            convertMonthYear: appState.convertMonthYear,
+            convertMonthDayRule: appState.convertMonthDayRule,
+            combineMonthYear: appState.combineMonthYear,
+            monthColumn: appState.monthColumn,
+            yearColumn: appState.yearColumn,
+            dayColumn: appState.dayColumn,
+            monthYearDayRule: appState.monthYearDayRule,
+            genericUnifications: JSON.parse(JSON.stringify(appState.genericUnifications))
+        };
+        
+        let configs = [];
+        try {
+            const saved = localStorage.getItem('nomai_saved_configs');
+            if (saved) configs = JSON.parse(saved);
+        } catch (e) {}
+        
+        configs.push(template);
+        localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+        loadConfigTemplates();
+        
+        const select = document.getElementById('config-template-select');
+        if (select) select.value = configs.length - 1;
+        alert('Plantilla guardada con éxito.');
+    }
+
+    function loadSelectedTemplate() {
+        const select = document.getElementById('config-template-select');
+        if (!select || select.value === '') {
+            alert('Por favor selecciona una plantilla de la lista.');
+            return;
+        }
+        
+        let configs = [];
+        try {
+            const saved = localStorage.getItem('nomai_saved_configs');
+            if (saved) configs = JSON.parse(saved);
+        } catch (e) {}
+        
+        const template = configs[select.value];
+        if (!template) return;
+        
+        if (!confirm(`¿Estás seguro de sobreescribir la configuración actual con la plantilla "${template.name}"?`)) return;
+        
+        appState.columnMappings = JSON.parse(JSON.stringify(template.columnMappings || {}));
+        appState.combineNames = !!template.combineNames;
+        appState.combineSurnamesList = template.combineSurnamesList || [];
+        appState.combineNamesList = template.combineNamesList || [];
+        appState.quincenaRule = template.quincenaRule || 'quincenal';
+        appState.defaultTipoNomina = template.defaultTipoNomina || 'Normal';
+        appState.fechaAcumuladoIsMonthName = !!template.fechaAcumuladoIsMonthName;
+        appState.convertMonthToDate = !!template.convertMonthToDate;
+        appState.convertMonthYear = template.convertMonthYear || new Date().getFullYear().toString();
+        appState.convertMonthDayRule = template.convertMonthDayRule || 'last';
+        appState.combineMonthYear = !!template.combineMonthYear;
+        appState.monthColumn = template.monthColumn || '';
+        appState.yearColumn = template.yearColumn || '';
+        appState.dayColumn = template.dayColumn || '';
+        appState.monthYearDayRule = template.monthYearDayRule || 'last';
+        appState.genericUnifications = JSON.parse(JSON.stringify(template.genericUnifications || {}));
+        
+        renderMappingUI();
+    }
+
+    // --- Historial de Cargas ---
+    function formatCurrencyHistory(val) {
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+    }
+
+    function renderHistoryTable() {
+        const container = document.getElementById('history-table-container');
+        if (!container) return;
+        
+        let history = [];
+        try {
+            const saved = localStorage.getItem('nomai_load_history');
+            if (saved) history = JSON.parse(saved);
+        } catch (e) {}
+        
+        if (history.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 2rem;">No hay cargas previas registradas.</p>';
+            return;
+        }
+        
+        history.sort((a, b) => b.timestamp - a.timestamp);
+        
+        let tableHTML = `
+            <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Fecha de Carga</th>
+                        <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0;">Archivo</th>
+                        <th style="text-align: right; padding: 10px; border-bottom: 2px solid #e2e8f0;">Registros</th>
+                        <th style="text-align: right; padding: 10px; border-bottom: 2px solid #e2e8f0;">Empleados</th>
+                        <th style="text-align: right; padding: 10px; border-bottom: 2px solid #e2e8f0;">Tot. Ingresos</th>
+                        <th style="text-align: right; padding: 10px; border-bottom: 2px solid #e2e8f0;">Tot. Descuentos</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        history.forEach(h => {
+            const dateStr = new Date(h.timestamp).toLocaleString('es-CO');
+            tableHTML += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">${dateStr}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; font-weight: 500; color: #3b82f6;">${h.fileName || 'N/A'}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: right;">${h.totalRows || 0}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: right;">${h.uniqueEmployees || 0}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: right; color: #10b981;">${formatCurrencyHistory(h.totalIngresos || 0)}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: right; color: #ef4444;">${formatCurrencyHistory(h.totalDescuentos || 0)}</td>
+                </tr>
+            `;
+        });
+        tableHTML += '</tbody></table>';
+        container.innerHTML = tableHTML;
+    }
+
+    function showHistoryModal() {
+        const modal = document.getElementById('history-modal');
+        if (modal) {
+            renderHistoryTable();
+            modal.classList.remove('hide');
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+            }, 10);
+        }
+    }
+
+    function hideHistoryModal() {
+        const modal = document.getElementById('history-modal');
+        if (modal) {
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+            setTimeout(() => {
+                modal.classList.add('hide');
+            }, 200);
+        }
+    }
+
+    function clearHistory() {
+        if (confirm('¿Estás seguro de que deseas eliminar todo el historial de cargas? Esta acción no se puede deshacer.')) {
+            localStorage.removeItem('nomai_load_history');
+            renderHistoryTable();
+        }
     }
 
     // Exponer para depuración y pruebas automatizadas
