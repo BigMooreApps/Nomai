@@ -2,7 +2,7 @@
 // NOMAI AI ASSISTANT MODULE
 // ==========================================
 
-const AI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const AI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 const API_KEY_STORAGE = 'nomai_gemini_api_key';
 
 let chatHistory = [];
