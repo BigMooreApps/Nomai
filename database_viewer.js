@@ -94,11 +94,12 @@ window.deleteBatch = function(batchId) {
     // Filtrar el lote a eliminar
     window.state.batches = window.state.batches.filter(b => b.id !== batchId);
     
-    // Reconstruir window.state.data
-    window.state.data = [];
+    // Reconstruir window.state.data con concat para evitar stack overflow en datos masivos
+    let allData = [];
     window.state.batches.forEach(batch => {
-        window.state.data.push(...batch.data.filter(d => d.na !== 'BENEFICIO'));
+        allData = allData.concat(batch.data.filter(d => d.na !== 'BENEFICIO'));
     });
+    window.state.data = allData;
     
     // Actualizar UI
     renderBatchesList();

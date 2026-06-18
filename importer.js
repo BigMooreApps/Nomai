@@ -1645,10 +1645,13 @@
                 window.state.batches.push(newBatch);
 
                 // Reconstruir window.state.data a partir de todos los lotes activos
-                window.state.data = [];
+                // IMPORTANTE: usar concat en lugar de push(...spread) para evitar stack overflow en arrays grandes
+                let allData = [];
                 window.state.batches.forEach(batch => {
-                    window.state.data.push(...batch.data.filter(d => d.na !== 'BENEFICIO'));
+                    const filtered = batch.data.filter(d => d.na !== 'BENEFICIO');
+                    allData = allData.concat(filtered);
                 });
+                window.state.data = allData;
                 
                 // Disparar evento para actualizar la UI del Gestor de Lotes
                 document.dispatchEvent(new CustomEvent('nomai:batchesUpdated'));
