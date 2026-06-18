@@ -11,6 +11,18 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBatchesList();
         refreshDatabaseTable();
     });
+
+    // Refrescar tabla cuando el usuario navega a la pestaña de Base de Datos
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('.nav-link[data-tab="database"]');
+        if (link) {
+            // Pequeño delay para que switchTab termine de mostrar el panel
+            setTimeout(() => {
+                renderBatchesList();
+                refreshDatabaseTable();
+            }, 50);
+        }
+    });
 });
 
 let dbPagination = {
