@@ -2462,8 +2462,62 @@
         });
     }
 
-    function saveCurrentTemplate() {
-        const name = prompt('Ingresa un nombre para esta plantilla de configuración:', 'Mi Plantilla');
+    function showNomaiPrompt(title, defaultValue = '') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('nomai-prompt-modal');
+            const titleEl = document.getElementById('nomai-prompt-title');
+            const inputEl = document.getElementById('nomai-prompt-input');
+            const btnCancel = document.getElementById('nomai-prompt-cancel');
+            const btnConfirm = document.getElementById('nomai-prompt-confirm');
+
+            if (!modal) {
+                resolve(prompt(title, defaultValue));
+                return;
+            }
+
+            titleEl.innerText = title;
+            inputEl.value = defaultValue;
+
+            modal.classList.remove('hide');
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+                inputEl.focus();
+                inputEl.select();
+            }, 10);
+
+            const closeAndResolve = (val) => {
+                modal.style.opacity = '0';
+                modal.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    modal.classList.add('hide');
+                }, 200);
+                
+                btnCancel.removeEventListener('click', onCancel);
+                btnConfirm.removeEventListener('click', onConfirm);
+                inputEl.removeEventListener('keyup', onKeyUp);
+                
+                resolve(val);
+            };
+
+            const onCancel = () => closeAndResolve(null);
+            const onConfirm = () => {
+                const val = inputEl.value.trim();
+                closeAndResolve(val === '' ? null : val);
+            };
+            const onKeyUp = (e) => {
+                if (e.key === 'Enter') onConfirm();
+                if (e.key === 'Escape') onCancel();
+            };
+
+            btnCancel.addEventListener('click', onCancel);
+            btnConfirm.addEventListener('click', onConfirm);
+            inputEl.addEventListener('keyup', onKeyUp);
+        });
+    }
+
+    async function saveCurrentTemplate() {
+        const name = await showNomaiPrompt('Ingresa un nombre para esta plantilla de configuración:', 'Mi Plantilla');
         if (!name) return;
         
         const template = {
