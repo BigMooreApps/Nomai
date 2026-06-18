@@ -66,7 +66,7 @@ async function handleSendMessage() {
         return;
     }
 
-    if (!window.dashboardData || window.dashboardData.length === 0) {
+    if (!window.state || !window.state.data || window.state.data.length === 0) {
         addMessageToChat('AI', 'Actualmente no hay datos de nómina cargados en el dashboard. Por favor carga un archivo primero para poder analizarlo.');
         return;
     }
@@ -122,7 +122,7 @@ function setTypingIndicator(isTyping) {
 }
 
 function generateDataContext() {
-    const data = window.dashboardData;
+    const data = window.state ? window.state.data : null;
     if (!data) return "No hay datos.";
 
     // Agrupar por año y mes
