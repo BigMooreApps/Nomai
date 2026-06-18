@@ -1633,7 +1633,7 @@
                 if (!window.state.batches) window.state.batches = [];
                 
                 const batchId = 'batch_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-                const batchName = file ? file.name : `Lote_${window.state.batches.length + 1}`;
+                const batchName = appState.fileName || `Lote_${window.state.batches.length + 1}`;
                 
                 const newBatch = {
                     id: batchId,
