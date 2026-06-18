@@ -414,6 +414,37 @@ function initUniqueValuesCache() {
         }
     });
     
+    // 8. Auto-seleccionar los últimos dos periodos cargados para todas las comparaciones
+    const periods = state.uniquePeriods || [];
+    if (periods.length >= 2) {
+        state.comparePeriod1 = periods[periods.length - 2];
+        state.comparePeriod2 = periods[periods.length - 1];
+        state.conceptComparePeriod1 = periods[periods.length - 2];
+        state.conceptComparePeriod2 = periods[periods.length - 1];
+        state.cecoComparePeriod1 = periods[periods.length - 2];
+        state.cecoComparePeriod2 = periods[periods.length - 1];
+        state.cargoComparePeriod1 = periods[periods.length - 2];
+        state.cargoComparePeriod2 = periods[periods.length - 1];
+    } else if (periods.length === 1) {
+        state.comparePeriod1 = periods[0];
+        state.comparePeriod2 = periods[0];
+        state.conceptComparePeriod1 = periods[0];
+        state.conceptComparePeriod2 = periods[0];
+        state.cecoComparePeriod1 = periods[0];
+        state.cecoComparePeriod2 = periods[0];
+        state.cargoComparePeriod1 = periods[0];
+        state.cargoComparePeriod2 = periods[0];
+    } else {
+        state.comparePeriod1 = '';
+        state.comparePeriod2 = '';
+        state.conceptComparePeriod1 = '';
+        state.conceptComparePeriod2 = '';
+        state.cecoComparePeriod1 = '';
+        state.cecoComparePeriod2 = '';
+        state.cargoComparePeriod1 = '';
+        state.cargoComparePeriod2 = '';
+    }
+
     console.timeEnd("initUniqueValuesCache");
 }
 
