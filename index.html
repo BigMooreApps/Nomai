@@ -1152,9 +1152,13 @@
                             
                             <!-- Estado de Procesamiento / Cargador -->
                             <div class="loading-overlay hide" id="loading-overlay">
-                                <div class="spinner-wrapper">
-                                    <div class="spinner"></div>
-                                    <p id="loading-text">Procesando archivo...</p>
+                                <div class="spinner-wrapper" style="text-align: center; width: 100%; max-width: 400px; padding: 0 20px;">
+                                    <div class="spinner" style="margin: 0 auto;"></div>
+                                    <p id="loading-text" style="margin-top: 1rem;">Procesando archivo...</p>
+                                    <div class="progress-container hide" id="loading-progress-container" style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin: 1rem auto 0; overflow: hidden;">
+                                        <div id="loading-progress-bar" style="height: 100%; width: 0%; background: #6366f1; transition: width 0.3s ease-out;"></div>
+                                    </div>
+                                    <p id="loading-percent" class="hide" style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-top: 0.5rem;">0%</p>
                                 </div>
                             </div>
                         </div>
@@ -1200,9 +1204,9 @@
     <!-- Datos Pre-Cargados -->
     <script src="data.js?v=202606130038"></script>
     <!-- Lógica del Importador -->
-    <script src="importer.js?v=20260618_01"></script>
+    <script src="importer.js?v=20260618_02"></script>
     <!-- Código Lógico de la Aplicación -->
-    <script src="app_v14.js?v=20260618_01"></script>
+    <script src="app_v14.js?v=20260618_02"></script>
 </body>
 
 </html>

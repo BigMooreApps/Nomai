@@ -174,6 +174,20 @@
     }
 
     // Cargador
+    function updateLoadingProgress(percent) {
+        const container = document.getElementById('loading-progress-container');
+        const bar = document.getElementById('loading-progress-bar');
+        const percentText = document.getElementById('loading-percent');
+        
+        if (container && bar && percentText) {
+            container.classList.remove('hide');
+            percentText.classList.remove('hide');
+            const p = Math.min(100, Math.max(0, percent));
+            bar.style.width = p + '%';
+            percentText.innerText = Math.round(p) + '%';
+        }
+    }
+
     function showLoading(text) {
         const overlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
@@ -188,6 +202,14 @@
         if (overlay) {
             overlay.classList.add('hide');
         }
+        setTimeout(() => {
+            const container = document.getElementById('loading-progress-container');
+            const bar = document.getElementById('loading-progress-bar');
+            const percentText = document.getElementById('loading-percent');
+            if (container) container.classList.add('hide');
+            if (percentText) percentText.classList.add('hide');
+            if (bar) bar.style.width = '0%';
+        }, 300);
     }
 
     // Archivo y Carga
@@ -206,28 +228,51 @@
         }
         
         showLoading('Leyendo archivo...');
+        updateLoadingProgress(5);
         
         const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                
-                appState.workbook = workbook;
-                appState.sheetNames = workbook.SheetNames;
-                appState.fileName = file.name;
-                
-                if (appState.sheetNames.length > 1) {
-                    hideLoading();
-                    renderSheetSelector();
-                } else {
-                    loadSheetData(appState.sheetNames[0]);
-                }
-            } catch (err) {
-                console.error(err);
-                alert('No se pudo leer el archivo. Asegúrate de que sea un archivo de Excel o CSV válido.');
-                hideLoading();
+        
+        reader.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = 5 + (e.loaded / e.total) * 30;
+                updateLoadingProgress(percent);
             }
+        };
+
+        reader.onload = function(e) {
+            updateLoadingProgress(35);
+            showLoading('Procesando datos internos (Esto puede tardar unos segundos)...');
+            
+            setTimeout(() => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    updateLoadingProgress(45);
+                    
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    updateLoadingProgress(80);
+                    
+                    appState.workbook = workbook;
+                    appState.sheetNames = workbook.SheetNames;
+                    appState.fileName = file.name;
+                    
+                    setTimeout(() => {
+                        updateLoadingProgress(90);
+                        if (appState.sheetNames.length > 1) {
+                            updateLoadingProgress(100);
+                            setTimeout(() => {
+                                hideLoading();
+                                renderSheetSelector();
+                            }, 200);
+                        } else {
+                            loadSheetData(appState.sheetNames[0]);
+                        }
+                    }, 50);
+                } catch (err) {
+                    console.error(err);
+                    alert('No se pudo leer el archivo. Asegúrate de que sea un archivo de Excel o CSV válido.');
+                    hideLoading();
+                }
+            }, 50);
         };
         reader.onerror = function() {
             alert('Error al leer el archivo.');
@@ -314,6 +359,7 @@
             appState.rawRows = dataRows;
             
             showLoading('Analizando la estructura del archivo y auto-mapeando...');
+            updateLoadingProgress(95);
             
             setTimeout(() => {
                 runAutoMapping();
@@ -325,10 +371,13 @@
                     appState.combineMonthYear = true;
                 }
                 
-                hideLoading();
-                renderMappingUI();
-                setStep(2);
-            }, 1200);
+                updateLoadingProgress(100);
+                setTimeout(() => {
+                    hideLoading();
+                    renderMappingUI();
+                    setStep(2);
+                }, 400);
+            }, 800);
         } catch (err) {
             console.error(err);
             alert('Error al procesar los datos de la hoja.');
