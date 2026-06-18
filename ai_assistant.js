@@ -254,10 +254,11 @@ async function fetchGeminiResponse(apiKey, userMessage, dataContext) {
                 );
                 
                 if (validModels.length > 0) {
-                    // Preferir cualquier modelo 'flash' (son los que tienen cuota gratuita alta), si no 'pro', si no el primero
-                    const flashModel = validModels.find(m => m.name.includes('flash'));
+                    // Preferir gemini-1.5-flash por ser el más estable en cuota gratuita, si no cualquier flash, si no pro
+                    const flash15Model = validModels.find(m => m.name.includes('1.5-flash'));
+                    const anyFlashModel = validModels.find(m => m.name.includes('flash'));
                     const proModel = validModels.find(m => m.name.includes('pro'));
-                    autoDetectedModel = (flashModel || proModel || validModels[0]).name;
+                    autoDetectedModel = (flash15Model || anyFlashModel || proModel || validModels[0]).name;
                 }
             }
         } catch (e) {
