@@ -2563,14 +2563,14 @@
         });
     }
 
-    function showNomaishowNomaiAlert(message) {
+    function showNomaiAlert(message) {
         return new Promise((resolve) => {
             const modal = document.getElementById('nomai-alert-modal');
             const msgEl = document.getElementById('nomai-alert-message');
             const btnConfirm = document.getElementById('nomai-alert-accept');
 
             if (!modal) {
-                showNomaiAlert(message);
+                alert(message);
                 resolve();
                 return;
             }
