@@ -772,7 +772,6 @@
     text-overflow: ellipsis;
     display: none;
     flex-shrink: 0;
-    margin-left: auto; 
 }
 
 .payroll-adapter-scope .mapping-single-preview strong {
