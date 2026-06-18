@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css?v=20260617_01">
+    <link rel="stylesheet" href="style.css?v=20260618_12">
     <link rel="stylesheet" href="importer.css?v=20260617_16">
 </head>
 
@@ -1191,6 +1191,37 @@
         </div>
     </div>
 
+    <!-- AI Assistant Chat -->
+    <div id="ai-chat-fab" title="Pregúntale a la IA sobre tu Nómina">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.76.452 3.407 1.233 4.846L2 22l5.154-1.233A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+    </div>
+
+    <div id="ai-chat-panel">
+        <div class="chat-header">
+            <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.76.452 3.407 1.233 4.846L2 22l5.154-1.233A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                Asistente Nomai AI
+            </h3>
+            <div class="chat-header-actions">
+                <button id="ai-chat-config" class="chat-icon-btn" title="Configurar API Key">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+                <button id="ai-chat-close" class="chat-icon-btn" title="Cerrar Chat">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+        <div id="ai-chat-messages" class="chat-messages">
+            <!-- Messages go here -->
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="ai-chat-input" placeholder="Escribe tu pregunta aquí..." autocomplete="off">
+            <button id="ai-chat-send" class="chat-send-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+    
     <!-- Alert Modal (Estilo Nomai) -->
     <div id="nomai-alert-modal" style="position: fixed; inset: 0; background: rgba(26, 5, 51, 0.45); backdrop-filter: blur(4px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.2s;">
         <div class="modal-content" style="background: #FFFFFF; border-radius: 12px; width: 90%; max-width: 450px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(108, 0, 211, 0.15); border: 1px solid rgba(108, 0, 211, 0.2);">
@@ -1243,6 +1274,8 @@
     <script src="importer.js?v=20260618_10"></script>
     <!-- Código Lógico de la Aplicación -->
     <script src="app_v14.js?v=20260618_10"></script>
+    <!-- Lógica del Asistente IA -->
+    <script src="ai_assistant.js?v=20260618_11"></script>
 </body>
 
 </html>
