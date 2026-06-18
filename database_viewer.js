@@ -39,16 +39,20 @@ let dbFilters = {
 let dbSort = { column: null, direction: 'asc' };
 
 const columnMap = [
-    { key: 'a',  label: 'Año' },
-    { key: 'm',  label: 'Mes' },
-    { key: 'pa', label: 'Quincena' },
-    { key: 'c',  label: 'Cédula' },
-    { key: 'n',  label: 'Nombre' },
-    { key: 'cg', label: 'Cargo' },
-    { key: 'cc', label: 'Centro Costo' },
-    { key: 'na', label: 'Naturaleza' },
-    { key: 'co', label: 'Concepto' },
-    { key: 'v',  label: 'Valor', isNumber: true },
+    { key: 'a',   label: 'Año' },
+    { key: 'm',   label: 'Mes' },
+    { key: 'pa',  label: 'Quincena' },
+    { key: 'tn',  label: 'Tipo Nómina' },
+    { key: 'c',   label: 'Cédula' },
+    { key: 'n',   label: 'Nombre' },
+    { key: 'cg',  label: 'Cargo' },
+    { key: 'cc',  label: 'Código CECO' },
+    { key: 'dcc', label: 'Centro de Costo' },
+    { key: 'na',  label: 'Naturaleza' },
+    { key: 't',   label: 'Tipo' },
+    { key: 'co',  label: 'Concepto' },
+    { key: 'cant',label: 'Cantidad', isNumber: true },
+    { key: 'v',   label: 'Valor', isNumber: true },
 ];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -272,7 +276,7 @@ function renderVirtualRows(scrollContainer) {
         const row  = VS.filteredData[i];
         const tr   = document.createElement('tr');
         const bg   = i % 2 === 0 ? '#ffffff' : '#f9fafb';
-        const naStyle = row.na === 'DEDUCCION'
+        const naStyle = (row.na === 'DEDUCCION' || row.na === 'DESCUENTO' || row.na === 'DEDUCCIÓN')
             ? 'background:#fee2e2;color:#b91c1c;'
             : 'background:#dcfce7;color:#15803d;';
         tr.style.cssText = `border-bottom:1px solid #f3f4f6;background:${bg};`;
@@ -280,16 +284,20 @@ function renderVirtualRows(scrollContainer) {
             <td style="padding:0.6rem 1rem;">${row.a ?? ''}</td>
             <td style="padding:0.6rem 1rem;">${row.m ?? ''}</td>
             <td style="padding:0.6rem 1rem;">${row.pa ? 'Q' + row.pa : 'Q1'}</td>
+            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.tn ?? ''}</td>
             <td style="padding:0.6rem 1rem;font-family:monospace;">${row.c ?? ''}</td>
             <td style="padding:0.6rem 1rem;">${row.n ?? ''}</td>
             <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.cg ?? ''}</td>
             <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.cc ?? ''}</td>
+            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.dcc ?? ''}</td>
             <td style="padding:0.6rem 1rem;">
                 <span style="padding:0.125rem 0.5rem;border-radius:9999px;font-size:0.7rem;font-weight:600;${naStyle}">
                     ${row.na ?? ''}
                 </span>
             </td>
+            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.t ?? ''}</td>
             <td style="padding:0.6rem 1rem;">${row.co ?? ''}</td>
+            <td style="padding:0.6rem 1rem;text-align:right;">${row.cant ?? 0}</td>
             <td style="padding:0.6rem 1rem;text-align:right;font-weight:500;">${fmt.format(row.v ?? 0)}</td>`;
         frag.appendChild(tr);
     }
