@@ -190,9 +190,41 @@ function generateDataContext() {
     return contextStr;
 }
 
+// Variable global para cachear el nombre del modelo
+let autoDetectedModel = null;
+
 async function fetchGeminiResponse(apiKey, userMessage, dataContext) {
-    // Usar gemini-pro que es universalmente compatible
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+    // 1. Auto-detectar el modelo correcto si no está en caché
+    if (!autoDetectedModel) {
+        try {
+            const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+            const modelsRes = await fetch(modelsUrl);
+            if (modelsRes.ok) {
+                const modelsData = await modelsRes.json();
+                // Buscar un modelo que soporte generateContent y sea de la familia gemini (preferiblemente flash o pro)
+                const validModels = modelsData.models.filter(m => 
+                    m.supportedGenerationMethods && 
+                    m.supportedGenerationMethods.includes('generateContent') &&
+                    m.name.includes('gemini')
+                );
+                
+                if (validModels.length > 0) {
+                    // Preferir 1.5 flash, si no 1.5 pro, si no pro, si no el primero
+                    const flashModel = validModels.find(m => m.name.includes('1.5-flash'));
+                    const proModel = validModels.find(m => m.name.includes('1.5-pro')) || validModels.find(m => m.name.includes('pro'));
+                    autoDetectedModel = (flashModel || proModel || validModels[0]).name;
+                }
+            }
+        } catch (e) {
+            console.warn("Error auto-detectando modelos:", e);
+        }
+    }
+    
+    // Fallback de seguridad si falla la detección
+    const modelName = autoDetectedModel || 'models/gemini-1.5-flash';
+    
+    // Construir la URL final
+    const url = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
     
     // Filtrar mensajes y asegurar que el historial empiece con 'user' (Gemini requiere alternancia estricta y empezar con user)
     let geminiHistory = chatHistory.filter(msg => msg.role === 'user' || msg.role === 'model');
