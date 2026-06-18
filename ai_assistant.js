@@ -191,17 +191,18 @@ function generateDataContext() {
 }
 
 async function fetchGeminiResponse(apiKey, userMessage, dataContext) {
-    const url = `${AI_API_URL}?key=${apiKey}`;
+    // Intentar usar gemini-1.5-flash con v1
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const geminiHistory = chatHistory.filter(msg => msg.role === 'user' || msg.role === 'model');
     
+    // Inyectar el contexto de forma transparente en el último mensaje para compatibilidad
+    const combinedMessage = `CONTEXTO DE DATOS:\n${dataContext}\n\nPREGUNTA DEL USUARIO:\n${userMessage}`;
+
     const requestBody = {
-        systemInstruction: {
-            parts: [{ text: dataContext }]
-        },
         contents: [
             ...geminiHistory,
-            { role: 'user', parts: [{ text: userMessage }] }
+            { role: 'user', parts: [{ text: combinedMessage }] }
         ],
         generationConfig: {
             temperature: 0.1,
