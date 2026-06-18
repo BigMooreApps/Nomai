@@ -350,7 +350,14 @@
                 if (!isEmptyRow) {
                     const rowObj = {};
                     headers.forEach((h, index) => {
-                        rowObj[h] = rawMatrix[i][index] !== undefined ? rawMatrix[i][index] : '';
+                        let val = rawMatrix[i][index] !== undefined ? rawMatrix[i][index] : '';
+                        if (val instanceof Date) {
+                            const d = val.getDate().toString().padStart(2, '0');
+                            const m = (val.getMonth() + 1).toString().padStart(2, '0');
+                            const y = val.getFullYear();
+                            val = `${d}/${m}/${y}`;
+                        }
+                        rowObj[h] = val;
                     });
                     dataRows.push(rowObj);
                 }
