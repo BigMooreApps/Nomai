@@ -1544,7 +1544,7 @@
                         m: mesName,
                         a: anio,
                         t: tipo,
-                        tn: TIPO_MAP[tipoNominaClean] || "N",
+                        tn: r.tipo_nomina ? r.tipo_nomina.toString().trim() : "Normal",
                         na: (r.naturaleza === 'INGRESO' || r.naturaleza === 'DEVENGO') ? 'DEVENGO' : (r.naturaleza || 'DEVENGO'),
                         cc: r.codigo_ceco ? r.codigo_ceco.toString().trim() : "",
                         dcc: r.nombre_ceco ? r.nombre_ceco.toString().trim() : (r.codigo_ceco ? r.codigo_ceco.toString().trim() : ""),

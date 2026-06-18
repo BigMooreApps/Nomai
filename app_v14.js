@@ -2619,7 +2619,7 @@ function getFilterOptions(type) {
             state.data.forEach(d => { if (d.tn) set.add(d.tn); });
             return Array.from(set).sort().map(t => ({
                 value: t,
-                label: TIPO_NOMINA_LABELS[t] || t,
+                label: t,
                 sublabel: ''
             }));
         }
