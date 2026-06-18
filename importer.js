@@ -223,7 +223,7 @@
 
     function processFile(file) {
         if (!window.XLSX) {
-            alert('La librería SheetJS no está cargada. Por favor verifica tu conexión a internet.');
+            showNomaiAlert('La librería SheetJS no está cargada. Por favor verifica tu conexión a internet.');
             return;
         }
         
@@ -269,13 +269,13 @@
                     }, 50);
                 } catch (err) {
                     console.error(err);
-                    alert('No se pudo leer el archivo. Asegúrate de que sea un archivo de Excel o CSV válido.');
+                    showNomaiAlert('No se pudo leer el archivo. Asegúrate de que sea un archivo de Excel o CSV válido.');
                     hideLoading();
                 }
             }, 50);
         };
         reader.onerror = function() {
-            alert('Error al leer el archivo.');
+            showNomaiAlert('Error al leer el archivo.');
             hideLoading();
         };
         reader.readAsArrayBuffer(file);
@@ -319,7 +319,7 @@
             const rawMatrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
             
             if (rawMatrix.length === 0) {
-                alert('La pestaña seleccionada está vacía.');
+                showNomaiAlert('La pestaña seleccionada está vacía.');
                 hideLoading();
                 return;
             }
@@ -380,7 +380,7 @@
             }, 800);
         } catch (err) {
             console.error(err);
-            alert('Error al procesar los datos de la hoja.');
+            showNomaiAlert('Error al procesar los datos de la hoja.');
             hideLoading();
         }
     }
@@ -982,7 +982,7 @@
         });
         
         if (missingRequired.length > 0) {
-            alert('Faltan mapear columnas obligatorias:\n- ' + missingRequired.join('\n- ') + '\n\nPor favor, selecciona una columna del archivo origen o configura la unificación correspondiente.');
+            showNomaiAlert('Faltan mapear columnas obligatorias:\n- ' + missingRequired.join('\n- ') + '\n\nPor favor, selecciona una columna del archivo origen o configura la unificación correspondiente.');
             return;
         }
         
@@ -1005,7 +1005,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                alert('Ocurrió un error al procesar los datos de nómina: ' + err.message);
+                showNomaiAlert('Ocurrió un error al procesar los datos de nómina: ' + err.message);
                 hideLoading();
             }
         }, 150);
@@ -1520,12 +1520,12 @@
             }
             
             setTimeout(() => {
-                alert('¡Archivo de nómina homologado exportado exitosamente!');
+                showNomaiAlert('¡Archivo de nómina homologado exportado exitosamente!');
             }, 300);
             
         } catch (err) {
             console.error(err);
-            alert('Error al generar o descargar el archivo de Excel: ' + err.message);
+            showNomaiAlert('Error al generar o descargar el archivo de Excel: ' + err.message);
             hideLoading();
         }
     }
@@ -1533,7 +1533,7 @@
     // Cargar al Dashboard
     async function loadDataToDashboard() {
         if (!appState.transformedData || appState.transformedData.length === 0) {
-            alert('Primero debes cargar un archivo y transformarlo.');
+            showNomaiAlert('Primero debes cargar un archivo y transformarlo.');
             return;
         }
 
@@ -1683,7 +1683,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                alert('Ocurrió un error al cargar los datos en el dashboard: ' + err.message);
+                showNomaiAlert('Ocurrió un error al cargar los datos en el dashboard: ' + err.message);
                 hideLoading();
             }
         }, 300);
@@ -2364,7 +2364,7 @@
                 }
 
                 if (currentSelection.length === 0 && !hasConstant) {
-                    alert('Por favor selecciona al menos una columna o define un valor/regla por defecto.');
+                    showNomaiAlert('Por favor selecciona al menos una columna o define un valor/regla por defecto.');
                     return;
                 }
 
@@ -2563,6 +2563,49 @@
         });
     }
 
+    function showNomaishowNomaiAlert(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('nomai-alert-modal');
+            const msgEl = document.getElementById('nomai-alert-message');
+            const btnConfirm = document.getElementById('nomai-alert-accept');
+
+            if (!modal) {
+                showNomaiAlert(message);
+                resolve();
+                return;
+            }
+
+            msgEl.innerText = message;
+
+            modal.classList.remove('hide');
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+                btnConfirm.focus();
+            }, 10);
+
+            const closeAndResolve = () => {
+                modal.style.opacity = '0';
+                modal.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    modal.classList.add('hide');
+                }, 200);
+                
+                btnConfirm.removeEventListener('click', closeAndResolve);
+                document.removeEventListener('keydown', onKeyDown);
+                
+                resolve();
+            };
+
+            const onKeyDown = (e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') closeAndResolve();
+            };
+
+            btnConfirm.addEventListener('click', closeAndResolve);
+            document.addEventListener('keydown', onKeyDown);
+        });
+    }
+
     async function saveCurrentTemplate() {
         const name = await showNomaiPrompt('Ingresa un nombre para esta plantilla de configuración:', 'Mi Plantilla');
         if (!name) return;
@@ -2600,13 +2643,13 @@
         
         const select = document.getElementById('config-template-select');
         if (select) select.value = configs.length - 1;
-        alert('Plantilla guardada con éxito.');
+        showNomaiAlert('Plantilla guardada con éxito.');
     }
 
     async function loadSelectedTemplate() {
         const select = document.getElementById('config-template-select');
         if (!select || select.value === '') {
-            alert('Por favor selecciona una plantilla de la lista.');
+            showNomaiAlert('Por favor selecciona una plantilla de la lista.');
             return;
         }
         
