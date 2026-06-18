@@ -195,6 +195,8 @@
         if (e.target.files.length > 0) {
             processFile(e.target.files[0]);
         }
+        // Limpiar el valor para permitir seleccionar el mismo archivo u otros sin tener que recargar la página
+        e.target.value = '';
     }
 
     function processFile(file) {
