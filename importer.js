@@ -1628,10 +1628,30 @@
                         pa: pa
                     };
                 });
+                // === LÓGICA DE LOTES (BATCHES) ===
+                if (!window.state) window.state = {};
+                if (!window.state.batches) window.state.batches = [];
+                
+                const batchId = 'batch_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                const batchName = file ? file.name : `Lote_${window.state.batches.length + 1}`;
+                
+                const newBatch = {
+                    id: batchId,
+                    name: batchName,
+                    date: new Date().toLocaleString(),
+                    data: converted
+                };
+                
+                window.state.batches.push(newBatch);
 
-                // Sobrescribir los datos cargados excluyendo 'BENEFICIO'
-                window.state.data = converted.filter(d => d.na !== 'BENEFICIO');
-
+                // Reconstruir window.state.data a partir de todos los lotes activos
+                window.state.data = [];
+                window.state.batches.forEach(batch => {
+                    window.state.data.push(...batch.data.filter(d => d.na !== 'BENEFICIO'));
+                });
+                
+                // Disparar evento para actualizar la UI del Gestor de Lotes
+                document.dispatchEvent(new CustomEvent('nomai:batchesUpdated'));
                 // Inicializar caché de valores únicos y procesar filtros
                 if (typeof window.initUniqueValuesCache === 'function') {
                     window.initUniqueValuesCache();
