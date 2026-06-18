@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 renderBatchesList();
                 refreshDatabaseTable();
-            }, 60);
+            }, 150);
         }
     });
 });
@@ -208,15 +208,25 @@ function setupVirtualScroll() {
     const scrollContainer = document.getElementById('db-scroll-container');
     if (!scrollContainer) return;
 
-    // Remove old listener before adding new one
     scrollContainer.onscroll = null;
 
-    VS.containerH = scrollContainer.clientHeight || 520;
+    // Siempre re-leer la altura real (puede ser 0 si el tab estaba oculto)
+    VS.containerH = scrollContainer.clientHeight || scrollContainer.offsetHeight || 520;
 
-    renderVirtualRows(scrollContainer);
+    // Si todavía es 0 (tab aun invisible), esperar un frame e intentar de nuevo
+    if (VS.containerH < 10) {
+        requestAnimationFrame(() => {
+            VS.containerH = scrollContainer.clientHeight || scrollContainer.offsetHeight || 520;
+            renderVirtualRows(scrollContainer);
+        });
+    } else {
+        renderVirtualRows(scrollContainer);
+    }
 
     scrollContainer.onscroll = () => {
         VS.scrollTop = scrollContainer.scrollTop;
+        // Re-leer altura por si cambió el viewport
+        VS.containerH = scrollContainer.clientHeight || scrollContainer.offsetHeight || 520;
         renderVirtualRows(scrollContainer);
     };
 }
