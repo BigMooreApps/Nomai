@@ -2462,20 +2462,20 @@
         });
     }
 
-    function showNomaiPrompt(title, defaultValue = '') {
+    function showNomaiPrompt(message, defaultValue = '') {
         return new Promise((resolve) => {
             const modal = document.getElementById('nomai-prompt-modal');
-            const titleEl = document.getElementById('nomai-prompt-title');
+            const msgEl = document.getElementById('nomai-prompt-message');
             const inputEl = document.getElementById('nomai-prompt-input');
             const btnCancel = document.getElementById('nomai-prompt-cancel');
             const btnConfirm = document.getElementById('nomai-prompt-confirm');
 
             if (!modal) {
-                resolve(prompt(title, defaultValue));
+                resolve(prompt(message, defaultValue));
                 return;
             }
 
-            titleEl.innerText = title;
+            msgEl.innerText = message;
             inputEl.value = defaultValue;
 
             modal.classList.remove('hide');
