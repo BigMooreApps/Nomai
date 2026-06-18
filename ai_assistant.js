@@ -174,34 +174,45 @@ function generateDataContext(userMessage) {
         contextStr += `- Devengos Totales (Ingresos): $${summary[year].devengos.toLocaleString('es-CO', {maximumFractionDigits:0})}\n`;
         contextStr += `- Deducciones Totales: $${summary[year].deducciones.toLocaleString('es-CO', {maximumFractionDigits:0})}\n`;
         contextStr += `- Empleados únicos en el año: ${summary[year].empleados.size}\n`;
-        
-        // Promedio per capita anual
-        if (summary[year].empleados.size > 0) {
-            const prom = summary[year].devengos / summary[year].empleados.size;
-            contextStr += `- Ingreso Promedio Anual por Empleado: $${prom.toLocaleString('es-CO', {maximumFractionDigits:0})}\n`;
-        }
     }
 
-    // Filtrar pagos relevantes basados en la consulta del usuario
-    if (userMessage) {
-        const userWords = userMessage.toLowerCase().split(/\s+/).filter(w => w.length >= 3); // Ignorar palabras cortas
-        const relevantRows = data.filter(r => {
-            const cStr = String(r.c || '').toLowerCase();
-            const nStr = String(r.n || '').toLowerCase();
-            return userWords.some(w => cStr.includes(w) || nStr.includes(w));
-        });
-        
-        if (relevantRows.length > 0) {
-            contextStr += `\nDatos específicos de empleados extraídos para esta consulta (Basado en la pregunta del usuario):\n`;
-            // Limitar a 100 filas para no desbordar el token limit en consultas ambiguas
-            relevantRows.slice(0, 100).forEach(r => {
-                contextStr += `- ${r.a} ${r.m} Q${r.pa||'1'}: Cédula ${r.c} | Nombre: ${r.n} | ${r.na}: ${r.co} | Valor: $${parseFloat(r.v).toLocaleString('es-CO')}\n`;
-            });
-            if (relevantRows.length > 100) contextStr += `- ... (y ${relevantRows.length - 100} registros más omitidos)\n`;
+    // ENVIAR DATA COMPLETA EN FORMATO CSV COMPACTO (Para análisis profundo)
+    contextStr += `\nBASE DE DATOS COMPLETA DE NÓMINA (Formato CSV Compacto):\n`;
+    contextStr += `Año,Mes,Quincena,Cedula,Nombre,Naturaleza,Concepto,Valor\n`;
+    
+    let csvRows = [];
+    data.forEach(r => {
+        // Solo enviar datos útiles
+        if (!r.v || r.v === 0) return;
+        const q = r.pa || '1';
+        const na = String(r.na).substring(0,3).toUpperCase(); // DEV o DES
+        // Limpiar comas del nombre y concepto para no romper el CSV
+        const nClean = String(r.n || '').replace(/,/g, '');
+        const coClean = String(r.co || '').replace(/,/g, '');
+        csvRows.push(`${r.a},${r.m},Q${q},${r.c},${nClean},${na},${coClean},${parseFloat(r.v).toFixed(0)}`);
+    });
+
+    // Limitar a 15000 registros para evitar timeouts o sobrecarga masiva, aunque Gemini soporte más
+    if (csvRows.length > 15000) {
+        // Si es inmenso, filtramos usando las palabras clave del usuario
+        const userWords = userMessage.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+        const filtered = csvRows.filter(row => userWords.some(w => row.toLowerCase().includes(w)));
+        if (filtered.length > 0) {
+            contextStr += `(Nota: Base de datos muy grande. Se han filtrado los registros relevantes a tu consulta)\n`;
+            contextStr += filtered.slice(0, 15000).join('\n') + '\n';
+        } else {
+            contextStr += `(Base de datos inmensa. Por favor sé más específico en tu búsqueda indicando nombres o conceptos.)\n`;
         }
+    } else {
+        contextStr += csvRows.join('\n') + '\n';
     }
 
-    contextStr += `\nInstrucciones para la IA:\nEres el Asistente de IA oficial de Nomai, una plataforma premium de análisis de nómina. Usa EXCLUSIVAMENTE la información de contexto de arriba para responder a las preguntas del usuario. Si el usuario pregunta por una persona específica, busca en los "Datos específicos extraídos" y suma o lista sus pagos de forma clara. Sé conciso y profesional.`;
+    contextStr += `\nInstrucciones IMPORTANTES para la IA:
+Eres el Asistente de IA de Nomai, experto en análisis de nómina. 
+Toda la base de datos de la nómina está arriba en formato CSV. 
+Cuando el usuario te haga preguntas, DEBES LEER EL CSV para sumar, buscar personas, buscar conceptos (horas extras, libranzas, etc.) o cruzar datos por quincena (Q1, Q2) y meses.
+Haz cálculos matemáticos precisos sumando la columna 'Valor' de las filas que coincidan con la petición.
+Sé directo, entrega el total exacto solicitado y luego desglose brevemente si es necesario.`;
     
     return contextStr;
 }
