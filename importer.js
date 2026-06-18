@@ -1531,14 +1531,14 @@
     }
 
     // Cargar al Dashboard
-    function loadDataToDashboard() {
+    async function loadDataToDashboard() {
         if (!appState.transformedData || appState.transformedData.length === 0) {
             alert('Primero debes cargar un archivo y transformarlo.');
             return;
         }
 
         if (appState.validationErrors.some(err => err.type === 'danger')) {
-            const proceed = confirm('Existen errores críticos (rojo) en la validación de los datos. ¿Estás seguro de que deseas cargarlos de todas formas? Esto podría romper los gráficos del dashboard.');
+            const proceed = await showNomaiConfirm('Existen errores críticos (rojo) en la validación de los datos. ¿Estás seguro de que deseas cargarlos de todas formas? Esto podría romper los gráficos del dashboard.');
             if (!proceed) return;
         }
 
@@ -2516,6 +2516,53 @@
         });
     }
 
+    function showNomaiConfirm(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('nomai-confirm-modal');
+            const msgEl = document.getElementById('nomai-confirm-message');
+            const btnCancel = document.getElementById('nomai-confirm-cancel');
+            const btnConfirm = document.getElementById('nomai-confirm-accept');
+
+            if (!modal) {
+                resolve(confirm(message));
+                return;
+            }
+
+            msgEl.innerText = message;
+
+            modal.classList.remove('hide');
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+            }, 10);
+
+            const closeAndResolve = (val) => {
+                modal.style.opacity = '0';
+                modal.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    modal.classList.add('hide');
+                }, 200);
+                
+                btnCancel.removeEventListener('click', onCancel);
+                btnConfirm.removeEventListener('click', onConfirm);
+                document.removeEventListener('keydown', onKeyDown);
+                
+                resolve(val);
+            };
+
+            const onCancel = () => closeAndResolve(false);
+            const onConfirm = () => closeAndResolve(true);
+            const onKeyDown = (e) => {
+                if (e.key === 'Enter') onConfirm();
+                if (e.key === 'Escape') onCancel();
+            };
+
+            btnCancel.addEventListener('click', onCancel);
+            btnConfirm.addEventListener('click', onConfirm);
+            document.addEventListener('keydown', onKeyDown);
+        });
+    }
+
     async function saveCurrentTemplate() {
         const name = await showNomaiPrompt('Ingresa un nombre para esta plantilla de configuración:', 'Mi Plantilla');
         if (!name) return;
@@ -2556,7 +2603,7 @@
         alert('Plantilla guardada con éxito.');
     }
 
-    function loadSelectedTemplate() {
+    async function loadSelectedTemplate() {
         const select = document.getElementById('config-template-select');
         if (!select || select.value === '') {
             alert('Por favor selecciona una plantilla de la lista.');
@@ -2572,7 +2619,8 @@
         const template = configs[select.value];
         if (!template) return;
         
-        if (!confirm(`¿Estás seguro de sobreescribir la configuración actual con la plantilla "${template.name}"?`)) return;
+        const proceed = await showNomaiConfirm(`¿Estás seguro de sobreescribir la configuración actual con la plantilla "${template.name}"?`);
+        if (!proceed) return;
         
         appState.columnMappings = JSON.parse(JSON.stringify(template.columnMappings || {}));
         appState.combineNames = !!template.combineNames;
@@ -2671,8 +2719,9 @@
         }
     }
 
-    function clearHistory() {
-        if (confirm('¿Estás seguro de que deseas eliminar todo el historial de cargas? Esta acción no se puede deshacer.')) {
+    async function clearHistory() {
+        const proceed = await showNomaiConfirm('¿Estás seguro de que deseas eliminar todo el historial de cargas? Esta acción no se puede deshacer.');
+        if (proceed) {
             localStorage.removeItem('nomai_load_history');
             renderHistoryTable();
         }
