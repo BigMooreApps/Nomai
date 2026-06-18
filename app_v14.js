@@ -322,7 +322,17 @@ function initUniqueValuesCache() {
     state.uniqueMonths = Array.from(months).sort((a, b) => (MONTH_ORDER[a] || 0) - (MONTH_ORDER[b] || 0));
 
     // 3. Quincenas
-    state.uniqueQuincenas = ['Q1', 'Q2', 'MES'];
+    const qSet = new Set();
+    state.data.forEach(d => {
+        if (d.pa !== undefined && d.pa !== null && d.pa !== '') {
+            const qStr = (parseInt(d.pa) % 2 === 1) ? 'Q1' : 'Q2';
+            qSet.add(qStr);
+        } else {
+            qSet.add('MES');
+        }
+    });
+    const qOrder = { 'Q1': 1, 'Q2': 2, 'MES': 3 };
+    state.uniqueQuincenas = Array.from(qSet).sort((a, b) => (qOrder[a] || 9) - (qOrder[b] || 9));
 
     // 4. People
     const peopleMap = {};
@@ -2578,7 +2588,7 @@ function getFilterOptions(type) {
             state.data.forEach(d => { if (d.tn) set.add(d.tn); });
             return Array.from(set).sort().map(t => ({
                 value: t,
-                label: t,
+                label: TIPO_NOMINA_LABELS[t] || t,
                 sublabel: ''
             }));
         }

@@ -1507,8 +1507,15 @@
                         if (parts.length === 3) anio = parseInt(parts[2]) || 2026;
                     }
                     
-                    const isSecondQuincena = (r.quincena || '').toUpperCase().includes('2');
-                    const pa = (mesNum - 1) * 2 + (isSecondQuincena ? 2 : 1);
+                    const qUpper = String(r.quincena || '').trim().toUpperCase();
+                    let pa = null;
+                    if (qUpper.includes('1') || qUpper.includes('Q1') || qUpper.includes('QUINCENA 1') || qUpper.includes('PRIMERA')) {
+                        pa = (mesNum - 1) * 2 + 1;
+                    } else if (qUpper.includes('2') || qUpper.includes('Q2') || qUpper.includes('QUINCENA 2') || qUpper.includes('SEGUNDA')) {
+                        pa = (mesNum - 1) * 2 + 2;
+                    } else {
+                        pa = null;
+                    }
                     
                     let tipo = "SALARIAL";
                     const conceptUpper = (r.nombre_concepto || "").toUpperCase();
