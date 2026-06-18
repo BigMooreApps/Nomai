@@ -182,40 +182,55 @@ function generateDataContext(userMessage) {
         }
     }
 
-    // EXTRAER SOLO LOS REGISTROS RELEVANTES A LA PREGUNTA (Para no agotar los tokens de la API)
+    // EXTRAER SOLO LOS REGISTROS RELEVANTES (Scoring System para no exceder TPM de Gemini)
     if (userMessage) {
-        const userWords = userMessage.toLowerCase().split(/\s+/).filter(w => w.length >= 3); // Ignorar conectores
+        const stopWords = ['dame', 'dime', 'cuanto', 'cuantos', 'como', 'cual', 'quien', 'para', 'los', 'las', 'del', 'con', 'por', 'que', 'una', 'uno', 'realizados', 'hubieron', 'hay', 'tiene', 'tienen', 'este', 'esta', 'ese', 'esa', 'pago', 'pagos', 'total', 'cantidad', 'persona', 'personas', 'empleado', 'empleados', 'realizo', 'realizó', 'sobre'];
+        const userWords = userMessage.toLowerCase().split(/[\s,¿?¡!]+/).filter(w => w.length >= 2 && !stopWords.includes(w));
         
-        // Buscar coincidencias en CUALQUIER campo (Mes, Concepto, Cedula, Nombre, etc)
-        const relevantRows = data.filter(r => {
-            const rowText = `${r.a} ${r.m} ${r.c} ${r.n} ${r.co} ${r.na} q${r.pa||'1'}`.toLowerCase();
-            return userWords.some(w => rowText.includes(w));
-        });
-        
-        if (relevantRows.length > 0) {
-            contextStr += `\nBASE DE DATOS FILTRADA (Registros extraídos específicamente para responder a la pregunta del usuario):\n`;
-            contextStr += `Año,Mes,Quincena,Cedula,Nombre,Naturaleza,Concepto,Valor\n`;
-            
-            // Limitar a 500 filas para mantener un payload bajo y no agotar la cuota de Tokens por Minuto (TPM)
-            relevantRows.slice(0, 500).forEach(r => {
-                const q = r.pa || '1';
-                const na = String(r.na).substring(0,3).toUpperCase();
-                const nClean = String(r.n || '').replace(/,/g, '');
-                const coClean = String(r.co || '').replace(/,/g, '');
-                contextStr += `${r.a},${r.m},Q${q},${r.c},${nClean},${na},${coClean},${parseFloat(r.v).toFixed(0)}\n`;
+        if (userWords.length > 0) {
+            // Asignar un puntaje a cada fila según cuántas palabras clave contiene
+            const scoredRows = [];
+            data.forEach(r => {
+                const rowText = `${r.a} ${r.m} ${r.c} ${r.n} ${r.co} ${r.na} ${r.cg} q${r.pa||'1'} quincena ${r.pa||'1'}`.toLowerCase();
+                let score = 0;
+                userWords.forEach(w => {
+                    if (rowText.includes(w)) score++;
+                });
+                if (score > 0) {
+                    scoredRows.push({ r, score });
+                }
             });
             
-            if (relevantRows.length > 500) {
-                contextStr += `... (Se omitieron ${relevantRows.length - 500} registros similares para ahorrar memoria. Si el usuario pide un total, adviértele que esta es una muestra representativa de 500 registros)\n`;
+            // Ordenar por mayor puntaje (las filas más relevantes quedan de primeras)
+            scoredRows.sort((a, b) => b.score - a.score);
+            const relevantRows = scoredRows.map(item => item.r);
+            
+            if (relevantRows.length > 0) {
+                contextStr += `\nBASE DE DATOS FILTRADA (Ordenada por relevancia a la pregunta):\n`;
+                contextStr += `Año,Mes,Quincena,Cedula,Nombre,Cargo,Naturaleza,Concepto,Valor\n`;
+                
+                // Tomar hasta 800 filas de altísima relevancia
+                relevantRows.slice(0, 800).forEach(r => {
+                    const q = r.pa || '1';
+                    const na = String(r.na).substring(0,3).toUpperCase();
+                    const nClean = String(r.n || '').replace(/,/g, '');
+                    const coClean = String(r.co || '').replace(/,/g, '');
+                    const cgClean = String(r.cg || 'N/A').replace(/,/g, '');
+                    contextStr += `${r.a},${r.m},Q${q},${r.c},${nClean},${cgClean},${na},${coClean},${parseFloat(r.v).toFixed(0)}\n`;
+                });
+                
+                if (relevantRows.length > 800) {
+                    contextStr += `... (Se omitieron ${relevantRows.length - 800} registros con menor puntaje de relevancia para ahorrar cuota de API)\n`;
+                }
             }
         }
     }
 
     contextStr += `\nInstrucciones IMPORTANTES para la IA:
 Eres el Asistente de IA de Nomai, experto en análisis de nómina. 
-Arriba tienes los resúmenes anuales y una BASE DE DATOS FILTRADA en formato CSV con las filas exactas que coinciden con la pregunta del usuario. 
-Usa el CSV para sumar valores, buscar personas, o analizar conceptos (horas extras, etc.).
-Haz cálculos matemáticos precisos sumando la columna 'Valor'. Si no hay registros en la base filtrada, diles que no encontraste información específica para su búsqueda.`;
+Arriba tienes la BASE DE DATOS FILTRADA en CSV con las filas exactas más relevantes para la pregunta del usuario. 
+Usa el CSV para responder de forma concisa. Puedes ver el CARGO de la persona en la columna Cargo.
+Si la base de datos dice "Se omitieron X registros", aclárale al usuario que estás usando una muestra de los 800 registros más relevantes, por lo que las sumas totales masivas pueden ser estimaciones.`;
     
     return contextStr;
 }
