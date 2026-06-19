@@ -18,7 +18,8 @@
         { key: 'nombre_cargo', name: 'Nombre Cargo', required: false, desc: 'Nombre del cargo.', synonyms: ['nombre cargo', 'cargo', 'puesto', 'nombre_cargo', 'posicion', 'posición', 'cargo_nombre', 'puesto_trabajo'] },
         { key: 'tipo_nomina', name: 'Tipo de Nómina', required: true, desc: 'Tipo de nómina (ej. Normal, Adicional).', synonyms: ['tipo de nomina', 'tipo de nmina', 'tipo nomina', 'tipo_nomina', 'tipo_de_nomina', 'clase_nomina'] },
         { key: 'quincena', name: 'Quincena', required: true, desc: 'Periodo de pago (ej. 1Q, 2Q, Mensual).', synonyms: ['quincena', 'periodo quincena', 'periodo_quincena', 'quincena_periodo', 'periodo', 'periodo_pago'] },
-        { key: 'naturaleza', name: 'Naturaleza', required: true, desc: 'Auto-calculada: valor ≥ 0 → INGRESO · valor < 0 → DESCUENTO.', synonyms: ['naturaleza', 'tipo concepto', 'tipo_concepto', 'naturaleza_concepto', 'naturaleza del concepto', 'naturaleza_con'] }
+        { key: 'naturaleza', name: 'Naturaleza', required: true, desc: 'Auto-calculada: valor ≥ 0 → INGRESO · valor < 0 → DESCUENTO.', synonyms: ['naturaleza', 'tipo concepto', 'tipo_concepto', 'naturaleza_concepto', 'naturaleza del concepto', 'naturaleza_con'] },
+        { key: 'tipo_concepto', name: 'Tipo de Concepto', required: true, desc: 'Tipo de concepto (ej. Salarial, No Salarial, Seguridad Social, Otros).', synonyms: ['tipo concepto', 'tipo_concepto', 'tipo de concepto', 'tipo_con', 'clase concepto', 'clase_concepto', 'grupo concepto', 'grupo_concepto'] }
     ];
 
     // Estado Local del Importador
@@ -37,6 +38,7 @@
         detectedSplitNames: false, 
         quincenaRule: 'quincenal', 
         defaultTipoNomina: 'Normal', 
+        defaultTipoConcepto: 'Sin definir',
         fechaAcumuladoIsMonthName: false,
         convertMonthToDate: true,
         convertMonthYear: '2026',
@@ -524,6 +526,13 @@
             const mappedHeader = appState.columnMappings['tipo_nomina'];
             if (mappedHeader === '__unified__' || !mappedHeader) {
                 return appState.defaultTipoNomina || 'Normal';
+            }
+        }
+
+        if (targetKey === 'tipo_concepto') {
+            const mappedHeader = appState.columnMappings['tipo_concepto'];
+            if (mappedHeader === '__unified__' || !mappedHeader) {
+                return appState.defaultTipoConcepto || 'Sin definir';
             }
         }
         
@@ -1130,6 +1139,7 @@
                 naturalezaVal = (valNum >= 0) ? 'INGRESO' : 'DESCUENTO';
             }
             transformedRow['naturaleza'] = naturalezaVal;
+            transformedRow['tipo_concepto'] = getFieldValue('tipo_concepto', rawRow);
             transformedRow['_originalRow'] = rowNum;
             
             results.push(transformedRow);
@@ -1452,6 +1462,11 @@
             tdNat.className = row.naturaleza === 'INGRESO' ? 'text-success' : 'text-danger';
             tr.appendChild(tdNat);
             
+            // Tipo de Concepto
+            const tdTipoConcepto = document.createElement('td');
+            tdTipoConcepto.innerText = row.tipo_concepto || 'Sin definir';
+            tr.appendChild(tdTipoConcepto);
+            
             tbody.appendChild(tr);
         });
     }
@@ -1471,7 +1486,7 @@
                 'Codigo Concepto', 'Nombre Concepto', 'Cantidad', 'Valor', 
                 'Codigo Centro de Costo', 'Nombre Centro de Costo', 
                 'Codigo Cargo', 'Nombre Cargo', 'Tipo de Nómina', 
-                'Mes Acumulado', 'Quincena', 'Naturaleza'
+                'Mes Acumulado', 'Quincena', 'Naturaleza', 'Tipo de Concepto'
             ];
             
             const rowsToExport = appState.transformedData.map(row => [
@@ -1489,7 +1504,8 @@
                 row.tipo_nomina,
                 row.mes_acumulado,
                 row.quincena,
-                row.naturaleza
+                row.naturaleza,
+                row.tipo_concepto
             ]);
             
             const sheetData = [EXPORT_HEADERS, ...rowsToExport];

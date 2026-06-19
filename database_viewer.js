@@ -47,7 +47,7 @@ function getFechaAcumula(row) {
 }
 
 let dbFilters = {
-    c: '', n: '', fa: '', coc: '', co: '', cant: '', v: '', cc: '', dcc: '', cgc: '', cg: '', tn: '', m: '', pa: '', na: ''
+    c: '', n: '', fa: '', coc: '', co: '', cant: '', v: '', cc: '', dcc: '', cgc: '', cg: '', tn: '', m: '', pa: '', na: '', t: ''
 };
 
 let dbSort = { column: null, direction: 'asc' };
@@ -67,7 +67,8 @@ const columnMap = [
     { key: 'tn',   label: 'Tipo de Nómina', width: '110px' },
     { key: 'm',    label: 'Mes Acumulado', width: '115px' },
     { key: 'pa',   label: 'Quincena', width: '90px' },
-    { key: 'na',   label: 'Naturaleza', width: '115px' }
+    { key: 'na',   label: 'Naturaleza', width: '115px' },
+    { key: 't',    label: 'Tipo de Concepto', width: '120px' }
 ];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
