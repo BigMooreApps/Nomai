@@ -265,7 +265,7 @@ function renderVirtualRows(scrollContainer) {
 
     if (total === 0) {
         const empty = document.createElement('tr');
-        empty.innerHTML = '<td colspan="10" style="padding:2rem;text-align:center;color:#6b7280;">No hay registros que coincidan con los filtros.</td>';
+        empty.innerHTML = '<td colspan="14" style="padding:2rem;text-align:center;color:#6b7280;">No hay registros que coincidan con los filtros.</td>';
         tbody.insertBefore(empty, spacerBot);
         return;
     }
