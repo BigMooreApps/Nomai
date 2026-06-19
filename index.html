@@ -947,7 +947,12 @@
                     <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 280px);min-height:500px;padding:0;overflow:hidden;margin-bottom:1.5rem;">
                         <div style="padding:1rem;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;background:#f9fafb;flex-shrink:0;">
                             <h2 style="font-size:1.125rem;font-weight:700;color:#1f2937;margin:0;">Explorador de Datos</h2>
-                            <div style="font-size:0.875rem;color:#6b7280;" id="db-table-info">0 registros en total</div>
+                            <div style="display:flex;align-items:center;gap:1rem;">
+                                <div style="font-size:0.875rem;color:#6b7280;" id="db-table-info">0 registros en total</div>
+                                <button id="btn-export-database" class="btn btn-outline" style="padding:0.35rem 0.75rem;font-size:0.75rem;display:flex;align-items:center;gap:0.35rem;border-color:#10b981;color:#10b981;background:white;" onclick="exportDbToExcel()">
+                                    <i data-lucide="download" style="width:14px;height:14px;"></i> Exportar a Excel
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Contenedor con scroll — la tabla sticky thead queda fija arriba -->

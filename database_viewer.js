@@ -311,3 +311,79 @@ function renderVirtualRows(scrollContainer) {
     }
     tbody.insertBefore(frag, spacerBot);
 }
+
+// ─── Export to Excel ──────────────────────────────────────────────────────────
+window.exportDbToExcel = function () {
+    if (!window.XLSX) {
+        alert('La librería XLSX no está cargada.');
+        return;
+    }
+    const dataToExport = VS.filteredData || [];
+    if (!dataToExport.length) {
+        alert('No hay registros para exportar.');
+        return;
+    }
+
+    const overlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+    if (overlay && loadingText) {
+        loadingText.innerText = 'Generando archivo Excel...';
+        overlay.classList.remove('hide');
+    }
+
+    setTimeout(() => {
+        try {
+            const headers = columnMap.map(col => col.label);
+            const rows = dataToExport.map(row => [
+                row.a ?? '',
+                row.m ?? '',
+                row.pa ? 'Q' + row.pa : 'Q1',
+                row.tn ?? '',
+                row.c ?? '',
+                row.n ?? '',
+                row.cg ?? '',
+                row.cc ?? '',
+                row.dcc ?? '',
+                row.na ?? '',
+                row.t ?? '',
+                row.co ?? '',
+                row.cant !== undefined ? (parseFloat(row.cant) || 0) : 0,
+                row.v !== undefined ? (parseFloat(row.v) || 0) : 0
+            ]);
+
+            const sheetData = [headers, ...rows];
+            const newWb = XLSX.utils.book_new();
+            const newWs = XLSX.utils.aoa_to_sheet(sheetData);
+
+            // Auto-ajustar anchos
+            const colWidths = headers.map((header, colIndex) => {
+                let maxLength = header.length;
+                const sampleSize = Math.min(200, rows.length);
+                for (let i = 0; i < sampleSize; i++) {
+                    const val = String(rows[i][colIndex] || '');
+                    if (val.length > maxLength) {
+                        maxLength = val.length;
+                    }
+                }
+                return { wch: Math.min(40, maxLength + 3) };
+            });
+            newWs['!cols'] = colWidths;
+
+            XLSX.utils.book_append_sheet(newWb, newWs, 'Base de Datos');
+
+            let filename = 'Base_de_Datos_Nomai.xlsx';
+            if (dataToExport.length < (window.state?.data?.length || 0)) {
+                filename = 'Base_de_Datos_Filtrada.xlsx';
+            }
+            XLSX.writeFile(newWb, filename);
+
+        } catch (error) {
+            console.error('Error al exportar a Excel:', error);
+            alert('Ocurrió un error al exportar a Excel.');
+        } finally {
+            if (overlay) {
+                overlay.classList.add('hide');
+            }
+        }
+    }, 100);
+};
