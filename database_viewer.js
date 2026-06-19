@@ -39,20 +39,20 @@ let dbFilters = {
 let dbSort = { column: null, direction: 'asc' };
 
 const columnMap = [
-    { key: 'a',   label: 'Año' },
-    { key: 'm',   label: 'Mes' },
-    { key: 'pa',  label: 'Quincena' },
-    { key: 'tn',  label: 'Tipo Nómina' },
-    { key: 'c',   label: 'Cédula' },
+    { key: 'a',   label: 'Año', width: '65px' },
+    { key: 'm',   label: 'Mes', width: '85px' },
+    { key: 'pa',  label: 'Quincena', width: '90px' },
+    { key: 'tn',  label: 'Tipo Nómina', width: '110px' },
+    { key: 'c',   label: 'Cédula', width: '105px' },
     { key: 'n',   label: 'Nombre' },
     { key: 'cg',  label: 'Cargo' },
-    { key: 'cc',  label: 'Código CECO' },
+    { key: 'cc',  label: 'Código CECO', width: '110px' },
     { key: 'dcc', label: 'Centro de Costo' },
-    { key: 'na',  label: 'Naturaleza' },
-    { key: 't',   label: 'Tipo' },
+    { key: 'na',  label: 'Naturaleza', width: '115px' },
+    { key: 't',   label: 'Tipo', width: '90px' },
     { key: 'co',  label: 'Concepto' },
-    { key: 'cant',label: 'Cantidad', isNumber: true },
-    { key: 'v',   label: 'Valor', isNumber: true },
+    { key: 'cant',label: 'Cantidad', isNumber: true, width: '80px' },
+    { key: 'v',   label: 'Valor', isNumber: true, width: '120px' },
 ];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -121,22 +121,30 @@ function renderTableHeaders() {
     const filterRow = document.getElementById('db-table-filters');
     if (!headerRow || !filterRow) return;
 
-    headerRow.innerHTML = columnMap.map(col => `
-        <th style="padding:0.75rem 1rem;cursor:pointer;user-select:none;white-space:nowrap;"
-            onclick="handleDbSort('${col.key}')">
-            <div style="display:flex;align-items:center;gap:0.25rem;">
-                ${col.label}
-                <span id="db-sort-icon-${col.key}" style="color:#cbd5e1;font-size:0.75rem;">↕</span>
-            </div>
-        </th>`).join('');
+    headerRow.innerHTML = columnMap.map(col => {
+        const widthStyle = col.width ? `width:${col.width};min-width:${col.width};max-width:${col.width};` : '';
+        return `
+            <th style="padding:0.75rem 0.5rem;cursor:pointer;user-select:none;white-space:nowrap;${widthStyle}box-sizing:border-box;"
+                onclick="handleDbSort('${col.key}')">
+                <div style="display:flex;align-items:center;gap:0.25rem;overflow:hidden;text-overflow:ellipsis;">
+                    ${col.label}
+                    <span id="db-sort-icon-${col.key}" style="color:#cbd5e1;font-size:0.75rem;flex-shrink:0;">↕</span>
+                </div>
+            </th>`;
+    }).join('');
 
-    filterRow.innerHTML = columnMap.map(col => `
-        <th style="padding:0.5rem 1rem;">
-            <input type="text" placeholder="Filtrar…"
-                   style="width:100%;min-width:70px;padding:0.25rem 0.5rem;font-size:0.75rem;
-                          border:1px solid #d1d5db;border-radius:0.25rem;background:white;"
-                   data-col="${col.key}" onkeyup="handleDbFilter(event)">
-        </th>`).join('');
+    filterRow.innerHTML = columnMap.map(col => {
+        const widthStyle = col.width ? `width:${col.width};min-width:${col.width};max-width:${col.width};` : '';
+        const inputPadding = col.width ? 'padding:0.25rem 0.25rem;' : 'padding:0.25rem 0.5rem;';
+        const inputMinW = col.width ? 'min-width:40px;' : 'min-width:70px;';
+        return `
+            <th style="padding:0.5rem 0.5rem;${widthStyle}box-sizing:border-box;">
+                <input type="text" placeholder="Filtrar…"
+                       style="width:100%;${inputMinW}${inputPadding}font-size:0.75rem;
+                              border:1px solid #d1d5db;border-radius:0.25rem;background:white;box-sizing:border-box;"
+                       data-col="${col.key}" onkeyup="handleDbFilter(event)">
+            </th>`;
+    }).join('');
 }
 
 window.handleDbSort = function (key) {
@@ -281,24 +289,24 @@ function renderVirtualRows(scrollContainer) {
             : 'background:#dcfce7;color:#15803d;';
         tr.style.cssText = `border-bottom:1px solid #f3f4f6;background:${bg};`;
         tr.innerHTML = `
-            <td style="padding:0.6rem 1rem;">${row.a ?? ''}</td>
-            <td style="padding:0.6rem 1rem;">${row.m ?? ''}</td>
-            <td style="padding:0.6rem 1rem;">${row.pa ? 'Q' + row.pa : 'Q1'}</td>
-            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.tn ?? ''}</td>
-            <td style="padding:0.6rem 1rem;font-family:monospace;">${row.c ?? ''}</td>
-            <td style="padding:0.6rem 1rem;">${row.n ?? ''}</td>
-            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.cg ?? ''}</td>
-            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.cc ?? ''}</td>
-            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.dcc ?? ''}</td>
-            <td style="padding:0.6rem 1rem;">
+            <td style="padding:0.6rem 0.5rem;width:65px;min-width:65px;max-width:65px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.a ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;width:85px;min-width:85px;max-width:85px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.m ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;width:90px;min-width:90px;max-width:90px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.pa ? 'Q' + row.pa : 'Q1'}</td>
+            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;width:110px;min-width:110px;max-width:110px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.tn ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;font-family:monospace;width:105px;min-width:105px;max-width:105px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.c ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.n ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.cg ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;width:110px;min-width:110px;max-width:110px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.cc ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.dcc ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;width:115px;min-width:115px;max-width:115px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                 <span style="padding:0.125rem 0.5rem;border-radius:9999px;font-size:0.7rem;font-weight:600;${naStyle}">
                     ${row.na ?? ''}
                 </span>
             </td>
-            <td style="padding:0.6rem 1rem;font-size:0.75rem;">${row.t ?? ''}</td>
-            <td style="padding:0.6rem 1rem;">${row.co ?? ''}</td>
-            <td style="padding:0.6rem 1rem;text-align:right;">${row.cant ?? 0}</td>
-            <td style="padding:0.6rem 1rem;text-align:right;font-weight:500;">${fmt.format(row.v ?? 0)}</td>`;
+            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;width:90px;min-width:90px;max-width:90px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.t ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.co ?? ''}</td>
+            <td style="padding:0.6rem 0.5rem;text-align:right;width:80px;min-width:80px;max-width:80px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.cant ?? 0}</td>
+            <td style="padding:0.6rem 0.5rem;text-align:right;font-weight:500;width:120px;min-width:120px;max-width:120px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fmt.format(row.v ?? 0)}</td>`;
         frag.appendChild(tr);
     }
     tbody.insertBefore(frag, spacerBot);
