@@ -874,7 +874,8 @@
                 } else if (
                     target.key === 'tipo_nomina' ||
                     target.key === 'quincena' ||
-                    target.key === 'naturaleza'
+                    target.key === 'naturaleza' ||
+                    target.key === 'tipo_concepto'
                 ) {
                     requiredMapped++;
                 } else if (appState.columnMappings[target.key]) {
@@ -988,7 +989,8 @@
                 } else if (
                     target.key === 'tipo_nomina' ||
                     target.key === 'quincena' ||
-                    target.key === 'naturaleza'
+                    target.key === 'naturaleza' ||
+                    target.key === 'tipo_concepto'
                 ) {
                     // Automáticos
                 } else if (!appState.columnMappings[target.key]) {
@@ -1609,19 +1611,36 @@
                         pa = null;
                     }
                     
-                    let tipo = "SALARIAL";
-                    const conceptUpper = (r.nombre_concepto || "").toUpperCase();
-                    if (r.naturaleza === "DESCUENTO") {
-                        if (conceptUpper.includes("EPS") || conceptUpper.includes("PENSION") || conceptUpper.includes("SOLIDARIDAD") || conceptUpper.includes("SALUD")) {
-                            tipo = "SEGURIDAD SOCIAL";
+                    let tipo = "";
+                    const rawTipoConcepto = String(r.tipo_concepto || '').trim().toUpperCase();
+                    if (rawTipoConcepto && rawTipoConcepto !== 'SIN DEFINIR' && rawTipoConcepto !== '') {
+                        if (rawTipoConcepto.includes('SALARIAL') && !rawTipoConcepto.includes('NO')) {
+                            tipo = 'SALARIAL';
+                        } else if (rawTipoConcepto.includes('NO SALARIAL')) {
+                            tipo = 'NO SALARIAL';
+                        } else if (rawTipoConcepto.includes('SEGURIDAD SOCIAL') || rawTipoConcepto.includes('SALUD') || rawTipoConcepto.includes('EPS') || rawTipoConcepto.includes('PENSION') || rawTipoConcepto.includes('PENSIÓN')) {
+                            tipo = 'SEGURIDAD SOCIAL';
+                        } else if (rawTipoConcepto.includes('OTRO')) {
+                            tipo = 'OTROS';
                         } else {
-                            tipo = "OTROS";
+                            tipo = rawTipoConcepto;
                         }
-                    } else {
-                        if (conceptUpper.includes("SUELDO") || conceptUpper.includes("SALARIO") || conceptUpper.includes("COMISION") || conceptUpper.includes("EXTRA") || conceptUpper.includes("REC.") || conceptUpper.includes("VACACIO") || conceptUpper.includes("PRIMA") || conceptUpper.includes("CESANTIA") || conceptUpper.includes("INCAPAC") || conceptUpper.includes("LICENCIA")) {
-                            tipo = "SALARIAL";
+                    }
+
+                    if (!tipo) {
+                        const conceptUpper = (r.nombre_concepto || "").toUpperCase();
+                        if (r.naturaleza === "DESCUENTO") {
+                            if (conceptUpper.includes("EPS") || conceptUpper.includes("PENSION") || conceptUpper.includes("SOLIDARIDAD") || conceptUpper.includes("SALUD")) {
+                                tipo = "SEGURIDAD SOCIAL";
+                            } else {
+                                tipo = "OTROS";
+                            }
                         } else {
-                            tipo = "NO SALARIAL";
+                            if (conceptUpper.includes("SUELDO") || conceptUpper.includes("SALARIO") || conceptUpper.includes("COMISION") || conceptUpper.includes("EXTRA") || conceptUpper.includes("REC.") || conceptUpper.includes("VACACIO") || conceptUpper.includes("PRIMA") || conceptUpper.includes("CESANTIA") || conceptUpper.includes("INCAPAC") || conceptUpper.includes("LICENCIA")) {
+                                tipo = "SALARIAL";
+                            } else {
+                                tipo = "NO SALARIAL";
+                            }
                         }
                     }
 
@@ -2046,6 +2065,22 @@
                 </div>
                 <p style="margin-top: 0.25rem;">O selecciona una columna del archivo origen:</p>
             `;
+        } else if (targetKey === 'tipo_concepto') {
+            body.innerHTML = `
+                <p>Configura el <b>Tipo de Concepto</b> por defecto o mapea desde el archivo:</p>
+                <div class="form-group" style="display:flex; flex-direction:column; gap:0.35rem; width:100%; margin-bottom: 0.5rem;">
+                    <label style="font-weight:600; font-size:0.82rem; color:#374151;">Asignar un valor constante (Por Defecto):</label>
+                    <select id="nomai-custom-constant-select" class="mapping-select" style="width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #D1D5DB; border-radius: 7px; font-size: 0.875rem;">
+                        <option value="">-- No usar valor constante (Mapear columna) --</option>
+                        <option value="Sin definir">Sin definir</option>
+                        <option value="Salarial">Salarial</option>
+                        <option value="No Salarial">No Salarial</option>
+                        <option value="Seguridad Social">Seguridad Social</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <p style="margin-top: 0.25rem;">O selecciona una columna del archivo origen:</p>
+            `;
         } else if (targetKey === 'quincena') {
             body.innerHTML = `
                 <p style="margin-bottom: 0.5rem; color: #4B5563;">No se identificó la columna de Quincena en el archivo origen. Selecciona la regla de cálculo del periodo de pago:</p>
@@ -2157,6 +2192,8 @@
                 if (mappedVal === '__unified__' || mappedVal === '') {
                     if (targetKey === 'tipo_nomina') {
                         constantSelect.value = appState.defaultTipoNomina || 'Normal';
+                    } else if (targetKey === 'tipo_concepto') {
+                        constantSelect.value = appState.defaultTipoConcepto || 'Sin definir';
                     }
                 } else {
                     constantSelect.value = '';
@@ -2326,6 +2363,8 @@
                 } else if (constantSelect && constantSelect.value !== '') {
                     if (targetKey === 'tipo_nomina') {
                         previewValEl.innerText = `Valor Constante: ${constantSelect.value}`;
+                    } else if (targetKey === 'tipo_concepto') {
+                        previewValEl.innerText = `Valor Constante: ${constantSelect.value}`;
                     }
                     return;
                 }
@@ -2421,6 +2460,8 @@
                     appState.columnMappings[targetKey] = '__unified__';
                     if (targetKey === 'tipo_nomina') {
                         appState.defaultTipoNomina = constantValue;
+                    } else if (targetKey === 'tipo_concepto') {
+                        appState.defaultTipoConcepto = constantValue;
                     } else if (targetKey === 'quincena') {
                         appState.quincenaRule = constantValue;
                     }
