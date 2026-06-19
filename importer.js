@@ -1614,6 +1614,8 @@
                     return {
                         c: r.identificacion ? r.identificacion.toString().trim() : "",
                         n: r.nombre_completo ? r.nombre_completo.toString().trim().toUpperCase() : "",
+                        fa: r.fecha_acumulado ? r.fecha_acumulado.toString().trim() : "",
+                        coc: r.codigo_concepto ? r.codigo_concepto.toString().trim() : "",
                         co: r.nombre_concepto ? r.nombre_concepto.toString().trim().toUpperCase() : "N/A",
                         v: parseFloat(r.valor) || 0.0,
                         cant: Math.round(parseFloat(r.cantidad)) || 0,
@@ -1624,6 +1626,7 @@
                         na: (r.naturaleza === 'INGRESO' || r.naturaleza === 'DEVENGO') ? 'DEVENGO' : (r.naturaleza || 'DEVENGO'),
                         cc: r.codigo_ceco ? r.codigo_ceco.toString().trim() : "",
                         dcc: r.nombre_ceco ? r.nombre_ceco.toString().trim() : (r.codigo_ceco ? r.codigo_ceco.toString().trim() : ""),
+                        cgc: r.codigo_cargo ? r.codigo_cargo.toString().trim() : "",
                         cg: r.nombre_cargo ? r.nombre_cargo.toString().trim().toUpperCase() : "",
                         pa: pa
                     };

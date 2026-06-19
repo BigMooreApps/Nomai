@@ -32,27 +32,42 @@ const VS = {
     containerH: 0,
 };
 
+// Function to get Fecha Acumula dynamically (supporting fallback for preloaded data)
+function getFechaAcumula(row) {
+    if (row.fa) return row.fa;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const mIdx = monthNames.indexOf(row.m);
+    const mesNum = mIdx !== -1 ? mIdx + 1 : 1;
+    const year = row.a || 2026;
+    const isQ2 = row.pa ? (row.pa % 2 === 0) : false;
+    const day = isQ2 ? new Date(year, mesNum, 0).getDate() : 15;
+    
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(day)}/${pad(mesNum)}/${year}`;
+}
+
 let dbFilters = {
-    a: '', m: '', pa: '', c: '', n: '', cg: '', cc: '', na: '', co: '', v: ''
+    c: '', n: '', fa: '', coc: '', co: '', cant: '', v: '', cc: '', dcc: '', cgc: '', cg: '', tn: '', m: '', pa: '', na: ''
 };
 
 let dbSort = { column: null, direction: 'asc' };
 
 const columnMap = [
-    { key: 'a',   label: 'Año', width: '65px' },
-    { key: 'm',   label: 'Mes', width: '85px' },
-    { key: 'pa',  label: 'Quincena', width: '90px' },
-    { key: 'tn',  label: 'Tipo Nómina', width: '110px' },
-    { key: 'c',   label: 'Cédula', width: '105px' },
-    { key: 'n',   label: 'Nombre' },
-    { key: 'cg',  label: 'Cargo' },
-    { key: 'cc',  label: 'Código CECO', width: '110px' },
-    { key: 'dcc', label: 'Centro de Costo' },
-    { key: 'na',  label: 'Naturaleza', width: '115px' },
-    { key: 't',   label: 'Tipo', width: '90px' },
-    { key: 'co',  label: 'Concepto' },
-    { key: 'cant',label: 'Cantidad', isNumber: true, width: '80px' },
-    { key: 'v',   label: 'Valor', isNumber: true, width: '120px' },
+    { key: 'c',    label: 'Identificación', width: '105px' },
+    { key: 'n',    label: 'Nombre Completo', width: '200px' },
+    { key: 'fa',   label: 'Fecha Acumula', width: '110px' },
+    { key: 'coc',  label: 'Concepto', width: '80px' },
+    { key: 'co',   label: 'Nombre Concepto', width: '200px' },
+    { key: 'cant', label: 'Cantidad', isNumber: true, width: '80px' },
+    { key: 'v',    label: 'Valor', isNumber: true, width: '120px' },
+    { key: 'cc',   label: 'Centro de Costo', width: '110px' },
+    { key: 'dcc',  label: 'Nombre Centro de Costo', width: '200px' },
+    { key: 'cgc',  label: 'Cargo', width: '90px' },
+    { key: 'cg',   label: 'Nombre Cargo', width: '200px' },
+    { key: 'tn',   label: 'Tipo de Nómina', width: '110px' },
+    { key: 'm',    label: 'Mes Acumulado', width: '115px' },
+    { key: 'pa',   label: 'Quincena', width: '90px' },
+    { key: 'na',   label: 'Naturaleza', width: '115px' }
 ];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -184,7 +199,17 @@ function applyFiltersAndSort() {
     VS.filteredData = data.filter(row => {
         for (const col of columnMap) {
             const fv = dbFilters[col.key];
-            if (fv && !String(row[col.key] ?? '').toLowerCase().includes(fv)) return false;
+            if (fv) {
+                let val = '';
+                if (col.key === 'fa') {
+                    val = getFechaAcumula(row);
+                } else if (col.key === 'pa') {
+                    val = row.pa ? 'Q' + row.pa : 'Q1';
+                } else {
+                    val = row[col.key];
+                }
+                if (!String(val ?? '').toLowerCase().includes(fv)) return false;
+            }
         }
         return true;
     });
@@ -193,7 +218,24 @@ function applyFiltersAndSort() {
     if (dbSort.column) {
         const isNum = columnMap.find(c => c.key === dbSort.column)?.isNumber;
         VS.filteredData.sort((a, b) => {
-            let va = a[dbSort.column], vb = b[dbSort.column];
+            let va, vb;
+            if (dbSort.column === 'fa') {
+                const parseDateStr = (str) => {
+                    const parts = str.split('/');
+                    if (parts.length === 3) {
+                        return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+                    }
+                    return 0;
+                };
+                va = parseDateStr(getFechaAcumula(a));
+                vb = parseDateStr(getFechaAcumula(b));
+            } else if (dbSort.column === 'pa') {
+                va = a.pa ?? 1;
+                vb = b.pa ?? 1;
+            } else {
+                va = a[dbSort.column];
+                vb = b[dbSort.column];
+            }
             if (isNum) {
                 va = parseFloat(va) || 0; vb = parseFloat(vb) || 0;
                 return dbSort.direction === 'asc' ? va - vb : vb - va;
@@ -258,6 +300,10 @@ function renderVirtualRows(scrollContainer) {
     spacerTop.firstElementChild.style.height = (startRow * VS.ROW_HEIGHT) + 'px';
     spacerBot.firstElementChild.style.height = Math.max(0, (total - endRow) * VS.ROW_HEIGHT) + 'px';
 
+    // Ajustar colspan
+    spacerTop.firstElementChild.setAttribute('colspan', columnMap.length);
+    spacerBot.firstElementChild.setAttribute('colspan', columnMap.length);
+
     const fmt = new Intl.NumberFormat('es-CO', {
         style: 'currency', currency: 'COP',
         minimumFractionDigits: 0, maximumFractionDigits: 0
@@ -273,7 +319,7 @@ function renderVirtualRows(scrollContainer) {
 
     if (total === 0) {
         const empty = document.createElement('tr');
-        empty.innerHTML = '<td colspan="14" style="padding:2rem;text-align:center;color:#6b7280;">No hay registros que coincidan con los filtros.</td>';
+        empty.innerHTML = `<td colspan="${columnMap.length}" style="padding:2rem;text-align:center;color:#6b7280;">No hay registros que coincidan con los filtros.</td>`;
         tbody.insertBefore(empty, spacerBot);
         return;
     }
@@ -284,29 +330,40 @@ function renderVirtualRows(scrollContainer) {
         const row  = VS.filteredData[i];
         const tr   = document.createElement('tr');
         const bg   = i % 2 === 0 ? '#ffffff' : '#f9fafb';
-        const naStyle = (row.na === 'DEDUCCION' || row.na === 'DESCUENTO' || row.na === 'DEDUCCIÓN')
-            ? 'background:#fee2e2;color:#b91c1c;'
-            : 'background:#dcfce7;color:#15803d;';
         tr.style.cssText = `border-bottom:1px solid #f3f4f6;background:${bg};`;
-        tr.innerHTML = `
-            <td style="padding:0.6rem 0.5rem;width:65px;min-width:65px;max-width:65px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.a ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;width:85px;min-width:85px;max-width:85px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.m ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;width:90px;min-width:90px;max-width:90px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.pa ? 'Q' + row.pa : 'Q1'}</td>
-            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;width:110px;min-width:110px;max-width:110px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.tn ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;font-family:monospace;width:105px;min-width:105px;max-width:105px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.c ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.n ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.cg ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;width:110px;min-width:110px;max-width:110px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.cc ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.dcc ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;width:115px;min-width:115px;max-width:115px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                <span style="padding:0.125rem 0.5rem;border-radius:9999px;font-size:0.7rem;font-weight:600;${naStyle}">
-                    ${row.na ?? ''}
-                </span>
-            </td>
-            <td style="padding:0.6rem 0.5rem;font-size:0.75rem;width:90px;min-width:90px;max-width:90px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.t ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.co ?? ''}</td>
-            <td style="padding:0.6rem 0.5rem;text-align:right;width:80px;min-width:80px;max-width:80px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.cant ?? 0}</td>
-            <td style="padding:0.6rem 0.5rem;text-align:right;font-weight:500;width:120px;min-width:120px;max-width:120px;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fmt.format(row.v ?? 0)}</td>`;
+        
+        let rowHtml = '';
+        for (const col of columnMap) {
+            const widthStyle = col.width ? `width:${col.width};min-width:${col.width};max-width:${col.width};` : '';
+            let val = '';
+            let cellStyle = `padding:0.6rem 0.5rem;${widthStyle}box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+            
+            if (col.key === 'fa') {
+                val = getFechaAcumula(row);
+            } else if (col.key === 'cant') {
+                val = row.cant ?? 0;
+                cellStyle += 'text-align:right;';
+            } else if (col.key === 'v') {
+                val = fmt.format(row.v ?? 0);
+                cellStyle += 'text-align:right;font-weight:500;';
+            } else if (col.key === 'pa') {
+                val = row.pa ? 'Q' + row.pa : 'Q1';
+            } else if (col.key === 'na') {
+                const naStyle = (row.na === 'DEDUCCION' || row.na === 'DESCUENTO' || row.na === 'DEDUCCIÓN')
+                    ? 'background:#fee2e2;color:#b91c1c;'
+                    : 'background:#dcfce7;color:#15803d;';
+                val = `<span style="padding:0.125rem 0.5rem;border-radius:9999px;font-size:0.7rem;font-weight:600;${naStyle}">${row.na ?? ''}</span>`;
+            } else if (col.key === 'c') {
+                val = row.c ?? '';
+                cellStyle += 'font-family:monospace;';
+            } else {
+                val = row[col.key] ?? '';
+            }
+            
+            rowHtml += `<td style="${cellStyle}">${val}</td>`;
+        }
+        
+        tr.innerHTML = rowHtml;
         frag.appendChild(tr);
     }
     tbody.insertBefore(frag, spacerBot);
@@ -334,22 +391,19 @@ window.exportDbToExcel = function () {
     setTimeout(() => {
         try {
             const headers = columnMap.map(col => col.label);
-            const rows = dataToExport.map(row => [
-                row.a ?? '',
-                row.m ?? '',
-                row.pa ? 'Q' + row.pa : 'Q1',
-                row.tn ?? '',
-                row.c ?? '',
-                row.n ?? '',
-                row.cg ?? '',
-                row.cc ?? '',
-                row.dcc ?? '',
-                row.na ?? '',
-                row.t ?? '',
-                row.co ?? '',
-                row.cant !== undefined ? (parseFloat(row.cant) || 0) : 0,
-                row.v !== undefined ? (parseFloat(row.v) || 0) : 0
-            ]);
+            const rows = dataToExport.map(row => {
+                return columnMap.map(col => {
+                    if (col.key === 'fa') {
+                        return getFechaAcumula(row);
+                    } else if (col.key === 'pa') {
+                        return row.pa ? 'Q' + row.pa : 'Q1';
+                    } else if (col.isNumber) {
+                        return row[col.key] !== undefined ? (parseFloat(row[col.key]) || 0) : 0;
+                    } else {
+                        return row[col.key] ?? '';
+                    }
+                });
+            });
 
             const sheetData = [headers, ...rows];
             const newWb = XLSX.utils.book_new();
