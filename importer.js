@@ -201,42 +201,42 @@
         
         const uniqueConcepts = getUniqueConcepts(colName);
         if (uniqueConcepts.length === 0) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td colspan="3" style="padding: 2rem; text-align: center; color: #64748b;">
-                    No se encontraron conceptos en la columna seleccionada.
-                </td>
-            `;
-            container.appendChild(tr);
+            const emptyEl = document.createElement('div');
+            emptyEl.style.padding = '2rem';
+            emptyEl.style.textAlign = 'center';
+            emptyEl.style.color = '#64748b';
+            emptyEl.innerText = 'No se encontraron conceptos en la columna seleccionada.';
+            container.appendChild(emptyEl);
             return;
         }
         
         uniqueConcepts.forEach(concept => {
             const currentType = appState.conceptsMapping[concept] || 'SIN DEFINIR';
+            const isMapped = currentType !== 'SIN DEFINIR';
             
-            const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid #e2e8f0';
+            const row = document.createElement('div');
+            row.className = `mapping-row ${isMapped ? 'mapped' : 'unmapped'}`;
+            row.style.marginBottom = '0.4rem';
             
-            // Celda 1: Concepto
-            const tdConcept = document.createElement('td');
-            tdConcept.style.padding = '0.75rem 1rem';
-            tdConcept.style.fontWeight = '500';
-            tdConcept.style.color = '#1e293b';
-            tdConcept.innerText = concept;
+            // 1. Info Destino (Concepto Origen)
+            const info = document.createElement('div');
+            info.className = 'mapping-dest-info';
             
-            // Celda 2: Tipo de Concepto (Select)
-            const tdType = document.createElement('td');
-            tdType.style.padding = '0.75rem 1rem';
+            const name = document.createElement('div');
+            name.className = 'mapping-dest-name';
+            name.innerHTML = `${concept} <span class="required-dot">*</span>`;
             
+            const desc = document.createElement('div');
+            desc.className = 'mapping-dest-desc';
+            desc.innerText = 'Concepto detectado en el archivo origen.';
+            desc.title = concept;
+            
+            info.appendChild(name);
+            info.appendChild(desc);
+            
+            // 2. Dropdown select
             const select = document.createElement('select');
-            select.className = 'mapping-select';
-            select.style.padding = '0.35rem 0.5rem';
-            select.style.borderRadius = '6px';
-            select.style.border = '1px solid #cbd5e1';
-            select.style.fontSize = '0.85rem';
-            select.style.width = '100%';
-            select.style.maxWidth = '200px';
-            select.style.background = 'white';
+            select.className = `mapping-select ${isMapped ? 'mapped' : 'unmapped'}`;
             
             const options = [
                 { val: 'SIN DEFINIR', text: 'Sin definir' },
@@ -258,37 +258,64 @@
             
             select.addEventListener('change', (e) => {
                 appState.conceptsMapping[concept] = e.target.value;
+                renderConceptsList(colName);
             });
             
-            tdType.appendChild(select);
-            
-            // Celda 3: Acciones (Restablecer)
-            const tdActions = document.createElement('td');
-            tdActions.style.padding = '0.75rem 1rem';
-            tdActions.style.textAlign = 'center';
+            // 3. Acciones (Restablecer e Icono de Estado)
+            const actionsPreview = document.createElement('div');
+            actionsPreview.className = 'mapping-actions-preview';
             
             const resetBtn = document.createElement('button');
-            resetBtn.className = 'btn btn-outline btn-sm';
-            resetBtn.style.padding = '0.25rem 0.5rem';
-            resetBtn.style.fontSize = '0.75rem';
-            resetBtn.style.borderColor = '#cbd5e1';
-            resetBtn.style.color = '#64748b';
-            resetBtn.style.background = 'white';
-            resetBtn.style.cursor = 'pointer';
+            resetBtn.className = 'btn btn-secondary btn-sm btn-personalizar';
             resetBtn.innerHTML = `<i data-lucide="rotate-ccw" style="width: 12px; height: 12px; margin-right: 4px; display: inline-block; vertical-align: middle;"></i> Restablecer`;
+            resetBtn.style.fontSize = '0.75rem';
+            resetBtn.style.padding = '0.35rem 0.75rem';
+            resetBtn.style.borderRadius = '6px';
+            resetBtn.style.marginRight = '0.5rem';
+            resetBtn.style.border = '1px solid #D1D5DB';
+            resetBtn.style.background = '#FFFFFF';
+            resetBtn.style.cursor = 'pointer';
+            resetBtn.style.fontWeight = '600';
+            resetBtn.style.color = '#4B5563';
+            resetBtn.style.display = 'inline-flex';
+            resetBtn.style.alignItems = 'center';
+            resetBtn.style.transition = 'all 0.15s ease';
+            
+            resetBtn.addEventListener('mouseenter', () => {
+                resetBtn.style.background = '#F3E8FF';
+                resetBtn.style.borderColor = '#6C00D3';
+                resetBtn.style.color = '#6C00D3';
+            });
+            resetBtn.addEventListener('mouseleave', () => {
+                resetBtn.style.background = '#FFFFFF';
+                resetBtn.style.borderColor = '#D1D5DB';
+                resetBtn.style.color = '#4B5563';
+            });
             
             resetBtn.addEventListener('click', () => {
                 appState.conceptsMapping[concept] = 'SIN DEFINIR';
-                select.value = 'SIN DEFINIR';
+                renderConceptsList(colName);
             });
             
-            tdActions.appendChild(resetBtn);
+            actionsPreview.appendChild(resetBtn);
             
-            tr.appendChild(tdConcept);
-            tr.appendChild(tdType);
-            tr.appendChild(tdActions);
+            // Icono de estado
+            const icon = document.createElement('span');
+            icon.className = 'alert-status-icon';
+            if (isMapped) {
+                icon.title = 'Concepto homologado';
+                icon.innerHTML = `<i data-lucide="check-circle" class="text-success"></i>`;
+            } else {
+                icon.title = 'Concepto sin clasificar';
+                icon.innerHTML = `<i data-lucide="alert-circle" class="text-warning"></i>`;
+            }
+            actionsPreview.appendChild(icon);
             
-            container.appendChild(tr);
+            row.appendChild(info);
+            row.appendChild(select);
+            row.appendChild(actionsPreview);
+            
+            container.appendChild(row);
         });
         
         if (window.lucide) {
