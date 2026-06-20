@@ -54,7 +54,9 @@
         suggestedDayColumn: '', 
         transformedData: [],
         validationErrors: [],
-        genericUnifications: {} 
+        genericUnifications: {},
+        conceptsColumn: '',
+        conceptsMapping: {}
     };
 
     // Mapa de meses en español/inglés
@@ -105,20 +107,60 @@
         }
 
         // Enlazar botones de navegación del Wizard
-        const backTo1Btn = document.getElementById('back-to-1-btn');
-        if (backTo1Btn) backTo1Btn.addEventListener('click', () => setStep(1));
+        const backTo1BtnConcepts = document.getElementById('back-to-1-btn-concepts');
+        if (backTo1BtnConcepts) backTo1BtnConcepts.addEventListener('click', () => setStep(1));
         
-        const goTo3Btn = document.getElementById('go-to-3-btn');
-        if (goTo3Btn) goTo3Btn.addEventListener('click', validateAndGoToStep3);
+        const goTo3BtnColumns = document.getElementById('go-to-3-btn-columns');
+        if (goTo3BtnColumns) {
+            goTo3BtnColumns.addEventListener('click', () => {
+                if (!appState.conceptsColumn) {
+                    showNomaiAlert('Por favor selecciona la columna de conceptos.');
+                    return;
+                }
+                setStep(3);
+            });
+        }
         
         const backTo2Btn = document.getElementById('back-to-2-btn');
         if (backTo2Btn) backTo2Btn.addEventListener('click', () => setStep(2));
+        
+        const goTo4Btn = document.getElementById('go-to-4-btn');
+        if (goTo4Btn) goTo4Btn.addEventListener('click', validateAndGoToStep4);
+        
+        const backTo3Btn = document.getElementById('back-to-3-btn');
+        if (backTo3Btn) backTo3Btn.addEventListener('click', () => setStep(3));
         
         const downloadExcelBtn = document.getElementById('download-excel-btn');
         if (downloadExcelBtn) downloadExcelBtn.addEventListener('click', downloadTransformedExcel);
         
         const loadToDashboardBtn = document.getElementById('load-to-dashboard-btn');
         if (loadToDashboardBtn) loadToDashboardBtn.addEventListener('click', loadDataToDashboard);
+
+        // Controles de homologación de conceptos
+        const conceptsColSelect = document.getElementById('concepts-column-select');
+        if (conceptsColSelect) {
+            conceptsColSelect.addEventListener('change', (e) => {
+                appState.conceptsColumn = e.target.value;
+                renderConceptsList(e.target.value);
+            });
+        }
+
+        const btnApplyBulkConcept = document.getElementById('btn-apply-bulk-concept');
+        if (btnApplyBulkConcept) {
+            btnApplyBulkConcept.addEventListener('click', () => {
+                const bulkType = document.getElementById('bulk-concept-type-select').value;
+                if (!appState.conceptsColumn) {
+                    showNomaiAlert('Por favor selecciona una columna de conceptos primero.');
+                    return;
+                }
+                const uniqueConcepts = getUniqueConcepts(appState.conceptsColumn);
+                uniqueConcepts.forEach(concept => {
+                    appState.conceptsMapping[concept] = bulkType;
+                });
+                renderConceptsList(appState.conceptsColumn);
+                showNomaiAlert(`Se aplicó "${bulkType}" a todos los conceptos.`);
+            });
+        }
 
         // --- Configuración de Plantillas e Historial ---
         const saveTplBtn = document.getElementById('save-template-btn');
@@ -139,11 +181,156 @@
         setTimeout(loadConfigTemplates, 100);
     });
 
+    // Homologación de Conceptos - Helpers & Rendering
+    function getUniqueConcepts(colName) {
+        if (!colName || !appState.rawRows) return [];
+        const unique = new Set();
+        appState.rawRows.forEach(row => {
+            const val = String(row[colName] || '').trim();
+            if (val) {
+                unique.add(val);
+            }
+        });
+        return Array.from(unique).sort();
+    }
+
+    function renderConceptsList(colName) {
+        const container = document.getElementById('concepts-mapping-list');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        const uniqueConcepts = getUniqueConcepts(colName);
+        if (uniqueConcepts.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td colspan="3" style="padding: 2rem; text-align: center; color: #64748b;">
+                    No se encontraron conceptos en la columna seleccionada.
+                </td>
+            `;
+            container.appendChild(tr);
+            return;
+        }
+        
+        uniqueConcepts.forEach(concept => {
+            const currentType = appState.conceptsMapping[concept] || 'SIN DEFINIR';
+            
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #e2e8f0';
+            
+            // Celda 1: Concepto
+            const tdConcept = document.createElement('td');
+            tdConcept.style.padding = '0.75rem 1rem';
+            tdConcept.style.fontWeight = '500';
+            tdConcept.style.color = '#1e293b';
+            tdConcept.innerText = concept;
+            
+            // Celda 2: Tipo de Concepto (Select)
+            const tdType = document.createElement('td');
+            tdType.style.padding = '0.75rem 1rem';
+            
+            const select = document.createElement('select');
+            select.className = 'mapping-select';
+            select.style.padding = '0.35rem 0.5rem';
+            select.style.borderRadius = '6px';
+            select.style.border = '1px solid #cbd5e1';
+            select.style.fontSize = '0.85rem';
+            select.style.width = '100%';
+            select.style.maxWidth = '200px';
+            select.style.background = 'white';
+            
+            const options = [
+                { val: 'SIN DEFINIR', text: 'Sin definir' },
+                { val: 'SALARIAL', text: 'Salarial' },
+                { val: 'NO SALARIAL', text: 'No Salarial' },
+                { val: 'SEGURIDAD SOCIAL', text: 'Seguridad Social' },
+                { val: 'OTROS', text: 'Otros' }
+            ];
+            
+            options.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.val;
+                o.innerText = opt.text;
+                if (opt.val === currentType) {
+                    o.selected = true;
+                }
+                select.appendChild(o);
+            });
+            
+            select.addEventListener('change', (e) => {
+                appState.conceptsMapping[concept] = e.target.value;
+            });
+            
+            tdType.appendChild(select);
+            
+            // Celda 3: Acciones (Restablecer)
+            const tdActions = document.createElement('td');
+            tdActions.style.padding = '0.75rem 1rem';
+            tdActions.style.textAlign = 'center';
+            
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'btn btn-outline btn-sm';
+            resetBtn.style.padding = '0.25rem 0.5rem';
+            resetBtn.style.fontSize = '0.75rem';
+            resetBtn.style.borderColor = '#cbd5e1';
+            resetBtn.style.color = '#64748b';
+            resetBtn.style.background = 'white';
+            resetBtn.style.cursor = 'pointer';
+            resetBtn.innerHTML = `<i data-lucide="rotate-ccw" style="width: 12px; height: 12px; margin-right: 4px; display: inline-block; vertical-align: middle;"></i> Restablecer`;
+            
+            resetBtn.addEventListener('click', () => {
+                appState.conceptsMapping[concept] = 'SIN DEFINIR';
+                select.value = 'SIN DEFINIR';
+            });
+            
+            tdActions.appendChild(resetBtn);
+            
+            tr.appendChild(tdConcept);
+            tr.appendChild(tdType);
+            tr.appendChild(tdActions);
+            
+            container.appendChild(tr);
+        });
+        
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    function initConceptsMappingStep() {
+        const conceptsColSelect = document.getElementById('concepts-column-select');
+        if (!conceptsColSelect) return;
+        
+        conceptsColSelect.innerHTML = '';
+        
+        const optEmpty = document.createElement('option');
+        optEmpty.value = '';
+        optEmpty.innerText = '-- Seleccionar Columna --';
+        conceptsColSelect.appendChild(optEmpty);
+        
+        appState.rawHeaders.forEach(header => {
+            const opt = document.createElement('option');
+            opt.value = header;
+            opt.innerText = header;
+            conceptsColSelect.appendChild(opt);
+        });
+        
+        // Auto-detect concept column from mapping
+        appState.conceptsColumn = appState.columnMappings['nombre_concepto'] || '';
+        
+        if (appState.conceptsColumn) {
+            conceptsColSelect.value = appState.conceptsColumn;
+            renderConceptsList(appState.conceptsColumn);
+        } else {
+            const listContainer = document.getElementById('concepts-mapping-list');
+            if (listContainer) listContainer.innerHTML = '';
+        }
+    }
+
     // Control de Pasos (Wizard)
     function setStep(stepNum) {
         appState.currentStep = stepNum;
         
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= 4; i++) {
             const stepBtn = document.getElementById(`step-btn-${i}`);
             const panel = document.getElementById(`panel-${i}`);
             
@@ -166,7 +353,7 @@
         
         const progressFill = document.getElementById('progress-fill');
         if (progressFill) {
-            const progressPercent = stepNum === 1 ? 16.6 : (stepNum === 2 ? 50 : 100);
+            const progressPercent = stepNum === 1 ? 12.5 : (stepNum === 2 ? 37.5 : (stepNum === 3 ? 62.5 : 100));
             progressFill.style.width = `${progressPercent}%`;
         }
         
@@ -384,6 +571,7 @@
                 setTimeout(() => {
                     hideLoading();
                     renderMappingUI();
+                    initConceptsMappingStep();
                     setStep(2);
                 }, 400);
             }, 800);
@@ -530,6 +718,13 @@
         }
 
         if (targetKey === 'tipo_concepto') {
+            const conceptName = getFieldValue('nombre_concepto', rawRow);
+            if (conceptName && appState.conceptsMapping && appState.conceptsMapping[conceptName]) {
+                const mappedType = appState.conceptsMapping[conceptName];
+                if (mappedType !== 'SIN DEFINIR') {
+                    return mappedType;
+                }
+            }
             const mappedHeader = appState.columnMappings['tipo_concepto'];
             if (mappedHeader === '__unified__' || !mappedHeader) {
                 return appState.defaultTipoConcepto || 'Sin definir';
@@ -973,7 +1168,7 @@
     }
 
     // Validación y paso a paso
-    function validateAndGoToStep3() {
+    function validateAndGoToStep4() {
         let missingRequired = [];
         
         TARGET_COLUMNS.forEach(target => {
@@ -1012,7 +1207,7 @@
                 transformData();
                 renderPreviewUI();
                 hideLoading();
-                setStep(3); 
+                setStep(4); 
                 
                 if (appState.validationErrors.length === 0 && window.confetti) {
                     window.confetti({
@@ -2718,7 +2913,9 @@
             yearColumn: appState.yearColumn,
             dayColumn: appState.dayColumn,
             monthYearDayRule: appState.monthYearDayRule,
-            genericUnifications: JSON.parse(JSON.stringify(appState.genericUnifications))
+            genericUnifications: JSON.parse(JSON.stringify(appState.genericUnifications)),
+            conceptsColumn: appState.conceptsColumn,
+            conceptsMapping: JSON.parse(JSON.stringify(appState.conceptsMapping || {}))
         };
         
         let configs = [];
@@ -2771,8 +2968,18 @@
         appState.dayColumn = template.dayColumn || '';
         appState.monthYearDayRule = template.monthYearDayRule || 'last';
         appState.genericUnifications = JSON.parse(JSON.stringify(template.genericUnifications || {}));
+        appState.conceptsColumn = template.conceptsColumn || '';
+        appState.conceptsMapping = JSON.parse(JSON.stringify(template.conceptsMapping || {}));
         
         renderMappingUI();
+        
+        const conceptsColSelect = document.getElementById('concepts-column-select');
+        if (conceptsColSelect) {
+            conceptsColSelect.value = appState.conceptsColumn;
+        }
+        if (appState.conceptsColumn) {
+            renderConceptsList(appState.conceptsColumn);
+        }
     }
 
     // --- Historial de Cargas ---

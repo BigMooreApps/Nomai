@@ -998,7 +998,7 @@
                             <!-- Barra de Progreso del Asistente (Wizard) -->
                             <div class="wizard-steps-container">
                                 <div class="wizard-progress-bar">
-                                    <div class="progress-fill" id="progress-fill" style="width: 16.6%;"></div>
+                                    <div class="progress-fill" id="progress-fill" style="width: 12.5%;"></div>
                                 </div>
                                 <div class="wizard-steps">
                                     <div class="step-item active" data-step="1" id="step-btn-1">
@@ -1006,10 +1006,14 @@
                                         <span class="step-label">Cargar Archivo</span>
                                     </div>
                                     <div class="step-item" data-step="2" id="step-btn-2">
+                                        <div class="step-number"><i data-lucide="sliders"></i></div>
+                                        <span class="step-label">Homologar Conceptos</span>
+                                    </div>
+                                    <div class="step-item" data-step="3" id="step-btn-3">
                                         <div class="step-number"><i data-lucide="git-merge"></i></div>
                                         <span class="step-label">Mapear y Configurar</span>
                                     </div>
-                                    <div class="step-item" data-step="3" id="step-btn-3">
+                                    <div class="step-item" data-step="4" id="step-btn-4">
                                         <div class="step-number"><i data-lucide="download"></i></div>
                                         <span class="step-label">Exportar</span>
                                     </div>
@@ -1081,8 +1085,65 @@
                                     </div>
                                 </section>
 
-                                <!-- ================= PASO 2: MAPEO DE COLUMNAS ================= -->
-                                <section class="step-panel hide" id="panel-2">
+                                 <!-- ================= PASO 2: HOMOLOGACIÓN DE CONCEPTOS ================= -->
+                                 <section class="step-panel hide" id="panel-2">
+                                     <div class="panel-header-split">
+                                         <div class="panel-header">
+                                             <h2>Homologación de Conceptos</h2>
+                                             <p>Asigna el Tipo de Concepto adecuado para cada concepto detectado en el archivo. Puedes aplicar una opción a todos los registros de forma masiva.</p>
+                                         </div>
+                                     </div>
+
+                                     <!-- Controles de Configuración de Conceptos -->
+                                     <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; background: #f8fafc; padding: 1.2rem; border-radius: 10px; border: 1px solid #e2e8f0; align-items: center; justify-content: space-between;">
+                                         <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 280px; flex-grow: 1;">
+                                             <label for="concepts-column-select" style="font-size: 0.85rem; font-weight: 600; color: #475569; white-space: nowrap;">Columna de Conceptos:</label>
+                                             <select id="concepts-column-select" class="mapping-select" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; flex-grow: 1;">
+                                                 <!-- Cargado dinámicamente -->
+                                             </select>
+                                         </div>
+                                         <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 320px; justify-content: flex-end;">
+                                             <span style="font-size: 0.85rem; font-weight: 600; color: #475569; white-space: nowrap;">Aplicar a todos:</span>
+                                             <select id="bulk-concept-type-select" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; background: white; width: 160px;">
+                                                 <option value="SIN DEFINIR">Sin definir</option>
+                                                 <option value="SALARIAL">Salarial</option>
+                                                 <option value="NO SALARIAL">No Salarial</option>
+                                                 <option value="SEGURIDAD SOCIAL">Seguridad Social</option>
+                                                 <option value="OTROS">Otros</option>
+                                             </select>
+                                             <button class="btn btn-outline" id="btn-apply-bulk-concept" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1;">Aplicar</button>
+                                         </div>
+                                     </div>
+
+                                     <!-- Contenedor con scroll para los conceptos -->
+                                     <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 1.5rem; background: white;">
+                                         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem;">
+                                             <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #cbd5e1;">
+                                                 <tr>
+                                                     <th style="padding: 0.75rem 1rem; font-weight: 600; color: #475569;">Concepto del Archivo Origen</th>
+                                                     <th style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; width: 220px;">Tipo de Concepto</th>
+                                                     <th style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; width: 140px; text-align: center;">Acciones</th>
+                                                 </tr>
+                                             </thead>
+                                             <tbody id="concepts-mapping-list">
+                                                 <!-- Cargado dinámicamente -->
+                                             </tbody>
+                                         </table>
+                                     </div>
+
+                                     <!-- Botones de Navegación -->
+                                     <div class="panel-footer" style="margin-top: 1.5rem;">
+                                         <button class="btn btn-secondary" id="back-to-1-btn-concepts">
+                                             <i data-lucide="arrow-left"></i> Atrás
+                                         </button>
+                                         <button class="btn btn-primary" id="go-to-3-btn-columns">
+                                             Siguiente <i data-lucide="arrow-right"></i>
+                                         </button>
+                                     </div>
+                                 </section>
+
+                                 <!-- ================= PASO 3: MAPEO DE COLUMNAS ================= -->
+                                 <section class="step-panel hide" id="panel-3">
                                     <div class="panel-header-split">
                                         <div class="panel-header">
                                             <h2>Homologación de Columnas</h2>
@@ -1113,17 +1174,17 @@
                                     </div>
 
                                     <div class="panel-footer">
-                                        <button class="btn btn-secondary" id="back-to-1-btn">
+                                        <button class="btn btn-secondary" id="back-to-2-btn">
                                             <i data-lucide="arrow-left"></i> Atrás
                                         </button>
-                                        <button class="btn btn-primary" id="go-to-3-btn">
+                                        <button class="btn btn-primary" id="go-to-4-btn">
                                             Siguiente <i data-lucide="arrow-right"></i>
                                         </button>
                                     </div>
                                 </section>
 
-                                <!-- ================= PASO 3: VISTA PREVIA Y EXPORTACIÓN ================= -->
-                                <section class="step-panel hide" id="panel-3">
+                                <!-- ================= PASO 4: VISTA PREVIA Y EXPORTACIÓN ================= -->
+                                <section class="step-panel hide" id="panel-4">
                                     <div class="panel-header-split">
                                         <div class="panel-header">
                                             <h2>Estructura Adaptada y Lista para Descarga</h2>
@@ -1200,7 +1261,7 @@
                                     </div>
 
                                     <div class="panel-footer">
-                                        <button class="btn btn-secondary" id="back-to-2-btn">
+                                        <button class="btn btn-secondary" id="back-to-3-btn">
                                             <i data-lucide="arrow-left"></i> Atrás
                                         </button>
                                         <button class="btn btn-success btn-lg" id="download-excel-btn">
