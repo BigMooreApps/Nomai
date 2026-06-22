@@ -1087,11 +1087,30 @@
 
                                  <!-- ================= PASO 2: HOMOLOGACIÓN DE CONCEPTOS ================= -->
                                  <section class="step-panel hide" id="panel-2">
-                                     <div class="panel-header-split">
-                                         <div class="panel-header">
+                                     <div class="panel-header-split" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                                         <div class="panel-header" style="flex: 1; min-width: 280px;">
                                              <h2>Homologación de Conceptos</h2>
                                              <p>Asigna el Tipo de Concepto adecuado para cada concepto detectado en el archivo. Puedes aplicar una opción a todos los registros de forma masiva.</p>
                                          </div>
+                                         <div class="panel-header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+                                             <button class="btn btn-primary" id="btn-ai-suggest-concepts" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); border: none; color: white; display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; font-weight: 600; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25); transition: all 0.2s ease;">
+                                                 <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i> Sugerir con IA
+                                             </button>
+                                         </div>
+                                     </div>
+
+                                     <!-- Panel de Plantillas de Configuración Paso 2 -->
+                                     <div class="templates-panel" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center; background: #f8fafc; padding: 1.2rem; border-radius: 10px; border: 1px solid #e2e8f0; width: 100%;">
+                                         <i data-lucide="save" class="text-primary" style="width: 24px; height: 24px; opacity: 0.8;"></i>
+                                         <div style="flex-grow: 1;">
+                                             <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #1e293b;">Plantillas de Configuración</h4>
+                                             <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #64748b;">Guarda tus mapeos actuales o carga una plantilla existente.</p>
+                                         </div>
+                                         <select id="config-template-select-step2" class="mapping-select" style="max-width: 220px; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                             <option value="">-- Seleccionar Plantilla --</option>
+                                         </select>
+                                         <button class="btn btn-outline" id="load-template-btn-step2" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i data-lucide="download" style="width: 14px; height: 14px; margin-right: 4px;"></i> Cargar</button>
+                                         <button class="btn btn-secondary" id="save-template-btn-step2" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i data-lucide="plus-circle" style="width: 14px; height: 14px; margin-right: 4px;"></i> Guardar Actual</button>
                                      </div>
 
                                      <!-- Controles de Configuración de Conceptos -->

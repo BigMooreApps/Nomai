@@ -164,10 +164,19 @@
 
         // --- Configuración de Plantillas e Historial ---
         const saveTplBtn = document.getElementById('save-template-btn');
-        if (saveTplBtn) saveTplBtn.addEventListener('click', saveCurrentTemplate);
+        if (saveTplBtn) saveTplBtn.addEventListener('click', () => saveCurrentTemplate());
+        
+        const saveTplBtn2 = document.getElementById('save-template-btn-step2');
+        if (saveTplBtn2) saveTplBtn2.addEventListener('click', () => saveCurrentTemplate());
         
         const loadTplBtn = document.getElementById('load-template-btn');
-        if (loadTplBtn) loadTplBtn.addEventListener('click', loadSelectedTemplate);
+        if (loadTplBtn) loadTplBtn.addEventListener('click', () => loadSelectedTemplate('config-template-select'));
+        
+        const loadTplBtn2 = document.getElementById('load-template-btn-step2');
+        if (loadTplBtn2) loadTplBtn2.addEventListener('click', () => loadSelectedTemplate('config-template-select-step2'));
+
+        const btnAiSuggest = document.getElementById('btn-ai-suggest-concepts');
+        if (btnAiSuggest) btnAiSuggest.addEventListener('click', suggestConceptsWithIA);
         
         const viewHistBtn = document.getElementById('view-history-btn');
         if (viewHistBtn) viewHistBtn.addEventListener('click', showHistoryModal);
@@ -2757,7 +2766,7 @@
 
     function loadConfigTemplates() {
         const select = document.getElementById('config-template-select');
-        if (!select) return;
+        const select2 = document.getElementById('config-template-select-step2');
         
         let configs = [];
         try {
@@ -2765,13 +2774,19 @@
             if (saved) configs = JSON.parse(saved);
         } catch (e) { console.error('Error loading configs:', e); }
         
-        select.innerHTML = '<option value="">-- Seleccionar Plantilla --</option>';
-        configs.forEach((c, idx) => {
-            const opt = document.createElement('option');
-            opt.value = idx;
-            opt.textContent = c.name;
-            select.appendChild(opt);
-        });
+        const populateSelect = (sel) => {
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- Seleccionar Plantilla --</option>';
+            configs.forEach((c, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            });
+        };
+        
+        populateSelect(select);
+        populateSelect(select2);
     }
 
     function showNomaiPrompt(message, defaultValue = '') {
@@ -2957,11 +2972,13 @@
         
         const select = document.getElementById('config-template-select');
         if (select) select.value = configs.length - 1;
+        const select2 = document.getElementById('config-template-select-step2');
+        if (select2) select2.value = configs.length - 1;
         showNomaiAlert('Plantilla guardada con éxito.');
     }
 
-    async function loadSelectedTemplate() {
-        const select = document.getElementById('config-template-select');
+    async function loadSelectedTemplate(fromSelectId = 'config-template-select') {
+        const select = document.getElementById(fromSelectId);
         if (!select || select.value === '') {
             showNomaiAlert('Por favor selecciona una plantilla de la lista.');
             return;
@@ -3006,6 +3023,186 @@
         }
         if (appState.conceptsColumn) {
             renderConceptsList(appState.conceptsColumn);
+        }
+        
+        // Sync both select values
+        const sel1 = document.getElementById('config-template-select');
+        const sel2 = document.getElementById('config-template-select-step2');
+        if (sel1) sel1.value = select.value;
+        if (sel2) sel2.value = select.value;
+    }
+
+    // --- Sugerencia Inteligente de Conceptos con IA ---
+    function classifyConceptHeuristically(concept) {
+        const norm = concept.toLowerCase().trim();
+        
+        // 1. Seguridad Social
+        if (/\b(salud|pension|pensión|fsp|solidaridad|arl|sena|icbf|parafiscal|caja de compensacion|caja de compensación|caja compensacion|caja compensación|compensacion|compensación)\b/.test(norm) || 
+            norm.includes('eps') || norm.includes('fond.pens') || norm.includes('f.s.p') || norm.includes('pensiones') || norm.includes('seguridad social')) {
+            return 'SEGURIDAD SOCIAL';
+        }
+        
+        // 2. Salarial
+        if (/\b(sueldo|salario|basico|básico|comision|comisión|comisiones|destajo|overtime)\b/.test(norm) || 
+            norm.includes('hora extra') || norm.includes('horas extras') || norm.includes('recargo') || 
+            norm.includes('nocturno') || norm.includes('nocturna') || norm.includes('festivo') || 
+            norm.includes('dominical') || norm.includes('salarial') || norm.includes('bonificacion constitutiva') || 
+            norm.includes('bonificación constitutiva')) {
+            return 'SALARIAL';
+        }
+        
+        // 3. No Salarial
+        if (norm.includes('transporte') || norm.includes('no salarial') || norm.includes('no constitutivo') || 
+            norm.includes('no constitutiva') || norm.includes('alimentacion') || norm.includes('alimentación') || 
+            norm.includes('viatico') || norm.includes('viáticos') || norm.includes('viático') || 
+            norm.includes('viaticos') || norm.includes('uniforme') || norm.includes('dotacion') || 
+            norm.includes('dotación') || norm.includes('prepagada') || norm.includes('gasolina') || 
+            norm.includes('herramienta') || norm.includes('rodamiento')) {
+            return 'NO SALARIAL';
+        }
+        
+        // 4. Otros / Deducciones
+        if (norm.includes('retencion') || norm.includes('retención') || norm.includes('rte') || 
+            norm.includes('retefuente') || norm.includes('prestamo') || norm.includes('préstamo') || 
+            norm.includes('cooperativa') || norm.includes('fondo') || norm.includes('ahorro') || 
+            norm.includes('libranza') || norm.includes('sindicato') || norm.includes('embargo') || 
+            norm.includes('ajuste') || norm.includes('anticipo') || norm.includes('abono') ||
+            norm.includes('credito') || norm.includes('crédito') || norm.includes('interes') ||
+            norm.includes('interés') || norm.includes('descuento') || norm.includes('vacaciones') || 
+            norm.includes('prima') || norm.includes('cesantia') || norm.includes('cesantías') || 
+            norm.includes('cesantía') || norm.includes('cesantias') || norm.includes('liquidacion') || 
+            norm.includes('liquidación')) {
+            return 'OTROS';
+        }
+        
+        return 'OTROS';
+    }
+
+    async function suggestConceptsWithIA() {
+        const colName = appState.conceptsColumn;
+        if (!colName) {
+            showNomaiAlert('Por favor selecciona una columna de conceptos primero.');
+            return;
+        }
+
+        const uniqueConcepts = getUniqueConcepts(colName);
+        if (uniqueConcepts.length === 0) {
+            showNomaiAlert('No se encontraron conceptos para clasificar.');
+            return;
+        }
+
+        const btnAiSuggest = document.getElementById('btn-ai-suggest-concepts');
+        const originalContent = btnAiSuggest.innerHTML;
+
+        const setBtnLoading = (loading) => {
+            if (loading) {
+                btnAiSuggest.disabled = true;
+                btnAiSuggest.innerHTML = '<span class="spinner" style="border: 2px solid white; border-top: 2px solid transparent; border-radius: 50%; width: 14px; height: 14px; display: inline-block; animation: spin 1s linear infinite; margin-right: 6px;"></span> Pensando con IA...';
+            } else {
+                btnAiSuggest.disabled = false;
+                btnAiSuggest.innerHTML = originalContent;
+            }
+        };
+
+        const applyHeuristicFallback = () => {
+            let count = 0;
+            uniqueConcepts.forEach(concept => {
+                const suggested = classifyConceptHeuristically(concept);
+                appState.conceptsMapping[concept] = suggested;
+                count++;
+            });
+            renderConceptsList(colName);
+            showNomaiAlert(`Homologación completada localmente. Se clasificaron ${count} conceptos usando el motor heurístico local.`);
+        };
+
+        let apiKey = localStorage.getItem('nomai_gemini_api_key');
+        if (!apiKey) {
+            const keyInput = await showNomaiPrompt('Para sugerir clasificaciones usando Inteligencia Artificial, ingresa tu Gemini API Key (deja en blanco para usar la clasificación automática local gratuita):');
+            if (keyInput === null) {
+                return;
+            }
+            if (keyInput.trim() === '') {
+                applyHeuristicFallback();
+                return;
+            }
+            apiKey = keyInput.trim();
+            localStorage.setItem('nomai_gemini_api_key', apiKey);
+        }
+
+        setBtnLoading(true);
+
+        try {
+            const prompt = `Clasifica los siguientes conceptos de nómina colombiana en una de las siguientes categorías estándares:
+- SALARIAL: Devengos ordinarios que constituyen salario (ej. salario, sueldo, comisiones, horas extras, recargo nocturno, dominicales/festivos).
+- NO SALARIAL: Auxilios no salariales, herramientas de trabajo, uniforme, auxilio de transporte, alimentación, viáticos.
+- SEGURIDAD SOCIAL: Aportes a salud, pensión, FSP (fondo de solidaridad), ARL, cajas de compensación, retenciones de seguridad social o parafiscales.
+- OTROS: Deducciones personales, retención en la fuente, préstamos, fondos de empleados, sindicatos, saldos, ajustes o cualquier otro concepto que no encaje en los anteriores.
+
+Conceptos a clasificar:
+${JSON.stringify(uniqueConcepts)}
+
+Responde ÚNICAMENTE con un objeto JSON en texto plano donde las llaves sean los nombres de los conceptos exactos y los valores sean la clasificación correspondiente (deben ser estrictamente uno de estos strings: 'SALARIAL', 'NO SALARIAL', 'SEGURIDAD SOCIAL', 'OTROS'). No incluyas explicaciones ni bloques de código markdown (como \`\`\`json).`;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.1,
+                        maxOutputTokens: 1024,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || 'Error en la respuesta de API');
+            }
+
+            const data = await response.json();
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new Error('Respuesta vacía de la API de Gemini');
+            }
+
+            let text = data.candidates[0].content.parts[0].text.trim();
+            if (text.startsWith('```')) {
+                text = text.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
+            }
+            text = text.trim();
+
+            const mappings = JSON.parse(text);
+            let count = 0;
+            uniqueConcepts.forEach(concept => {
+                let suggested = mappings[concept] || mappings[concept.trim()];
+                if (!suggested) {
+                    const lowerKey = concept.toLowerCase().trim();
+                    const matchKey = Object.keys(mappings).find(k => k.toLowerCase().trim() === lowerKey);
+                    if (matchKey) suggested = mappings[matchKey];
+                }
+
+                if (suggested && ['SALARIAL', 'NO SALARIAL', 'SEGURIDAD SOCIAL', 'OTROS'].includes(suggested.toUpperCase().trim())) {
+                    appState.conceptsMapping[concept] = suggested.toUpperCase().trim();
+                    count++;
+                } else {
+                    appState.conceptsMapping[concept] = classifyConceptHeuristically(concept);
+                    count++;
+                }
+            });
+
+            renderConceptsList(colName);
+            showNomaiAlert(`Homologación completada con Inteligencia Artificial. Se clasificaron ${count} conceptos de forma automática.`);
+        } catch (error) {
+            console.error('Error al clasificar con IA:', error);
+            const useFallback = await showNomaiConfirm(`Ocurrió un error al conectar con Gemini (${error.message}). ¿Deseas clasificar los conceptos usando el algoritmo heurístico local gratuito?`);
+            if (useFallback) {
+                applyHeuristicFallback();
+            }
+        } finally {
+            setBtnLoading(false);
         }
     }
 
