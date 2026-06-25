@@ -132,22 +132,18 @@ function renderAnalysts() {
                 <td>${statusBadge}</td>
                 <td>${new Date(a.created_at).toLocaleDateString('es-CO')}</td>
                 <td>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; align-items: center;">
                         <button class="admin-action-btn" onclick="openEditAnalystModal('${a.id}')" title="Editar Analista">
-                            <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i>
-                            <span>Editar</span>
+                            <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
                         </button>
                         <button class="admin-action-btn" onclick="openResetPasswordModal('${a.id}')" title="Restablecer Contraseña">
-                            <i data-lucide="key" style="width: 12px; height: 12px;"></i>
-                            <span>Clave</span>
+                            <i data-lucide="key" style="width: 16px; height: 16px;"></i>
                         </button>
-                        <button class="admin-action-btn ${a.is_active ? 'admin-action-btn-danger' : ''}" onclick="toggleAnalystStatus('${a.id}', ${!a.is_active})">
-                            <i data-lucide="${a.is_active ? 'user-x' : 'user-check'}" style="width: 12px; height: 12px;"></i>
-                            <span>${a.is_active ? 'Desactivar' : 'Activar'}</span>
+                        <button class="admin-action-btn ${a.is_active ? 'admin-action-btn-danger' : ''}" onclick="toggleAnalystStatus('${a.id}', ${!a.is_active})" title="${a.is_active ? 'Desactivar' : 'Activar'}">
+                            <i data-lucide="${a.is_active ? 'user-x' : 'user-check'}" style="width: 16px; height: 16px;"></i>
                         </button>
                         <button class="admin-action-btn admin-action-btn-danger" onclick="deleteAnalyst('${a.id}')" title="Eliminar Analista">
-                            <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
-                            <span>Eliminar</span>
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
                         </button>
                     </div>
                 </td>
