@@ -27,9 +27,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Cargar datos iniciales
     await refreshData();
 
-    // Toggle del Sidebar colapsable
+    // Toggle del Sidebar colapsable y Móvil
     const sidebar = document.getElementById('sidebar');
     const toggleBtnBottom = document.getElementById('sidebar-toggle-bottom');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    if (mobileMenuBtn && sidebar && sidebarOverlay) {
+        mobileMenuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            sidebar.classList.add('mobile-open');
+            sidebarOverlay.classList.add('active');
+        });
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('mobile-open');
+            sidebarOverlay.classList.remove('active');
+        });
+    }
+
     if (sidebar && toggleBtnBottom) {
         toggleBtnBottom.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
