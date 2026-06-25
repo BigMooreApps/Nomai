@@ -429,6 +429,81 @@ function showNomaiConfirm(message) {
     });
 }
 
+// ─── Modal Prompt Estilo Nomai ──────────────────────────────────────
+window.showNomaiPrompt = function(message) {
+    return new Promise((resolve) => {
+        let modal = document.getElementById('nomai-prompt-modal');
+        
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'nomai-prompt-modal';
+            modal.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: rgba(26, 5, 51, 0.45);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                z-index: 9999;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.25s ease;
+            `;
+            modal.innerHTML = `
+                <div class="modal-content" style="background: #FFFFFF; border-radius: 12px; width: 90%; max-width: 450px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(108, 0, 211, 0.15); border: 1px solid rgba(108, 0, 211, 0.2); font-family: 'Outfit', sans-serif;">
+                    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;"><strong>Confirmación de Seguridad</strong></h3>
+                    <p id="nomai-prompt-message" style="color: #475569; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.5; text-align: left;"></p>
+                    <input type="text" id="nomai-prompt-input" autocomplete="off" style="width: 100%; padding: 0.75rem; margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 1rem; color: #1e293b; box-sizing: border-box;" />
+                    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                        <button id="nomai-prompt-cancel" class="btn" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit;">Cancelar</button>
+                        <button id="nomai-prompt-accept" class="btn btn-primary" style="background: linear-gradient(135deg, #6C00D3 0%, #3B008A 100%); border: none; color: white; padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit; box-shadow: 0 2px 4px rgba(108,0,211,0.3);">Aceptar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        const msgEl = modal.querySelector('#nomai-prompt-message');
+        const inputEl = modal.querySelector('#nomai-prompt-input');
+        const btnCancel = modal.querySelector('#nomai-prompt-cancel');
+        const btnConfirm = modal.querySelector('#nomai-prompt-accept');
+
+        if (msgEl) msgEl.textContent = message;
+        if (inputEl) inputEl.value = '';
+
+        // Mostrar
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.style.pointerEvents = 'auto';
+            if (inputEl) inputEl.focus();
+        }, 10);
+
+        const closeAndResolve = (val) => {
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+            
+            if (btnCancel) btnCancel.removeEventListener('click', onCancel);
+            if (btnConfirm) btnConfirm.removeEventListener('click', onConfirm);
+            document.removeEventListener('keydown', onKeyDown);
+            
+            resolve(val);
+        };
+
+        const onCancel = () => closeAndResolve(null);
+        const onConfirm = () => closeAndResolve(inputEl ? inputEl.value.trim() : null);
+        const onKeyDown = (e) => {
+            if (e.key === 'Enter') onConfirm();
+            if (e.key === 'Escape') onCancel();
+        };
+
+        if (btnCancel) btnCancel.addEventListener('click', onCancel);
+        if (btnConfirm) btnConfirm.addEventListener('click', onConfirm);
+        document.addEventListener('keydown', onKeyDown);
+    });
+};
+
 // ─── Modal de Alerta Estilo Nomai ───────────────────────────────────────────
 function showNomaiAlert(message) {
     return new Promise((resolve) => {

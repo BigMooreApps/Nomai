@@ -354,10 +354,10 @@ async function deleteCompany(id) {
     const confirm1 = await window.showNomaiConfirm(`¿Estás seguro de eliminar permanentemente la empresa "${company.name}"?`);
     if (!confirm1) return;
 
-    // Pedir confirmación escrita
-    const text = prompt(`Para confirmar, escribe la palabra: BORRAR`);
+    // Pedir confirmación escrita con estilo Nomai
+    const text = await window.showNomaiPrompt(`Para confirmar la eliminación, escribe la palabra exacta: BORRAR`);
     if (text !== 'BORRAR') {
-        window.showNomaiAlert('Operación cancelada. La palabra de seguridad no coincide.');
+        window.showNomaiAlert('Operación cancelada. La palabra de seguridad no coincide o fue cancelada.');
         return;
     }
 
