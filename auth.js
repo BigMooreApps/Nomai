@@ -728,6 +728,7 @@ function setupInactivityTracking() {
 // Sobrescribir initNomaiAuth para inicializar el tracking después de cargar el usuario
 const originalInitNomaiAuth = window.initNomaiAuth;
 window.initNomaiAuth = async function() {
-    await originalInitNomaiAuth();
+    const result = await originalInitNomaiAuth();
     setupInactivityTracking();
+    return result;
 };
