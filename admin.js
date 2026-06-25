@@ -221,6 +221,9 @@ function renderCompanies() {
                                 <i data-lucide="check" style="width: 16px; height: 16px;"></i>
                                </button>`
                         }
+                        <button class="admin-action-btn admin-action-btn-danger" onclick="deleteCompany('${c.id}')" title="Eliminar">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                        </button>
                     </div>
                 </td>
             </tr>
