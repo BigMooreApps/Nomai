@@ -6,9 +6,171 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css?v=20260618_12">
     <link rel="stylesheet" href="importer.css?v=20260617_16">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Guard de autenticación de carga inmediata
+        window.NomaiAuthInitPromise = (async () => {
+            try {
+                const profile = await requireAuth();
+                return profile;
+            } catch (e) {
+                console.error("[NomaiAuth] Error durante requireAuth:", e);
+                return null;
+            }
+        })();
+
+        window.NomaiAuthInitPromise.then((profile) => {
+            if (profile) {
+                const initUI = () => {
+                    document.body.style.display = 'flex';
+                    
+                    // Configurar UI de usuario en el header
+                    const nameEl = document.querySelector('.profile-name');
+                    const roleEl = document.querySelector('.profile-role');
+                    const avatarEl = document.querySelector('.avatar-letter');
+                    if (nameEl) nameEl.textContent = profile.full_name || 'Usuario';
+                    
+                    let roleDisplay = '';
+                    if (profile.role === 'super_admin') roleDisplay = 'SUPER ADMIN';
+                    else if (profile.role === 'admin') roleDisplay = 'ADMIN EMPRESA';
+                    else roleDisplay = profile.role.toUpperCase();
+                    if (roleEl) roleEl.textContent = roleDisplay;
+                    
+                    if (avatarEl && profile.full_name) {
+                        avatarEl.textContent = profile.full_name.substring(0, 2).toUpperCase();
+                    }
+
+
+
+                    // Aplicar control de accesos por permisos en la UI
+                    if (window.NomaiAuth) {
+                        // 1. Asistente IA
+                        if (!window.NomaiAuth.hasPermission('use_ai_assistant')) {
+                            const el = document.querySelector('.nav-link[data-tab="assistant"]');
+                            if (el) {
+                                const parent = el.closest('.nav-item');
+                                if (parent) parent.style.display = 'none';
+                            }
+                            const fabEl = document.getElementById('ai-chat-fab');
+                            if (fabEl) fabEl.style.display = 'none';
+                        }
+                        // 2. Importar datos
+                        if (!window.NomaiAuth.hasPermission('import_data')) {
+                            const el = document.querySelector('.nav-link[data-tab="importer"]');
+                            if (el) {
+                                const parent = el.closest('.nav-item');
+                                if (parent) parent.style.display = 'none';
+                            }
+                        }
+                        // 3. Consultar Base de Datos
+                        if (!window.NomaiAuth.hasPermission('view_database')) {
+                            const el = document.querySelector('.nav-link[data-tab="database"]');
+                            if (el) {
+                                const parent = el.closest('.nav-item');
+                                if (parent) parent.style.display = 'none';
+                            }
+                        }
+                        // 4. Reportes (PDF y Excel)
+                        if (!window.NomaiAuth.hasPermission('view_reports')) {
+                            const style = document.createElement('style');
+                            style.innerHTML = `
+                                #btn-period-compare-report,
+                                #btn-concept-compare-report,
+                                #btn-ceco-compare-report,
+                                #btn-cargo-compare-report,
+                                #btn-period-compare-excel,
+                                #btn-concept-compare-excel,
+                                #btn-ceco-compare-excel,
+                                #btn-cargo-compare-excel,
+                                #download-excel-btn,
+                                #btn-download-pdf {
+                                    display: none !important;
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
+                    }
+
+                    // Construir menú desplegable de perfil dinámico
+                    const dropdownActionsEl = document.getElementById('profile-dropdown-actions');
+                    if (dropdownActionsEl) {
+                        dropdownActionsEl.innerHTML = '';
+                        if (profile.role === 'super_admin') {
+                            const link = document.createElement('a');
+                            link.href = 'admin.html';
+                            link.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #1e293b; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px; font-family: 'Outfit', sans-serif;";
+                            link.onmouseover = function() { this.style.background = '#f1f5f9'; };
+                            link.onmouseout = function() { this.style.background = 'transparent'; };
+                            link.innerHTML = `
+                                <i data-lucide="shield" style="width: 14px; height: 14px; stroke: #6C00D3; stroke-width: 2.5px;"></i>
+                                <span>Panel Super Admin</span>
+                            `;
+                            dropdownActionsEl.appendChild(link);
+                        } else if (profile.role === 'admin') {
+                            if (window.NomaiAuth && window.NomaiAuth.hasPermission('manage_analysts')) {
+                                const link = document.createElement('a');
+                                link.href = 'company_admin.html';
+                                link.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #1e293b; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px; font-family: 'Outfit', sans-serif;";
+                                link.onmouseover = function() { this.style.background = '#f1f5f9'; };
+                                link.onmouseout = function() { this.style.background = 'transparent'; };
+                                link.innerHTML = `
+                                    <i data-lucide="settings-2" style="width: 14px; height: 14px; stroke: #6C00D3; stroke-width: 2.5px;"></i>
+                                    <span>Panel Admin Empresa</span>
+                                `;
+                                dropdownActionsEl.appendChild(link);
+                            }
+                        }
+                    }
+
+                    // Forzar regeneración de iconos de Lucide
+                    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                        window.lucide.createIcons();
+                    }
+
+                    // Cerrar dropdown al hacer click fuera
+                    document.addEventListener('click', (e) => {
+                        const dropdown = document.getElementById('profile-dropdown');
+                        const profileMenu = document.getElementById('user-profile-menu');
+                        if (dropdown && profileMenu && !profileMenu.contains(e.target)) {
+                            dropdown.style.display = 'none';
+                        }
+                    });
+                };
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initUI);
+                } else {
+                    initUI();
+                }
+            }
+        });
+
+        // Funciones para el dropdown de perfil
+        function toggleProfileDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('profile-dropdown');
+            if (dropdown) {
+                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            }
+        }
+
+        async function triggerLogoutWithConfirm() {
+            const confirmMessage = '¿Estás seguro de que deseas cerrar sesión?';
+            let proceed = false;
+            if (typeof window.showNomaiConfirm === 'function') {
+                proceed = await window.showNomaiConfirm(confirmMessage);
+            } else {
+                proceed = confirm(confirmMessage);
+            }
+            if (proceed) {
+                nomaiLogout();
+            }
+        }
+    </script>
 </head>
 
-<body>
+<body style="display: none;">
     <div class="app-container">
         <aside class="sidebar" id="sidebar">
             <div class="logo-container">
@@ -20,19 +182,12 @@
                 </div>
             </div>
 
-            <nav>
+            <nav style="display: flex; flex-direction: column; flex-grow: 1;">
                 <ul class="nav-menu">
                     <li class="nav-item">
                         <a class="nav-link active" data-tab="overview">
                             <i data-lucide="layout-dashboard"></i>
                             <span>Resumen General</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" data-tab="comparison">
-                            <i data-lucide="bar-chart-horizontal"></i>
-                            <span>Comparativas</span>
                         </a>
                     </li>
 
@@ -90,8 +245,24 @@
                                 </a>
                             </li>
                         </ul>
-                        </ul>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="comparison">
+                            <i data-lucide="bar-chart-horizontal"></i>
+                            <span>Comparativas</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" data-tab="assistant">
+                            <i data-lucide="bot"></i>
+                            <span>Agente IA</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="nav-menu" style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08);">
                     <li class="nav-item">
                         <a class="nav-link" data-tab="database">
                             <i data-lucide="database"></i>
@@ -101,7 +272,7 @@
                     <li class="nav-item">
                         <a class="nav-link" data-tab="importer">
                             <i data-lucide="upload-cloud"></i>
-                            <span>Importar Excel</span>
+                            <span>Importar Datos</span>
                         </a>
                     </li>
                 </ul>
@@ -127,14 +298,7 @@
                 <!-- Search bar removed -->
 
                 <div class="header-right-controls">
-                    <button class="header-control-btn notification-btn" aria-label="Notificaciones">
-                        <i data-lucide="bell"></i>
-                        <span class="notification-badge"></span>
-                    </button>
-                    <button class="header-control-btn" aria-label="Configuración">
-                        <i data-lucide="settings"></i>
-                    </button>
-                    <div class="header-profile">
+                    <div class="header-profile" id="user-profile-menu" style="cursor: pointer; position: relative;" onclick="toggleProfileDropdown(event)" title="Opciones de perfil">
                         <div class="profile-avatar">
                             <span class="avatar-letter">AL</span>
                         </div>
@@ -142,10 +306,17 @@
                             <span class="profile-name">ANDRES</span>
                             <span class="profile-role">HR Director</span>
                         </div>
+                        
+                        <!-- Menú Desplegable Premium -->
+                        <div id="profile-dropdown" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #ffffff; border: 1px solid rgba(108, 0, 211, 0.15); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(108,0,211,0.1); z-index: 1000; min-width: 160px; padding: 6px 0; text-align: left;">
+                            <div id="profile-dropdown-actions"></div>
+                            <div id="profile-dropdown-divider" style="height: 1px; background: rgba(108, 0, 211, 0.1); margin: 4px 0;"></div>
+                            <a href="#" onclick="event.preventDefault(); event.stopPropagation(); triggerLogoutWithConfirm();" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px; font-family: 'Outfit', sans-serif;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+                                <i data-lucide="log-out" style="width: 14px; height: 14px; stroke: #ef4444; stroke-width: 2.5px;"></i>
+                                <span>Cerrar Sesión</span>
+                            </a>
+                        </div>
                     </div>
-                    <button class="header-control-btn" aria-label="Menú">
-                        <i data-lucide="menu"></i>
-                    </button>
                 </div>
             </header>
 
@@ -1283,6 +1454,42 @@
                                     </div>
                                 </section>
 
+                                <!-- Pestaña del Agente IA -->
+                                <div id="tab-assistant" class="tab-content" style="gap: 0;">
+                                    <div class="ai-chat-workspace">
+                                        <div class="chat-header">
+                                            <h3>
+                                                <i data-lucide="bot" style="color: #6C00D3; stroke-width: 2.5px;"></i>
+                                                Asistente Nomai AI
+                                            </h3>
+                                            <div class="chat-header-actions">
+                                                <span class="api-status-badge inactive" id="api-status-badge">
+                                                    <span class="status-dot"></span>
+                                                    <span class="status-text">Sin configurar</span>
+                                                </span>
+                                                <button id="ai-chat-config" class="chat-icon-btn" title="Configurar API Key">
+                                                    <i data-lucide="key-round" style="width: 18px; height: 18px;"></i>
+                                                </button>
+                                                <button id="ai-chat-voice-toggle" class="chat-icon-btn" title="Activar/Desactivar Voz">
+                                                    <i data-lucide="volume-2" style="width: 18px; height: 18px;"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="ai-chat-messages" class="chat-messages">
+                                            <!-- Messages go here -->
+                                        </div>
+                                        <div class="chat-input-area">
+                                            <button id="ai-chat-mic" class="chat-icon-btn" title="Hablar (Dictar)">
+                                                <i data-lucide="mic" style="width: 18px; height: 18px;"></i>
+                                            </button>
+                                            <input type="text" id="ai-chat-input" placeholder="Escribe tu pregunta aquí sobre tu nómina..." autocomplete="off">
+                                            <button id="ai-chat-send" class="chat-send-btn">
+                                                <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </main>
                             
                             <!-- Estado de Procesamiento / Cargador -->
@@ -1326,36 +1533,7 @@
         </div>
     </div>
 
-    <!-- AI Assistant Chat -->
-    <div id="ai-chat-fab" title="Pregúntale a la IA sobre tu Nómina">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.76.452 3.407 1.233 4.846L2 22l5.154-1.233A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
-    </div>
 
-    <div id="ai-chat-panel">
-        <div class="chat-header">
-            <h3>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.76.452 3.407 1.233 4.846L2 22l5.154-1.233A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
-                Asistente Nomai AI
-            </h3>
-            <div class="chat-header-actions">
-                <button id="ai-chat-config" class="chat-icon-btn" title="Configurar API Key">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
-                <button id="ai-chat-close" class="chat-icon-btn" title="Cerrar Chat">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-            </div>
-        </div>
-        <div id="ai-chat-messages" class="chat-messages">
-            <!-- Messages go here -->
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="ai-chat-input" placeholder="Escribe tu pregunta aquí..." autocomplete="off">
-            <button id="ai-chat-send" class="chat-send-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
-        </div>
-    </div>
     
     <!-- Alert Modal (Estilo Nomai) -->
     <div id="nomai-alert-modal" style="position: fixed; inset: 0; background: rgba(26, 5, 51, 0.45); backdrop-filter: blur(4px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.2s;">

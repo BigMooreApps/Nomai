@@ -175,6 +175,26 @@
         const loadTplBtn2 = document.getElementById('load-template-btn-step2');
         if (loadTplBtn2) loadTplBtn2.addEventListener('click', () => loadSelectedTemplate('config-template-select-step2'));
 
+        // Botones de renombrar y eliminar plantillas
+        const renameTplBtn = document.getElementById('rename-template-btn');
+        if (renameTplBtn) renameTplBtn.addEventListener('click', () => renameSelectedTemplate());
+        
+        const renameTplBtn2 = document.getElementById('rename-template-btn-step2');
+        if (renameTplBtn2) renameTplBtn2.addEventListener('click', () => renameSelectedTemplate());
+        
+        const deleteTplBtn = document.getElementById('delete-template-btn');
+        if (deleteTplBtn) deleteTplBtn.addEventListener('click', () => deleteSelectedTemplate());
+        
+        const deleteTplBtn2 = document.getElementById('delete-template-btn-step2');
+        if (deleteTplBtn2) deleteTplBtn2.addEventListener('click', () => deleteSelectedTemplate());
+
+        // Sincronización al cambiar la selección de plantilla y actualización de botones
+        const select1 = document.getElementById('config-template-select');
+        if (select1) select1.addEventListener('change', (e) => syncTemplateSelection(e.target.value));
+
+        const select2 = document.getElementById('config-template-select-step2');
+        if (select2) select2.addEventListener('change', (e) => syncTemplateSelection(e.target.value));
+
         const btnAiSuggest = document.getElementById('btn-ai-suggest-concepts');
         if (btnAiSuggest) btnAiSuggest.addEventListener('click', suggestConceptsWithIA);
         
@@ -187,6 +207,7 @@
         const clearHistBtn = document.getElementById('clear-history-btn');
         if (clearHistBtn) clearHistBtn.addEventListener('click', clearHistory);
         
+        setStep(1);
         setTimeout(loadConfigTemplates, 100);
     });
 
@@ -389,7 +410,7 @@
         
         const progressFill = document.getElementById('progress-fill');
         if (progressFill) {
-            const progressPercent = stepNum === 1 ? 12.5 : (stepNum === 2 ? 37.5 : (stepNum === 3 ? 62.5 : 100));
+            const progressPercent = stepNum === 1 ? 0 : (stepNum === 2 ? 33.33 : (stepNum === 3 ? 66.67 : 100));
             progressFill.style.width = `${progressPercent}%`;
         }
         
@@ -468,28 +489,39 @@
             updateLoadingProgress(35);
             showLoading('Procesando datos internos (Esto puede tardar unos segundos)...');
             
+            // Damos 150ms al navegador para renderizar el estado del 35%
             setTimeout(() => {
                 try {
-                    const data = new Uint8Array(e.target.result);
+                    // Actualizar al 45% antes del procesamiento pesado
                     updateLoadingProgress(45);
                     
-                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                    updateLoadingProgress(80);
-                    
-                    appState.workbook = workbook;
-                    appState.sheetNames = workbook.SheetNames;
-                    appState.fileName = file.name;
-                    
+                    // Hacemos un breve timeout de 50ms para permitir que el navegador dibuje la barra en 45% antes de bloquear el hilo principal con XLSX.read
                     setTimeout(() => {
-                        updateLoadingProgress(90);
-                        if (appState.sheetNames.length > 1) {
-                            updateLoadingProgress(100);
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                            updateLoadingProgress(80);
+                            
+                            appState.workbook = workbook;
+                            appState.sheetNames = workbook.SheetNames;
+                            appState.fileName = file.name;
+                            
                             setTimeout(() => {
-                                hideLoading();
-                                renderSheetSelector();
-                            }, 200);
-                        } else {
-                            loadSheetData(appState.sheetNames[0]);
+                                updateLoadingProgress(90);
+                                if (appState.sheetNames.length > 1) {
+                                    updateLoadingProgress(100);
+                                    setTimeout(() => {
+                                        hideLoading();
+                                        renderSheetSelector();
+                                    }, 200);
+                                } else {
+                                    loadSheetData(appState.sheetNames[0]);
+                                }
+                            }, 100);
+                        } catch (err) {
+                            console.error(err);
+                            showNomaiAlert('No se pudo leer el archivo. Asegúrate de que sea un archivo de Excel o CSV válido.');
+                            hideLoading();
                         }
                     }, 50);
                 } catch (err) {
@@ -497,7 +529,7 @@
                     showNomaiAlert('No se pudo leer el archivo. Asegúrate de que sea un archivo de Excel o CSV válido.');
                     hideLoading();
                 }
-            }, 50);
+            }, 150);
         };
         reader.onerror = function() {
             showNomaiAlert('Error al leer el archivo.');
@@ -1800,7 +1832,7 @@
 
         showLoading('Cargando datos en el dashboard...');
 
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
                 const TIPO_MAP = {
                     'NORMAL': 'N',
@@ -1901,26 +1933,62 @@
                 if (!window.state) window.state = {};
                 if (!window.state.batches) window.state.batches = [];
                 
-                const batchId = 'batch_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                 const batchName = appState.fileName || `Lote_${window.state.batches.length + 1}`;
-                
-                const newBatch = {
-                    id: batchId,
-                    name: batchName,
-                    date: new Date().toLocaleString(),
-                    data: converted
-                };
-                
-                window.state.batches.push(newBatch);
 
-                // Reconstruir window.state.data a partir de todos los lotes activos
-                // IMPORTANTE: usar concat en lugar de push(...spread) para evitar stack overflow en arrays grandes
-                let allData = [];
-                window.state.batches.forEach(batch => {
-                    const filtered = batch.data.filter(d => d.na !== 'BENEFICIO');
-                    allData = allData.concat(filtered);
-                });
-                window.state.data = allData;
+                // Si hay sesión de Supabase, guardar en la nube
+                if (window.NomaiAuth && window.NomaiAuth.session) {
+                    if (!window.NomaiAuth.hasPermission('import_data')) {
+                        await showNomaiAlert("No tienes permisos para importar datos en la plataforma.");
+                        if (typeof hideLoading === 'function') hideLoading();
+                        return;
+                    }
+                    showLoading("Guardando lote en la nube...");
+                    try {
+                        const cloudRes = await window.savePayrollBatchToSupabase(batchName, converted);
+                        if (!cloudRes.success) {
+                            throw new Error(cloudRes.error);
+                        }
+                        console.log("[Nomai Importer] Guardado en la nube exitoso. Recargando base de datos...");
+                        // Recargar todo el set de datos del tenant de Supabase para reflejar los cambios
+                        const freshData = await window.loadPayrollFromSupabase();
+                        window.state.data = freshData;
+                    } catch (cloudErr) {
+                        console.error("[Nomai Importer] Error guardando en la nube:", cloudErr);
+                        await showNomaiAlert("Error al guardar en la nube: " + cloudErr.message + ". Los datos se cargaron solo en memoria local.");
+                        
+                        // Fallback local en memoria
+                        const batchId = 'batch_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                        const newBatch = {
+                            id: batchId,
+                            name: batchName,
+                            date: new Date().toLocaleString(),
+                            data: converted
+                        };
+                        window.state.batches.push(newBatch);
+                        let allData = [];
+                        window.state.batches.forEach(batch => {
+                            const filtered = batch.data.filter(d => d.na !== 'BENEFICIO');
+                            allData = allData.concat(filtered);
+                        });
+                        window.state.data = allData;
+                    }
+                } else {
+                    // Flujo tradicional local en memoria
+                    const batchId = 'batch_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                    const newBatch = {
+                        id: batchId,
+                        name: batchName,
+                        date: new Date().toLocaleString(),
+                        data: converted
+                    };
+                    window.state.batches.push(newBatch);
+                    let allData = [];
+                    window.state.batches.forEach(batch => {
+                        const filtered = batch.data.filter(d => d.na !== 'BENEFICIO');
+                        allData = allData.concat(filtered);
+                    });
+                    window.state.data = allData;
+                }
                 
                 // Disparar evento para actualizar la UI del Gestor de Lotes
                 document.dispatchEvent(new CustomEvent('nomai:batchesUpdated'));
@@ -1972,6 +2040,9 @@
                 if (typeof window.switchTab === 'function') {
                     window.switchTab('overview');
                 }
+
+                // Reiniciar el importador para dejarlo listo para una nueva carga
+                resetImporter();
 
                 if (window.confetti) {
                     window.confetti({
@@ -2764,6 +2835,38 @@
     // PLANTILLAS DE CONFIGURACIÓN Y MANTENIMIENTO DEL HISTORIAL
     // =========================================================================
 
+    function updateTemplateButtonsState(value) {
+        const hasSelection = value !== '';
+        
+        const renameBtn = document.getElementById('rename-template-btn');
+        const deleteBtn = document.getElementById('delete-template-btn');
+        const renameBtn2 = document.getElementById('rename-template-btn-step2');
+        const deleteBtn2 = document.getElementById('delete-template-btn-step2');
+        
+        [renameBtn, renameBtn2].forEach(btn => {
+            if (btn) {
+                btn.style.display = hasSelection ? 'flex' : 'none';
+                btn.disabled = !hasSelection;
+            }
+        });
+        
+        [deleteBtn, deleteBtn2].forEach(btn => {
+            if (btn) {
+                btn.style.display = hasSelection ? 'flex' : 'none';
+                btn.disabled = !hasSelection;
+            }
+        });
+    }
+
+    function syncTemplateSelection(value) {
+        const sel1 = document.getElementById('config-template-select');
+        const sel2 = document.getElementById('config-template-select-step2');
+        if (sel1) sel1.value = value;
+        if (sel2) sel2.value = value;
+        
+        updateTemplateButtonsState(value);
+    }
+
     function loadConfigTemplates() {
         const select = document.getElementById('config-template-select');
         const select2 = document.getElementById('config-template-select-step2');
@@ -2776,6 +2879,7 @@
         
         const populateSelect = (sel) => {
             if (!sel) return;
+            const curVal = sel.value;
             sel.innerHTML = '<option value="">-- Seleccionar Plantilla --</option>';
             configs.forEach((c, idx) => {
                 const opt = document.createElement('option');
@@ -2783,10 +2887,22 @@
                 opt.textContent = c.name;
                 sel.appendChild(opt);
             });
+            if (curVal !== '' && parseInt(curVal) < configs.length) {
+                sel.value = curVal;
+            } else {
+                sel.value = '';
+            }
         };
         
         populateSelect(select);
         populateSelect(select2);
+        
+        const currentVal = select ? select.value : '';
+        updateTemplateButtonsState(currentVal);
+        
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
     }
 
     function showNomaiPrompt(message, defaultValue = '') {
@@ -2798,7 +2914,11 @@
             const btnConfirm = document.getElementById('nomai-prompt-confirm');
 
             if (!modal) {
-                resolve(prompt(message, defaultValue));
+                if (typeof window.showNomaiPrompt === 'function') {
+                    window.showNomaiPrompt(message, defaultValue).then(resolve);
+                } else {
+                    resolve(prompt(message, defaultValue));
+                }
                 return;
             }
 
@@ -2851,7 +2971,11 @@
             const btnConfirm = document.getElementById('nomai-confirm-accept');
 
             if (!modal) {
-                resolve(confirm(message));
+                if (typeof window.showNomaiConfirm === 'function') {
+                    window.showNomaiConfirm(message).then(resolve);
+                } else {
+                    resolve(confirm(message));
+                }
                 return;
             }
 
@@ -2897,8 +3021,12 @@
             const btnConfirm = document.getElementById('nomai-alert-accept');
 
             if (!modal) {
-                alert(message);
-                resolve();
+                if (typeof window.showNomaiAlert === 'function') {
+                    window.showNomaiAlert(message).then(resolve);
+                } else {
+                    alert(message);
+                    resolve();
+                }
                 return;
             }
 
@@ -2934,11 +3062,23 @@
     }
 
     async function saveCurrentTemplate() {
-        const name = await showNomaiPrompt('Ingresa un nombre para esta plantilla de configuración:', 'Mi Plantilla');
+        const select = document.getElementById('config-template-select');
+        let defaultName = 'Mi Plantilla';
+        if (select && select.value !== '') {
+            let configs = [];
+            try {
+                const saved = localStorage.getItem('nomai_saved_configs');
+                if (saved) configs = JSON.parse(saved);
+                const currentTpl = configs[select.value];
+                if (currentTpl) defaultName = currentTpl.name;
+            } catch (e) {}
+        }
+        
+        const name = await showNomaiPrompt('Ingresa un nombre para esta plantilla de configuración:', defaultName);
         if (!name) return;
         
         const template = {
-            name: name,
+            name: name.trim(),
             timestamp: Date.now(),
             columnMappings: JSON.parse(JSON.stringify(appState.columnMappings)),
             combineNames: appState.combineNames,
@@ -2966,15 +3106,90 @@
             if (saved) configs = JSON.parse(saved);
         } catch (e) {}
         
-        configs.push(template);
-        localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
-        loadConfigTemplates();
-        
+        const existingIdx = configs.findIndex(c => c.name.toLowerCase() === name.trim().toLowerCase());
+        if (existingIdx !== -1) {
+            const overwrite = await showNomaiConfirm(`Ya existe una plantilla con el nombre "${name.trim()}". ¿Deseas sobreescribirla con tu configuración actual?`);
+            if (!overwrite) return;
+            
+            configs[existingIdx] = template;
+            localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+            loadConfigTemplates();
+            
+            syncTemplateSelection(existingIdx.toString());
+            showNomaiAlert('Plantilla actualizada con éxito.');
+        } else {
+            configs.push(template);
+            localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+            loadConfigTemplates();
+            
+            const newIndex = configs.length - 1;
+            syncTemplateSelection(newIndex.toString());
+            showNomaiAlert('Plantilla guardada con éxito.');
+        }
+    }
+
+    async function renameSelectedTemplate() {
         const select = document.getElementById('config-template-select');
-        if (select) select.value = configs.length - 1;
-        const select2 = document.getElementById('config-template-select-step2');
-        if (select2) select2.value = configs.length - 1;
-        showNomaiAlert('Plantilla guardada con éxito.');
+        if (!select || select.value === '') {
+            showNomaiAlert('Por favor selecciona una plantilla de la lista.');
+            return;
+        }
+        
+        const index = parseInt(select.value);
+        let configs = [];
+        try {
+            const saved = localStorage.getItem('nomai_saved_configs');
+            if (saved) configs = JSON.parse(saved);
+        } catch (e) {}
+        
+        const template = configs[index];
+        if (!template) return;
+        
+        const newName = await showNomaiPrompt(`Ingresa el nuevo nombre para la plantilla "${template.name}":`, template.name);
+        if (!newName || newName.trim() === '') return;
+        if (newName.trim() === template.name) return;
+        
+        const duplicate = configs.find((c, idx) => idx !== index && c.name.toLowerCase() === newName.trim().toLowerCase());
+        if (duplicate) {
+            showNomaiAlert(`Ya existe otra plantilla con el nombre "${newName.trim()}".`);
+            return;
+        }
+        
+        template.name = newName.trim();
+        localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+        
+        showNomaiAlert('Plantilla renombrada con éxito.');
+        loadConfigTemplates();
+        syncTemplateSelection(index.toString());
+    }
+
+    async function deleteSelectedTemplate() {
+        const select = document.getElementById('config-template-select');
+        if (!select || select.value === '') {
+            showNomaiAlert('Por favor selecciona una plantilla de la lista.');
+            return;
+        }
+        
+        const index = parseInt(select.value);
+        let configs = [];
+        try {
+            const saved = localStorage.getItem('nomai_saved_configs');
+            if (saved) configs = JSON.parse(saved);
+        } catch (e) {}
+        
+        const template = configs[index];
+        if (!template) return;
+        
+        const proceed = await showNomaiConfirm(`¿Estás seguro de que deseas eliminar la plantilla "${template.name}"?`);
+        if (!proceed) return;
+        
+        configs.splice(index, 1);
+        localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+        
+        showNomaiAlert('Plantilla eliminada con éxito.');
+        
+        syncTemplateSelection('');
+        loadConfigTemplates();
     }
 
     async function loadSelectedTemplate(fromSelectId = 'config-template-select') {
@@ -3024,12 +3239,8 @@
         if (appState.conceptsColumn) {
             renderConceptsList(appState.conceptsColumn);
         }
-        
-        // Sync both select values
-        const sel1 = document.getElementById('config-template-select');
-        const sel2 = document.getElementById('config-template-select-step2');
-        if (sel1) sel1.value = select.value;
-        if (sel2) sel2.value = select.value;
+        // Sync both select values and update button states
+        syncTemplateSelection(select.value);
     }
 
     // --- Sugerencia Inteligente de Conceptos con IA ---
@@ -3291,11 +3502,77 @@ Responde ÚNICAMENTE con un objeto JSON en texto plano donde las llaves sean los
         }
     }
 
+    function resetImporter() {
+        // Reset appState fields to their initial defaults
+        appState.currentStep = 1;
+        appState.fileName = '';
+        appState.workbook = null;
+        appState.sheetNames = [];
+        appState.selectedSheet = '';
+        appState.rawHeaders = [];
+        appState.rawRows = [];
+        appState.columnMappings = {};
+        appState.combineNames = false;
+        appState.combineSurnamesList = [];
+        appState.combineNamesList = [];
+        appState.detectedSplitNames = false;
+        appState.quincenaRule = 'quincenal';
+        appState.defaultTipoNomina = 'Normal';
+        appState.fechaAcumuladoIsMonthName = false;
+        appState.convertMonthToDate = true;
+        appState.convertMonthYear = '2026';
+        appState.convertMonthDayRule = 'last';
+        appState.combineMonthYear = false;
+        appState.monthColumn = '';
+        appState.yearColumn = '';
+        appState.dayColumn = '';
+        appState.monthYearDayRule = 'last';
+        appState.detectedSplitMonthYear = false;
+        appState.suggestedMonthColumn = '';
+        appState.suggestedYearColumn = '';
+        appState.suggestedDayColumn = '';
+        appState.transformedData = [];
+        appState.validationErrors = [];
+        appState.genericUnifications = {};
+        appState.conceptsColumn = '';
+        appState.conceptsMapping = {};
+
+        // Reset file input
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) fileInput.value = '';
+
+        // Hide sheet selector container
+        const selectorContainer = document.getElementById('sheet-selector-container');
+        if (selectorContainer) selectorContainer.classList.add('hide');
+        const optionsList = document.getElementById('sheet-options-list');
+        if (optionsList) optionsList.innerHTML = '';
+
+        // Clear dynamic columns and concepts mappings
+        const conceptsColSelect = document.getElementById('concepts-column-select');
+        if (conceptsColSelect) conceptsColSelect.innerHTML = '<option value="">-- Seleccionar Columna --</option>';
+        const conceptsListContainer = document.getElementById('concepts-mapping-list');
+        if (conceptsListContainer) conceptsListContainer.innerHTML = '';
+        const mappingGridContainer = document.getElementById('mapping-grid-container');
+        if (mappingGridContainer) mappingGridContainer.innerHTML = '';
+
+        // Reset template selects
+        syncTemplateSelection('');
+
+        // Reset wizard to step 1
+        setStep(1);
+    }
+
     // Exponer para depuración y pruebas automatizadas
     window.NomaiImporterDebug = {
         appState: appState,
         loadDataToDashboard: loadDataToDashboard,
-        transformData: transformData
+        transformData: transformData,
+        resetImporter: resetImporter
     };
+
+    // Exponer diálogos personalizados globalmente
+    window.showNomaiPrompt = showNomaiPrompt;
+    window.showNomaiConfirm = showNomaiConfirm;
+    window.showNomaiAlert = showNomaiAlert;
     
 })();

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NomAI - Panel Super Admin</title>
+    <!-- Estilo original y fuentes de Nomai -->
+    <link rel="stylesheet" href="style.css?v=20260618_12">
+    <style>
+        /* Ajustes específicos para el módulo de Super Admin */
+        .admin-action-btn {
+            background: transparent;
+            border: 1px solid var(--primary-light);
+            color: var(--primary-light);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .admin-action-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .admin-action-btn-danger {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+        .admin-action-btn-danger:hover {
+            background: #ef4444;
+            color: white;
+        }
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+        }
+        .status-pill.active {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .status-pill.inactive {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .status-pill.suspended {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        /* Estilos personalizados de los inputs en el modal */
+        .admin-form-group {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+        }
+        .admin-form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .admin-form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            outline: none;
+            background: #ffffff;
+            transition: all 0.2s;
+        }
+        .admin-form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 0, 211, 0.15);
+        }
+        
+        /* Modal de Nomai con Glassmorphic overlay */
+        .nomai-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(26, 5, 51, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .nomai-modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .nomai-modal-card {
+            background: #ffffff;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 480px;
+            padding: 24px;
+            box-shadow: var(--card-shadow-lg);
+            border: 1px solid rgba(108, 0, 211, 0.15);
+            transform: scale(0.95);
+            transition: transform 0.25s ease;
+        }
+        .nomai-modal-overlay.active .nomai-modal-card {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body style="background: var(--bg-main); font-family: 'Outfit', sans-serif;">
+    <div class="app-container">
+        <!-- Sidebar Corporativo de Nomai -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-container">
+                <div class="logo-expanded">
+                    <img src="logo-expanded.png?v=20260613_1" alt="NomAI" class="logo-img-expanded">
+                </div>
+                <div class="logo-collapsed">
+                    <img src="logo-collapsed.png?v=20260613_1" alt="NomAI" class="logo-img-collapsed">
+                </div>
+            </div>
+
+            <nav style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <ul class="nav-menu">
+                    <li class="nav-item" id="tab-btn-companies">
+                        <a class="nav-link" href="#" onclick="switchTab('companies')">
+                            <i data-lucide="building-2"></i>
+                            <span>Empresas</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" id="tab-btn-users">
+                        <a class="nav-link" href="#" onclick="switchTab('users')">
+                            <i data-lucide="users"></i>
+                            <span>Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" id="tab-btn-permissions">
+                        <a class="nav-link" href="#" onclick="switchTab('permissions')">
+                            <i data-lucide="shield-check"></i>
+                            <span>Permisos de Roles</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-toggle-bottom" id="sidebar-toggle-bottom" style="cursor: pointer;">
+                <i data-lucide="chevron-left"></i>
+            </div>
+        </aside>
+
+        <!-- Panel Principal -->
+        <main class="main-panel">
+            <!-- Header superior idéntico a index.html -->
+            <header class="header">
+                <div style="flex-grow: 1;"></div>
+                <div class="header-right-controls">
+                    <div class="header-profile" id="user-profile-menu" style="cursor: pointer; position: relative;" onclick="toggleProfileDropdown(event)" title="Opciones de perfil">
+                        <div class="profile-avatar">
+                            <span class="avatar-letter">SU</span>
+                        </div>
+                        <div class="profile-info">
+                            <span class="profile-name">Super Admin</span>
+                            <span class="profile-role">SYSTEM_ADMIN</span>
+                        </div>
+                        
+                        <!-- Dropdown de Cierre de sesión -->
+                        <div id="profile-dropdown" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #ffffff; border: 1px solid rgba(108, 0, 211, 0.15); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(108,0,211,0.1); z-index: 1000; min-width: 180px; padding: 6px 0; text-align: left; font-family: 'Outfit', sans-serif;">
+                            <a href="index.html" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #1e293b; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <i data-lucide="arrow-left" style="width: 14px; height: 14px; stroke: #6C00D3; stroke-width: 2.5px;"></i>
+                                <span>Volver al Dashboard</span>
+                            </a>
+                            <div style="border-top: 1px solid rgba(108, 0, 211, 0.08); margin: 6px 0;"></div>
+                            <a href="#" onclick="event.preventDefault(); event.stopPropagation(); triggerLogoutWithConfirm();" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+                                <i data-lucide="log-out" style="width: 14px; height: 14px; stroke: #ef4444; stroke-width: 2.5px;"></i>
+                                <span>Cerrar Sesión</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Zona de Contenido Principal -->
+            <div class="content-area" style="padding: 32px; max-width: 1200px; margin: 0 auto; width: 100%;">
+                
+                <!-- Título y Botón de Acción -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px;" id="page-title">Administración de Empresas</h1>
+                        <span style="font-size: 0.875rem; color: var(--text-secondary);" id="page-subtitle">Crea, edita y suspende el acceso a empresas clientes.</span>
+                    </div>
+                    <button class="btn btn-primary" id="btn-create-item" onclick="openCreateCompanyModal()" style="display: flex; align-items: center; gap: 8px; font-family: inherit; font-weight: 600; padding: 10px 20px; border-radius: 8px;">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                        <span>Crear Empresa</span>
+                    </button>
+                </div>
+
+                <div id="alert-box" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-weight: 600; font-size: 0.9rem;"></div>
+
+                <!-- Tabla: Empresas -->
+                <div class="table-card" id="section-companies" style="margin-top: 0; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+                    <div class="table-header" style="border-bottom: 1px solid var(--border-color); padding: 18px 24px;">
+                        <h3 class="table-title" style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">Listado de Empresas Clientes</h3>
+                    </div>
+                    <div class="table-wrapper" style="overflow-x: auto;">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre de la Empresa</th>
+                                    <th>Slug</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Registro</th>
+                                    <th style="width: 220px; text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companies-table-body">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando empresas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla: Usuarios Admins -->
+                <div class="table-card" id="section-users" style="margin-top: 0; display: none; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+                    <div class="table-header" style="border-bottom: 1px solid var(--border-color); padding: 18px 24px;">
+                        <h3 class="table-title" style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">Listado de Usuarios Registrados</h3>
+                    </div>
+                    <div class="table-wrapper" style="overflow-x: auto;">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre Completo</th>
+                                    <th>Email</th>
+                                    <th>Empresa Asociada</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th style="width: 220px; text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Cargando usuarios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Configuración: Permisos de Roles -->
+                <div class="table-card" id="section-permissions" style="margin-top: 0; display: none; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+                    <div class="table-header" style="border-bottom: 1px solid var(--border-color); padding: 18px 24px;">
+                        <h3 class="table-title" style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">Configuración de Permisos por Rol</h3>
+                    </div>
+                    <div class="table-wrapper" style="overflow-x: auto; padding: 24px;">
+                        <div id="permissions-matrix-container">
+                            <!-- Aquí se renderizará la matriz de permisos -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirm Modal (Estilo Nomai) -->
+    <div id="nomai-confirm-modal" style="position: fixed; inset: 0; background: rgba(26, 5, 51, 0.45); backdrop-filter: blur(4px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.2s;">
+        <div class="modal-content" style="background: #FFFFFF; border-radius: 12px; width: 90%; max-width: 450px; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(108, 0, 211, 0.15); border: 1px solid rgba(108, 0, 211, 0.2);">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600; color: #1e293b;"><strong>Confirmación</strong></h3>
+            <p id="nomai-confirm-message" style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;"></p>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button id="nomai-confirm-cancel" class="btn" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 500; cursor: pointer;">Cancelar</button>
+                <button id="nomai-confirm-accept" class="btn" style="background: linear-gradient(135deg, #6C00D3 0%, #3B008A 100%); border: none; color: white; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 4px rgba(108,0,211,0.3);">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear/Editar Empresa (Estilo Nomai) -->
+    <div class="nomai-modal-overlay" id="company-modal">
+        <div class="nomai-modal-card">
+            <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 20px;" id="company-modal-title">Crear Nueva Empresa</h3>
+            <form id="company-form" onsubmit="saveCompany(event)">
+                <input type="hidden" id="company-id">
+                
+                <div class="admin-form-group">
+                    <label for="company-name">Nombre de la Empresa</label>
+                    <input type="text" id="company-name" class="admin-form-input" required placeholder="Ej. ACME Corp">
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="company-slug">Slug (Identificador URL)</label>
+                    <input type="text" id="company-slug" class="admin-form-input" required placeholder="ej-acme-corp">
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="company-status">Estado</label>
+                    <select id="company-status" class="admin-form-input" style="height: 42px;">
+                        <option value="active">Activa</option>
+                        <option value="inactive">Inactiva</option>
+                        <option value="suspended">Suspendida (Falta de pago)</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('company-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Empresa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Crear Usuario Admin (Estilo Nomai) -->
+    <div class="nomai-modal-overlay" id="user-modal">
+        <div class="nomai-modal-card">
+            <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 20px;" id="user-modal-title">Crear Usuario Administrador</h3>
+            <form id="user-form" onsubmit="saveUser(event)">
+                <input type="hidden" id="user-id">
+                
+                <div class="admin-form-group">
+                    <label for="user-name">Nombre Completo</label>
+                    <input type="text" id="user-name" class="admin-form-input" required placeholder="Ej. Andres Lopez">
+                </div>
+                
+                <div class="admin-form-group" id="user-email-group">
+                    <label for="user-email">Correo Electrónico</label>
+                    <input type="email" id="user-email" class="admin-form-input" required placeholder="admin@empresa.com">
+                </div>
+                
+                <div class="admin-form-group" id="user-pass-group">
+                    <label for="user-password">Contraseña Temporal</label>
+                    <input type="password" id="user-password" class="admin-form-input" placeholder="Min. 6 caracteres">
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="user-company">Empresa Asociada</label>
+                    <select id="user-company" class="admin-form-input" style="height: 42px;" required>
+                        <option value="">Selecciona una empresa...</option>
+                    </select>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="user-status">Estado</label>
+                    <select id="user-status" class="admin-form-input" style="height: 42px;">
+                        <option value="true">Activo</option>
+                        <option value="false">Inactivo</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('user-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Administrador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts CDN y lógica de negocio -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

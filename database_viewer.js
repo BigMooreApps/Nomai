@@ -87,6 +87,8 @@ function renderBatchesList() {
         return;
     }
 
+    const canDelete = window.NomaiAuth ? window.NomaiAuth.hasPermission('delete_data') : true;
+
     el.innerHTML = batches.map((b, i) => `
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:0.75rem 1rem;background:#f8fafc;border:1px solid #e2e8f0;
@@ -99,19 +101,61 @@ function renderBatchesList() {
                     Cargado el: ${b.date} &bull; ${b.data.length.toLocaleString('es-CO')} registros
                 </div>
             </div>
+            ${canDelete ? `
             <button class="btn btn-outline"
                     style="color:#ef4444;border-color:#ef4444;padding:0.25rem 0.5rem;font-size:0.75rem;"
                     onclick="deleteBatch('${b.id}')">
                 <i data-lucide="trash-2" style="width:14px;height:14px;margin-right:4px;"></i> Eliminar
             </button>
+            ` : ''}
         </div>`).join('');
 
     if (window.lucide) window.lucide.createIcons();
 }
 
-window.deleteBatch = function (batchId) {
+window.deleteBatch = async function (batchId) {
+    if (window.NomaiAuth && !window.NomaiAuth.hasPermission('delete_data')) {
+        await window.showNomaiAlert("No tienes permisos para eliminar lotes de datos.");
+        return;
+    }
     if (!window.state?.batches) return;
-    if (!confirm('¿Estás seguro de que deseas eliminar este lote? Los datos se recalcularán.')) return;
+    
+    const confirmMessage = '¿Estás seguro de que deseas eliminar este lote? Los datos se recalcularán.';
+    let proceed = false;
+    if (typeof window.showNomaiConfirm === 'function') {
+        proceed = await window.showNomaiConfirm(confirmMessage);
+    } else {
+        proceed = confirm(confirmMessage);
+    }
+    if (!proceed) return;
+
+    // Si hay sesión de Supabase, eliminar de la base de datos en la nube
+    if (window.NomaiAuth && window.NomaiAuth.session) {
+        const sb = window.NomaiAuth.supabase;
+        const { error } = await sb
+            .from('payroll_batches')
+            .delete()
+            .eq('id', batchId);
+
+        if (error) {
+            await window.showNomaiAlert("Error al eliminar lote en la nube: " + error.message);
+            return;
+        }
+
+        console.log("[Nomai DB Viewer] Lote eliminado en la nube. Recargando...");
+        const freshData = await window.loadPayrollFromSupabase();
+        window.state.data = freshData;
+
+        renderBatchesList();
+        refreshDatabaseTable();
+
+        if (typeof window.initUniqueValuesCache === 'function') window.initUniqueValuesCache();
+        if (typeof window.updateAll === 'function') {
+            window.state.filters = { years: [], months: [], types: [], cecos: [], quincenas: [] };
+            window.updateAll();
+        }
+        return;
+    }
 
     window.state.batches = window.state.batches.filter(b => b.id !== batchId);
 
@@ -140,11 +184,11 @@ function renderTableHeaders() {
     headerRow.innerHTML = columnMap.map(col => {
         const widthStyle = col.width ? `width:${col.width};min-width:${col.width};max-width:${col.width};` : '';
         return `
-            <th style="padding:0.75rem 0.5rem;cursor:pointer;user-select:none;white-space:nowrap;${widthStyle}box-sizing:border-box;"
+            <th style="padding:0.75rem 0.4rem;cursor:pointer;user-select:none;${widthStyle}box-sizing:border-box;white-space:normal;vertical-align:middle;"
                 onclick="handleDbSort('${col.key}')">
-                <div style="display:flex;align-items:center;gap:0.25rem;overflow:hidden;text-overflow:ellipsis;">
-                    ${col.label}
-                    <span id="db-sort-icon-${col.key}" style="color:#cbd5e1;font-size:0.75rem;flex-shrink:0;">↕</span>
+                <div style="display:flex;align-items:center;gap:0.25rem;white-space:normal;line-height:1.1;word-break:break-word;">
+                    <span style="white-space:normal;word-break:break-word;">${col.label}</span>
+                    <span id="db-sort-icon-${col.key}" style="color:#cbd5e1;font-size:0.75rem;flex-shrink:0;margin-left:2px;">↕</span>
                 </div>
             </th>`;
     }).join('');
@@ -330,8 +374,7 @@ function renderVirtualRows(scrollContainer) {
     for (let i = startRow; i < endRow; i++) {
         const row  = VS.filteredData[i];
         const tr   = document.createElement('tr');
-        const bg   = i % 2 === 0 ? '#ffffff' : '#f9fafb';
-        tr.style.cssText = `border-bottom:1px solid #f3f4f6;background:${bg};`;
+        tr.className = 'db-row';
         
         let rowHtml = '';
         for (const col of columnMap) {
@@ -372,13 +415,21 @@ function renderVirtualRows(scrollContainer) {
 
 // ─── Export to Excel ──────────────────────────────────────────────────────────
 window.exportDbToExcel = function () {
+    const showAlert = (msg) => {
+        if (typeof window.showNomaiAlert === 'function') {
+            window.showNomaiAlert(msg);
+        } else {
+            alert(msg);
+        }
+    };
+
     if (!window.XLSX) {
-        alert('La librería XLSX no está cargada.');
+        showAlert('La librería XLSX no está cargada.');
         return;
     }
     const dataToExport = VS.filteredData || [];
     if (!dataToExport.length) {
-        alert('No hay registros para exportar.');
+        showAlert('No hay registros para exportar.');
         return;
     }
 
@@ -434,7 +485,7 @@ window.exportDbToExcel = function () {
 
         } catch (error) {
             console.error('Error al exportar a Excel:', error);
-            alert('Ocurrió un error al exportar a Excel.');
+            showAlert('Ocurrió un error al exportar a Excel.');
         } finally {
             if (overlay) {
                 overlay.classList.add('hide');

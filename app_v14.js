@@ -83,6 +83,7 @@ const state = {
     periodCompareSearchQuery: '',
     periodCompareExpanded: false,
     periodCompareSelectedEmployees: [],
+    periodCompareSelectedCecos: [],
     
     // Vista Comparativa de Conceptos
     conceptComparePeriod1: '',
@@ -90,6 +91,7 @@ const state = {
     conceptCompareSearchQuery: '',
     conceptCompareExpanded: false,
     conceptCompareSelectedConcepts: [],
+    conceptCompareSelectedCecos: [],
     
     // Vista Comparativa de Centros de Costo
     cecoComparePeriod1: '',
@@ -104,10 +106,21 @@ const state = {
     cargoCompareSearchQuery: '',
     cargoCompareExpanded: false,
     cargoCompareSelectedCargos: [],
+    cargoCompareSelectedCecos: [],
     
     // Configuración de carpeta local
     folderHandle: null,
     folderFiles: [],
+    
+    // Estado de ordenación de tablas comparativas
+    cecoSortColumn: 'name',
+    cecoSortDirection: 'asc',
+    cargoSortColumn: 'name',
+    cargoSortDirection: 'asc',
+    conceptSortColumn: 'default',
+    conceptSortDirection: 'asc',
+    periodSortColumn: 'name',
+    periodSortDirection: 'asc',
     
     // Caché de valores únicos
     uniqueYears: [],
@@ -129,12 +142,25 @@ window.getUniqueQuincenas = getUniqueQuincenas;
 window.switchTab = switchTab;
 
 // Inicializacion de la Aplicacion al cargar el DOM
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Cargar datos iniciales desde data.js si existen
-    if (window.PAYROLL_DATA && window.PAYROLL_DATA.length > 0) {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Esperar a que la autenticación e inicialización del contexto se completen
+    if (window.NomaiAuthInitPromise) {
+        await window.NomaiAuthInitPromise;
+    }
+
+    // 1. Cargar datos iniciales (desde Supabase si hay sesión o fallback a data.js)
+    if (window.NomaiAuth && window.NomaiAuth.session) {
+        try {
+            console.log("[Nomai] Cargando datos desde base de datos Supabase...");
+            state.data = await loadPayrollFromSupabase();
+        } catch (e) {
+            console.error("[Nomai] Error cargando datos de Supabase:", e);
+            state.data = [];
+        }
+    } else if (window.PAYROLL_DATA && window.PAYROLL_DATA.length > 0) {
         state.data = window.PAYROLL_DATA.filter(d => d.na !== 'BENEFICIO');
     } else {
-        console.warn("No se encontraron datos pre-cargados en window.PAYROLL_DATA.");
+        console.warn("No se encontraron datos pre-cargados ni sesión de Supabase.");
     }
     
     // Inicializar caché de valores únicos
@@ -497,6 +523,19 @@ function initGlobalFilters() {
 
 // Cambiar de pestaña activa
 function switchTab(tabId) {
+    // Guardar accesos según permisos
+    if (window.NomaiAuth) {
+        if (tabId === 'assistant' && !window.NomaiAuth.hasPermission('use_ai_assistant')) {
+            tabId = 'overview';
+        }
+        if (tabId === 'importer' && !window.NomaiAuth.hasPermission('import_data')) {
+            tabId = 'overview';
+        }
+        if (tabId === 'database' && !window.NomaiAuth.hasPermission('view_database')) {
+            tabId = 'overview';
+        }
+    }
+
     state.activeTab = tabId;
     
     // Activar link en sidebar
@@ -546,8 +585,8 @@ function switchTab(tabId) {
     const divider = document.getElementById('filter-divider-1');
     
     if (filterToolbar) {
-        if (tabId === 'importer' || tabId === 'database' || tabId === 'period-compare' || tabId === 'concept-compare' || tabId === 'ceco-compare' || tabId === 'cargo-compare') {
-            // Ocultar toda la barra en importador y en análisis masivo (tienen sus propios filtros inline)
+        if (tabId === 'assistant' || tabId === 'importer' || tabId === 'database' || tabId === 'period-compare' || tabId === 'concept-compare' || tabId === 'ceco-compare' || tabId === 'cargo-compare') {
+            // Ocultar toda la barra en importador, asistente y en análisis masivo (tienen sus propios filtros inline)
             filterToolbar.classList.add('hidden');
         } else {
             filterToolbar.classList.remove('hidden');
@@ -619,7 +658,7 @@ function renderActiveTab() {
         }
     }, 50);
 
-    if (state.data.length === 0 && state.activeTab !== 'importer' && state.activeTab !== 'database') {
+    if (state.data.length === 0 && state.activeTab !== 'importer' && state.activeTab !== 'database' && state.activeTab !== 'assistant') {
         showEmptyStateMessage();
         return;
     }
@@ -654,6 +693,11 @@ function renderActiveTab() {
             break;
         case 'database':
             // La base de datos se renderiza mediante database_viewer.js
+            break;
+        case 'assistant':
+            if (typeof window.initAssistantChatIfNeeded === 'function') {
+                window.initAssistantChatIfNeeded();
+            }
             break;
     }
 }
@@ -729,6 +773,9 @@ function renderOverview() {
     
     // 3. Gráfico: Distribución por Naturaleza (Doughnut)
     renderOverviewNatureChart(totalDevengos, Math.abs(totalDescuentos));
+    
+    // 3.5. Gráfico: Variación de Headcount
+    renderOverviewHeadcountChart(data);
     
     // 4. Tabla: Resumen Mensual
     renderOverviewMonthlyTable(data);
@@ -901,6 +948,143 @@ function renderOverviewNatureChart(dev, desc) {
                             const pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
                             return `  ${context.label}: ${currencyFormatter.format(val)} (${pct})`;
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderOverviewHeadcountChart(data) {
+    const ctx = document.getElementById('overview-headcount-chart');
+    if (!ctx) return;
+    
+    // Total de personas registradas en la base de datos
+    const totalPool = state.uniquePeople ? state.uniquePeople.length : 0;
+    
+    // Agrupar headcount único por mes
+    const monthlyEmployees = {};
+    data.forEach(d => {
+        const key = d.m;
+        if (!monthlyEmployees[key]) {
+            monthlyEmployees[key] = new Set();
+        }
+        monthlyEmployees[key].add(d.c);
+    });
+    
+    // Ordenar meses
+    const sortedMonths = Object.keys(monthlyEmployees).sort((a,b) => (MONTH_ORDER[a] || 99) - (MONTH_ORDER[b] || 99));
+    
+    const labels = sortedMonths;
+    const paidVals = sortedMonths.map(m => monthlyEmployees[m].size);
+    const unpaidVals = sortedMonths.map(m => totalPool - monthlyEmployees[m].size);
+    
+    // Calcular estadísticas
+    let peakVal = 0;
+    let peakMonth = "";
+    let minVal = paidVals.length > 0 ? paidVals[0] : 0;
+    let minMonth = sortedMonths.length > 0 ? sortedMonths[0] : "";
+    
+    sortedMonths.forEach((m, idx) => {
+        const val = paidVals[idx];
+        if (val > peakVal) {
+            peakVal = val;
+            peakMonth = m;
+        }
+        if (val < minVal) {
+            minVal = val;
+            minMonth = m;
+        }
+    });
+
+    const totalEl = document.getElementById('headcount-total-val');
+    const peakEl = document.getElementById('headcount-peak-val');
+    const minEl = document.getElementById('headcount-min-val');
+
+    if (totalEl) totalEl.innerText = totalPool;
+    if (peakEl) peakEl.innerText = `${peakVal} (${peakMonth})`;
+    if (minEl) minEl.innerText = `${minVal} (${minMonth})`;
+    
+    state.charts['overviewHeadcount'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Se les pagó nómina',
+                    data: paidVals,
+                    backgroundColor: 'rgba(16, 185, 129, 0.85)', // Verde esmeralda para activos/pagados
+                    borderColor: '#10b981',
+                    borderWidth: 1,
+                    stack: 'headcount'
+                },
+                {
+                    label: 'No se les pagó nómina',
+                    data: unpaidVals,
+                    backgroundColor: 'rgba(239, 68, 68, 0.35)', // Rojo coral transparente para inactivos/no pagados
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    stack: 'headcount'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: '#6B7280',
+                        font: { family: 'Outfit', size: 11 },
+                        padding: 10,
+                        boxWidth: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#FFFFFF',
+                    titleColor: '#1A1D2E',
+                    bodyColor: '#6B7280',
+                    borderColor: 'rgba(0,0,0,0.08)',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const val = context.raw;
+                            const total = totalPool;
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
+                            return ` ${label}: ${val} (${pct})`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        color: '#64748b',
+                        font: { family: 'Outfit', size: 11 }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.04)'
+                    }
+                },
+                x: {
+                    stacked: true,
+                    ticks: {
+                        color: '#64748b',
+                        font: { family: 'Outfit', size: 11 }
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
@@ -1464,6 +1648,60 @@ function renderEmployeeDebtChart(currentYearData, allYearsData) {
     const ctx = document.getElementById('employee-debt-chart');
     if (!ctx) return;
     
+    // Destruir instancia anterior de Chart.js para evitar errores de lienzo ya en uso
+    if (state.charts['empDebt']) {
+        state.charts['empDebt'].destroy();
+    }
+    
+    // Recuperar el valor del límite recomendado desde el control input
+    const limitInput = document.getElementById('debt-limit-input');
+    let limitValue = 40;
+    if (limitInput) {
+        // Inicializar con el valor actual del estado si ya existe
+        if (state.debtLimit !== undefined) {
+            limitInput.value = state.debtLimit;
+        }
+        
+        limitValue = parseFloat(limitInput.value);
+        if (isNaN(limitValue) || limitValue < 0) limitValue = 0;
+        if (limitValue > 100) limitValue = 100;
+        
+        // Agregar manejadores de eventos para actualizar el límite en tiempo real al ingresar texto o cambiar el número
+        if (!limitInput.dataset.listenerBound) {
+            const handleLimitChange = (e) => {
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) return; // Dejar que el usuario termine de escribir
+                if (val < 0) val = 0;
+                if (val > 100) val = 100;
+                
+                state.debtLimit = val;
+                
+                // Volver a renderizar el gráfico con el nuevo límite
+                const cedula = state.selectedEmployeeCedula;
+                const empData = state.filteredData.filter(d => d.c === cedula);
+                const allData = state.data.filter(d => d.c === cedula);
+                renderEmployeeDebtChart(empData, allData);
+            };
+            
+            limitInput.addEventListener('input', handleLimitChange);
+            limitInput.addEventListener('change', (e) => {
+                let val = parseFloat(e.target.value);
+                if (isNaN(val) || val < 0) val = 40; // Valor por defecto si queda vacío al salir
+                if (val > 100) val = 100;
+                e.target.value = val;
+                state.debtLimit = val;
+                
+                const cedula = state.selectedEmployeeCedula;
+                const empData = state.filteredData.filter(d => d.c === cedula);
+                const allData = state.data.filter(d => d.c === cedula);
+                renderEmployeeDebtChart(empData, allData);
+            });
+            
+            limitInput.dataset.listenerBound = 'true';
+        }
+    }
+    state.debtLimit = limitValue;
+    
     const isFiltered = state.selectedYears && state.selectedYears.length === 1;
     const chartData = isFiltered ? currentYearData : allYearsData;
     
@@ -1497,15 +1735,15 @@ function renderEmployeeDebtChart(currentYearData, allYearsData) {
         return parseFloat(((desc / dev) * 100).toFixed(2));
     });
     
-    let finalLabels = [...labels];
-    let finalDebtRatios = [...debtRatios];
+    const finalLabels = [...labels];
+    const finalDebtRatios = [...debtRatios];
     if (labels.length > 0) {
         const avgRatio = debtRatios.reduce((sum, val) => sum + val, 0) / debtRatios.length;
         finalDebtRatios.push(parseFloat(avgRatio.toFixed(2)));
         finalLabels.push('Promedio');
     }
     
-    const recommendedLimit = finalLabels.map(() => 40);
+    const recommendedLimit = finalLabels.map(() => limitValue);
     
     const canvasCtx = ctx.getContext('2d');
     
@@ -1554,7 +1792,7 @@ function renderEmployeeDebtChart(currentYearData, allYearsData) {
                 },
                 {
                     type: 'line',
-                    label: 'Límite Recomendado (40%)',
+                    label: `Límite Recomendado (${limitValue}%)`,
                     data: recommendedLimit,
                     borderColor: 'rgba(239, 68, 68, 0.55)',
                     borderWidth: 1.5,
@@ -2660,7 +2898,10 @@ function getFilterOptions(type) {
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
         }
         case 'cecos':
-        case 'ceco_compare_cecos': {
+        case 'ceco_compare_cecos':
+        case 'period_compare_cecos':
+        case 'concept_compare_cecos':
+        case 'cargo_compare_cecos': {
             const set = new Set();
             state.data.forEach(d => { if (d.cc && d.dcc) set.add(`${d.cc} - ${d.dcc}`); });
             return Array.from(set).sort().map(c => ({ value: c, label: c, sublabel: '' }));
@@ -2705,6 +2946,9 @@ function getCurrentSelectionForType(type) {
         case 'cargo_compare_cargos': return state.cargoCompareSelectedCargos || [];
         case 'cecos':     return state.compareCecos;
         case 'ceco_compare_cecos': return state.cecoCompareSelectedCecos || [];
+        case 'period_compare_cecos': return state.periodCompareSelectedCecos || [];
+        case 'concept_compare_cecos': return state.conceptCompareSelectedCecos || [];
+        case 'cargo_compare_cecos': return state.cargoCompareSelectedCecos || [];
         default:          return [];
     }
 }
@@ -2775,6 +3019,15 @@ function applyModalSelection(type) {
             break;
         case 'ceco_compare_cecos':
             state.cecoCompareSelectedCecos = arr;
+            break;
+        case 'period_compare_cecos':
+            state.periodCompareSelectedCecos = arr;
+            break;
+        case 'concept_compare_cecos':
+            state.conceptCompareSelectedCecos = arr;
+            break;
+        case 'cargo_compare_cecos':
+            state.cargoCompareSelectedCecos = arr;
             break;
     }
 }
@@ -2905,7 +3158,10 @@ function openFilterModal(type) {
         period_compare_employees: '👤 Filtrar Colaborador',
         concept_compare_concepts: '🔍 Filtrar Concepto',
         ceco_compare_cecos: '🏢 Filtrar Centro de Costo',
-        cargo_compare_cargos: '🎖️ Filtrar Cargo'
+        cargo_compare_cargos: '🎖️ Filtrar Cargo',
+        period_compare_cecos: '🏢 Filtrar Centro de Costo',
+        concept_compare_cecos: '🏢 Filtrar Centro de Costo',
+        cargo_compare_cecos: '🏢 Filtrar Centro de Costo'
     };
     titleEl.textContent = titles[type] || 'Filtrar Opciones';
 
@@ -3007,12 +3263,14 @@ function initFilterModal() {
         { btnId: 'period-compare-p2-label',        type: 'p2' },
         { btnId: 'period-compare-employees-label', type: 'period_compare_employees' },
         { btnId: 'period-compare-tipo-label',      type: 'types' },
+        { btnId: 'period-compare-ceco-label',      type: 'period_compare_cecos' },
         
         // Pestaña Análisis Masivo por Concepto
         { btnId: 'concept-compare-p1-label',       type: 'p1' },
         { btnId: 'concept-compare-p2-label',       type: 'p2' },
         { btnId: 'concept-compare-concepts-label', type: 'concept_compare_concepts' },
         { btnId: 'concept-compare-tipo-label',     type: 'types' },
+        { btnId: 'concept-compare-ceco-label',     type: 'concept_compare_cecos' },
         
         // Pestaña Análisis Masivo por CECO
         { btnId: 'ceco-compare-p1-label',          type: 'p1' },
@@ -3024,7 +3282,8 @@ function initFilterModal() {
         { btnId: 'cargo-compare-p1-label',         type: 'p1' },
         { btnId: 'cargo-compare-p2-label',         type: 'p2' },
         { btnId: 'cargo-compare-cargos-label',     type: 'cargo_compare_cargos' },
-        { btnId: 'cargo-compare-tipo-label',        type: 'types' }
+        { btnId: 'cargo-compare-tipo-label',        type: 'types' },
+        { btnId: 'cargo-compare-ceco-label',       type: 'cargo_compare_cecos' }
     ];
 
     filterButtonMap.forEach(({ btnId, type }) => {
@@ -3784,6 +4043,48 @@ function updateSearchSelectorLabels() {
         }
     }
 
+    // CECOs en period-compare (Colaboradores)
+    const periodCecoLabel = document.getElementById('period-compare-ceco-label');
+    if (periodCecoLabel) {
+        const count = state.periodCompareSelectedCecos ? state.periodCompareSelectedCecos.length : 0;
+        if (count === 0) {
+            periodCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Ceco: Todos`;
+        } else if (count === 1) {
+            const shortName = state.periodCompareSelectedCecos[0].split(' - ')[0];
+            periodCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Ceco: ${shortName}`;
+        } else {
+            periodCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Cecos: ${count}`;
+        }
+    }
+
+    // CECOs en concept-compare (Conceptos)
+    const conceptCecoLabel = document.getElementById('concept-compare-ceco-label');
+    if (conceptCecoLabel) {
+        const count = state.conceptCompareSelectedCecos ? state.conceptCompareSelectedCecos.length : 0;
+        if (count === 0) {
+            conceptCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Ceco: Todos`;
+        } else if (count === 1) {
+            const shortName = state.conceptCompareSelectedCecos[0].split(' - ')[0];
+            conceptCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Ceco: ${shortName}`;
+        } else {
+            conceptCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Cecos: ${count}`;
+        }
+    }
+
+    // CECOs en cargo-compare (Cargos)
+    const cargoCecoLabel = document.getElementById('cargo-compare-ceco-label');
+    if (cargoCecoLabel) {
+        const count = state.cargoCompareSelectedCecos ? state.cargoCompareSelectedCecos.length : 0;
+        if (count === 0) {
+            cargoCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Ceco: Todos`;
+        } else if (count === 1) {
+            const shortName = state.cargoCompareSelectedCecos[0].split(' - ')[0];
+            cargoCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Ceco: ${shortName}`;
+        } else {
+            cargoCecoLabel.innerHTML = `<i data-lucide="building-2"></i> Cecos: ${count}`;
+        }
+    }
+
     // Tipo de Nómina para todos los 4 comparadores
     const labels = [
         'period-compare-tipo-label',
@@ -3854,6 +4155,22 @@ function initPeriodCompareSelectors() {
             });
         });
         btnCollapse.dataset.listenerBound = 'true';
+    }
+
+    const btnPersonaReport = document.getElementById('btn-period-compare-report');
+    if (btnPersonaReport && !btnPersonaReport.dataset.listenerBound) {
+        btnPersonaReport.addEventListener('click', () => {
+            generateManagerialReport('persona');
+        });
+        btnPersonaReport.dataset.listenerBound = 'true';
+    }
+
+    const btnPersonaExcel = document.getElementById('btn-period-compare-excel');
+    if (btnPersonaExcel && !btnPersonaExcel.dataset.listenerBound) {
+        btnPersonaExcel.addEventListener('click', () => {
+            exportCompareTableToExcel('persona');
+        });
+        btnPersonaExcel.dataset.listenerBound = 'true';
     }
 }
 
@@ -3928,6 +4245,29 @@ function generatePeriodInsight(val1, val2, devVar, descVar, benVar, conceptChang
     return `<div class="insight-text">${insightParts.join(' ')}. ${sumInsight}</div>`;
 }
 
+// Genera el HTML de cabecera con botón de ordenación
+function getHeaderSortHTML(labelText, columnKey, activeSortColumn, activeSortDirection, isRightAligned = false) {
+    const isSorted = activeSortColumn === columnKey;
+    let iconName = 'chevrons-up-down';
+    let iconColor = 'var(--text-muted, #94a3b8)';
+    if (isSorted) {
+        iconName = activeSortDirection === 'asc' ? 'chevron-up' : 'chevron-down';
+        iconColor = '#6c00d3'; // Morado elegante principal de la app
+    }
+    const containerStyle = isRightAligned 
+        ? 'display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; width: 100%;'
+        : 'display: inline-flex; align-items: center; gap: 4px;';
+        
+    return `
+        <div style="${containerStyle}">
+            <span>${labelText}</span>
+            <button class="small-sort-btn" data-col="${columnKey}" style="background: none; border: none; padding: 0; cursor: pointer; color: ${iconColor}; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; transition: all 0.2s;" title="Ordenar por ${labelText}">
+                <i data-lucide="${iconName}" style="width: 12px; height: 12px;"></i>
+            </button>
+        </div>
+    `;
+}
+
 // Renderiza la tabla de comparación de periodos jerárquica
 function renderPeriodComparison() {
     const tbody = document.getElementById('period-compare-tbody');
@@ -3944,11 +4284,18 @@ function renderPeriodComparison() {
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
-    // Actualizar cabeceras de columnas
-    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
-    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
-    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
-    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
+    // Actualizar cabeceras de columnas con ordenación
+    const headerName = document.getElementById('period-header-name');
+    const headerDiff = document.getElementById('period-header-diff');
+    const headerPct = document.getElementById('period-header-pct');
+    
+    if (headerName) headerName.innerHTML = getHeaderSortHTML('Colaborador', 'name', state.periodSortColumn, state.periodSortDirection, false);
+    if (headerCantP1) headerCantP1.innerHTML = getHeaderSortHTML('Cant ' + p1Label, 'cant1', state.periodSortColumn, state.periodSortDirection, true);
+    if (headerP1) headerP1.innerHTML = getHeaderSortHTML('Valor ' + p1Label, 'p1', state.periodSortColumn, state.periodSortDirection, true);
+    if (headerCantP2) headerCantP2.innerHTML = getHeaderSortHTML('Cant ' + p2Label, 'cant2', state.periodSortColumn, state.periodSortDirection, true);
+    if (headerP2) headerP2.innerHTML = getHeaderSortHTML('Valor ' + p2Label, 'p2', state.periodSortColumn, state.periodSortDirection, true);
+    if (headerDiff) headerDiff.innerHTML = getHeaderSortHTML('Variación', 'diff', state.periodSortColumn, state.periodSortDirection, true);
+    if (headerPct) headerPct.innerHTML = getHeaderSortHTML('%', 'pct', state.periodSortColumn, state.periodSortDirection, true);
 
     tbody.innerHTML = '';
     
@@ -3957,8 +4304,15 @@ function renderPeriodComparison() {
         return;
     }
     
-    const dataP1 = filterDataByPeriod(state.comparePeriod1);
-    const dataP2 = filterDataByPeriod(state.comparePeriod2);
+    let dataP1 = filterDataByPeriod(state.comparePeriod1);
+    let dataP2 = filterDataByPeriod(state.comparePeriod2);
+    
+    // Filtro por Centro de Costo
+    const selectedCecos = state.periodCompareSelectedCecos || [];
+    if (selectedCecos.length > 0) {
+        dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+        dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+    }
     
     // 2. Obtener lista de personas a mostrar
     const people = getUniquePeopleSorted();
@@ -3976,6 +4330,7 @@ function renderPeriodComparison() {
     }
     
     // 3. Procesar datos para cada colaborador
+    const peopleStatsList = [];
     filteredPeople.forEach(person => {
         const cedula = person.cedula;
         const name = person.name;
@@ -4066,6 +4421,57 @@ function renderPeriodComparison() {
         // Generar Insight dinámico
         const insightHTML = generatePeriodInsight(netP1, netP2, totals.DEVENGO.p2 - totals.DEVENGO.p1, totals.DESCUENTO.p2 - totals.DESCUENTO.p1, totals.BENEFICIO.p2 - totals.BENEFICIO.p1, conceptChanges);
         
+        peopleStatsList.push({
+            cedula: cedula,
+            name: name,
+            p1: netP1,
+            p2: netP2,
+            diff: netDiff,
+            pct: netPct,
+            totals: totals,
+            conceptChanges: conceptChanges,
+            insightHTML: insightHTML
+        });
+    });
+
+    // Ordenar peopleStatsList según la columna y dirección
+    const sortCol = state.periodSortColumn || 'name';
+    const sortDir = state.periodSortDirection || 'asc';
+    peopleStatsList.sort((a, b) => {
+        let valA, valB;
+        if (sortCol === 'name') {
+            valA = a.name;
+            valB = b.name;
+            return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (sortCol === 'p1') {
+            valA = a.p1;
+            valB = b.p1;
+        } else if (sortCol === 'p2') {
+            valA = a.p2;
+            valB = b.p2;
+        } else if (sortCol === 'diff') {
+            valA = a.diff;
+            valB = b.diff;
+        } else if (sortCol === 'pct') {
+            valA = a.pct;
+            valB = b.pct;
+        } else {
+            return 0;
+        }
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+    });
+
+    peopleStatsList.forEach(personItem => {
+        const cedula = personItem.cedula;
+        const name = personItem.name;
+        const netP1 = personItem.p1;
+        const netP2 = personItem.p2;
+        const netDiff = personItem.diff;
+        const netPct = personItem.pct;
+        const totals = personItem.totals;
+        const conceptChanges = personItem.conceptChanges;
+        const insightHTML = personItem.insightHTML;
+
         // ==========================================
         // RENDER: Fila del Colaborador (Nivel 1)
         // ==========================================
@@ -4087,10 +4493,12 @@ function renderPeriodComparison() {
             <td style="text-align: right; font-weight: normal;">${currencyFormatter.format(netP2)}</td>
             <td style="text-align: right;">${formatVariationHTML(netDiff)}</td>
             <td style="text-align: right;">${formatVariationHTML(netPct, true)}</td>
-            <td>
-                <button class="btn-analyze" data-cedula="${cedula}" data-name="${name}" title="Analizar variaciones">
-                    <i data-lucide="search" style="width:13px;height:13px;"></i>
-                    <span>Analizar</span>
+            <td style="display:flex; gap:4px; align-items:center; padding-top:10px; padding-bottom:10px;">
+                <button class="btn-analyze" data-cedula="${cedula}" data-name="${name}" title="Ver desglose de conceptos">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                </button>
+                <button class="btn-analyze btn-person-detail" data-cedula="${cedula}" data-name="${name}" title="Análisis individual del colaborador" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;">
+                    <i data-lucide="user-round-search" style="width:14px;height:14px;"></i>
                 </button>
             </td>
         `;
@@ -4109,7 +4517,6 @@ function renderPeriodComparison() {
             // Fila de cada concepto individual
             natConcepts.forEach(c => {
                 const conRow = document.createElement('tr');
-                // Ocultar si el estado global dice colapsado
                 conRow.className = `concept-row child-of-${cedula} ${state.periodCompareExpanded ? '' : 'collapsed-row'}`;
                 
                 // Variación porcentual individual
@@ -4156,7 +4563,6 @@ function renderPeriodComparison() {
         
         // Agregar evento de click a la fila del empleado para expandir / contraer
         empRow.addEventListener('click', (e) => {
-            // Don't trigger if clicking the analyze button
             if (e.target.closest('.btn-analyze')) return;
             
             const row = e.currentTarget;
@@ -4175,8 +4581,9 @@ function renderPeriodComparison() {
         });
     });
     
-    // Bind Analizar buttons (after all rows are rendered)
-    document.querySelectorAll('.btn-analyze').forEach(btn => {
+    // Bind Analizar buttons — solo los de ojo (excluir btn-person-detail)
+    document.querySelectorAll('.btn-analyze:not(.btn-person-detail)').forEach(btn => {
+        if (btn.classList.contains('btn-analyze-concept') || btn.classList.contains('btn-analyze-ceco') || btn.classList.contains('btn-analyze-cargo')) return;
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const cedula = btn.getAttribute('data-cedula');
@@ -4184,11 +4591,127 @@ function renderPeriodComparison() {
             showAnalysisModal(cedula, name, state.comparePeriod1, state.comparePeriod2);
         });
     });
+
+    // Bind botón de Análisis Individual de Persona
+    document.querySelectorAll('.btn-person-detail').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cedula = btn.getAttribute('data-cedula');
+            const name = btn.getAttribute('data-name');
+            showPersonDetailModal(cedula, name, state.comparePeriod1, state.comparePeriod2);
+        });
+    });
     
+    // Renderizar fila TOTAL en el pie de la tabla
+    (function renderPeriodTableTotals() {
+        const footerBar = document.getElementById('period-compare-footer');
+        if (!footerBar) return;
+        if (peopleStatsList.length === 0) { footerBar.innerHTML = ''; return; }
+
+        let sumP1 = 0, sumP2 = 0;
+        peopleStatsList.forEach(p => { sumP1 += p.p1; sumP2 += p.p2; });
+        const sumDiff = sumP2 - sumP1;
+        const sumPct  = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        footerBar.innerHTML = `
+            <table>
+                <tbody>
+                    <tr style="font-weight: 700; color: #000000;">
+                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
+                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
+                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
+                        <td style="width: 140px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    })();
+
+    // Actualizar Tarjetas Resumen (Colaboradores)
+    (function updatePeriodSummaryCards() {
+        const totalEl     = document.getElementById('period-stat-total');
+        const totalSubEl  = document.getElementById('period-stat-total-sub');
+        const highNameEl  = document.getElementById('period-stat-highest-name');
+        const highValEl   = document.getElementById('period-stat-highest-val');
+        const savNameEl   = document.getElementById('period-stat-savings-name');
+        const savValEl    = document.getElementById('period-stat-savings-val');
+        const payrollEl   = document.getElementById('period-stat-total-payroll');
+        const payrollSubEl= document.getElementById('period-stat-total-payroll-sub');
+        if (!totalEl) return;
+
+        const countP2 = peopleStatsList.filter(p => p.p2 !== 0).length;
+        const countP1 = peopleStatsList.filter(p => p.p1 !== 0).length;
+        const diffCount = countP2 - countP1;
+        totalEl.innerText = countP2;
+
+        if (diffCount > 0) {
+            totalSubEl.innerHTML = `<span style="color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +${diffCount} respecto a ${p1Label}</span>`;
+        } else if (diffCount < 0) {
+            totalSubEl.innerHTML = `<span style="color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> ${diffCount} respecto a ${p1Label}</span>`;
+        } else {
+            totalSubEl.innerHTML = `<span>Sin cambios respecto a ${p1Label}</span>`;
+        }
+
+        // Mayor incremento (mayor diff positivo)
+        let topIncrease = null, maxDiff = 0;
+        peopleStatsList.forEach(p => { if (p.diff > maxDiff) { maxDiff = p.diff; topIncrease = p; } });
+        if (topIncrease) {
+            const shortName = topIncrease.name.split(' ').slice(0, 2).join(' ');
+            highNameEl.innerHTML = `${shortName}`;
+            highValEl.innerHTML = `<span style="color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +${topIncrease.pct.toFixed(1)}%</span> (+${currencyFormatter.format(topIncrease.diff)})`;
+        } else {
+            highNameEl.innerText = '-'; highValEl.innerText = 'Sin incrementos';
+        }
+
+        // Mayor ahorro (mayor diff negativo)
+        let topSavings = null, minDiff = 0;
+        peopleStatsList.forEach(p => { if (p.diff < minDiff) { minDiff = p.diff; topSavings = p; } });
+        if (topSavings) {
+            const shortName = topSavings.name.split(' ').slice(0, 2).join(' ');
+            savNameEl.innerHTML = `${shortName}`;
+            savValEl.innerHTML = `<span style="color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> ${topSavings.pct.toFixed(1)}%</span> (${currencyFormatter.format(topSavings.diff)})`;
+        } else {
+            savNameEl.innerText = '-'; savValEl.innerText = 'Sin ahorros';
+        }
+
+        // Nómina comparada
+        let totalP1 = 0, totalP2 = 0;
+        peopleStatsList.forEach(p => { totalP1 += p.p1; totalP2 += p.p2; });
+        const totalDiff = totalP2 - totalP1;
+        const totalPct  = totalP1 !== 0 ? (totalDiff / Math.abs(totalP1)) * 100 : (totalDiff > 0 ? 100 : (totalDiff < 0 ? -100 : 0));
+        const totalSign = totalDiff > 0 ? '+' : '';
+        const totalColor = totalDiff > 0 ? '#10b981' : (totalDiff < 0 ? '#ef4444' : 'var(--text-secondary)');
+        const totalIcon  = totalDiff > 0 ? 'trending-up' : (totalDiff < 0 ? 'trending-down' : 'minus');
+        payrollEl.innerHTML = `<strong style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">P1:</strong> <span style="font-weight:normal;">${currencyFormatter.format(totalP1)}</span><br><strong style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">P2:</strong> <span style="font-weight:normal;">${currencyFormatter.format(totalP2)}</span>`;
+        payrollEl.style.fontSize = '1.05rem';
+        payrollEl.style.lineHeight = '1.35';
+        payrollSubEl.innerHTML = `Dif: <span style="color:${totalColor};font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="${totalIcon}" style="width:12px;height:12px;"></i> ${totalSign}${currencyFormatter.format(totalDiff)} (${totalSign}${totalPct.toFixed(2)}%)</span>`;
+    })();
+
     // Inicializar iconos de Lucide cargados
     if (window.lucide) {
         window.lucide.createIcons();
     }
+
+    // Listeners para botones de ordenación
+    document.querySelectorAll('#period-header-name .small-sort-btn, #period-header-cant-p1 .small-sort-btn, #period-header-p1 .small-sort-btn, #period-header-cant-p2 .small-sort-btn, #period-header-p2 .small-sort-btn, #period-header-diff .small-sort-btn, #period-header-pct .small-sort-btn')
+        .forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const col = btn.getAttribute('data-col');
+                if (state.periodSortColumn === col) {
+                    state.periodSortDirection = state.periodSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.periodSortColumn = col;
+                    state.periodSortDirection = 'desc'; // Por defecto de mayor a menor
+                }
+                renderPeriodComparison();
+            });
+        });
 }
 
 // ==========================================
@@ -4234,141 +4757,236 @@ function showAnalysisModal(cedula, name, period1, period2) {
     const netDiff = netP2 - netP1;
     const netPct = netP1 !== 0 ? (netDiff / Math.abs(netP1)) * 100 : 0;
     
-    // Build analysis narrative
-    let narrative = '';
+    // Devengos calculations
+    const devP1 = totals.DEVENGO.p1;
+    const devP2 = totals.DEVENGO.p2;
+    const devDiff = devP2 - devP1;
+    const devPct = devP1 !== 0 ? (devDiff / Math.abs(devP1)) * 100 : 0;
     
-    if (Math.abs(netDiff) < 100) {
-        narrative = `<p class="analysis-summary">El salario neto de <strong>${name}</strong> se mantuvo prácticamente estable entre ambos periodos, sin variaciones significativas.</p>`;
-    } else {
-        const direction = netDiff > 0 ? 'aumentó' : 'disminuyó';
-        const signChar = netDiff >= 0 ? '+' : '-';
-        const colorClass = netDiff > 0 ? 'analysis-positive' : 'analysis-negative';
-        
-        narrative = `<p class="analysis-summary">El ingreso neto de <strong>${name}</strong> ${direction} en <span class="${colorClass}"><strong>${signChar}${currencyFormatter.format(Math.abs(netDiff))}</strong> (${netPct > 0 ? '+' : ''}${netPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
+    // Descuentos calculations (absolute terms)
+    const descP1 = Math.abs(totals.DESCUENTO.p1);
+    const descP2 = Math.abs(totals.DESCUENTO.p2);
+    const descDiff = descP2 - descP1;
+    const descPct = descP1 !== 0 ? (descDiff / descP1) * 100 : 0;
+
+    // Helper for formatting concept names
+    const formatConceptName = (str) => {
+        if (!str) return '';
+        // Sentence case
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+
+    // Card 1: Devengos
+    let devArrow = 'arrow-up-right';
+    let devArrowClass = 'pos';
+    let devBadgeClass = 'badge-pos';
+    if (devDiff < 0) {
+        devArrow = 'arrow-down-right';
+        devArrowClass = 'neg';
+        devBadgeClass = 'badge-neg';
+    } else if (devDiff === 0) {
+        devArrow = 'arrow-right';
+        devArrowClass = 'muted';
+        devBadgeClass = 'badge-neutral';
     }
-    
-    // Top increases
-    const increases = changes.filter(c => c.diff > 0).slice(0, 5);
-    const decreases = changes.filter(c => c.diff < 0).slice(0, 5);
-    
-    let increasesHTML = '';
-    if (increases.length > 0) {
-        increasesHTML = `
-            <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-positive">Conceptos con incremento</h4>
-                <div class="analysis-items">
-                    ${increases.map(c => `
-                        <div class="analysis-item">
-                            <div class="analysis-item-header">
-                                <span class="analysis-concept">${c.co.toLowerCase()}</span>
-                                <span class="badge badge-${c.na.toLowerCase()}" style="font-size:0.65rem;">${c.na}</span>
-                            </div>
-                            <div class="analysis-item-values">
-                                <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">&rarr;</span>
-                                <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
-                                <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
-                            </div>
-                        </div>
-                    `).join('')}
+    const devPctStr = `${devDiff >= 0 ? '+' : ''}${devPct.toFixed(2)}%`;
+
+    // Card 2: Descuentos
+    let descArrow = 'arrow-right';
+    let descArrowClass = 'pos';
+    let descBadgeClass = 'badge-pos';
+    if (descDiff > 0) {
+        // More discounts = negative impact
+        descArrow = 'arrow-right';
+        descArrowClass = 'neg';
+        descBadgeClass = 'badge-neg';
+    } else if (descDiff === 0) {
+        descArrow = 'arrow-right';
+        descArrowClass = 'muted';
+        descBadgeClass = 'badge-neutral';
+    }
+    const descPctStr = `${descDiff >= 0 ? '+' : ''}${descPct.toFixed(2)}%`;
+
+    // Card 3: Neto
+    let netArrow = 'arrow-up-right';
+    let netArrowClass = 'pos';
+    let netBadgeClass = 'badge-pos';
+    if (netDiff < 0) {
+        netArrow = 'arrow-down-right';
+        netArrowClass = 'neg';
+        netBadgeClass = 'badge-neg';
+    } else if (netDiff === 0) {
+        netArrow = 'arrow-right';
+        netArrowClass = 'muted';
+        netBadgeClass = 'badge-neutral';
+    }
+    const netPctStr = `${netDiff >= 0 ? '+' : ''}${netPct.toFixed(2)}%`;
+
+    // Summary Cards HTML
+    const summaryCardsHTML = `
+        <div class="analysis-cards-row">
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="dollar-sign"></i>
+                    </span>
+                    <span class="analysis-card-label">Devengos</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <i data-lucide="${devArrow}" class="analysis-card-arrow ${devArrowClass}"></i>
+                    <span class="analysis-card-badge ${devBadgeClass}">${devPctStr}</span>
                 </div>
             </div>
-        `;
-    }
-    
-    let decreasesHTML = '';
-    if (decreases.length > 0) {
-        decreasesHTML = `
-            <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-negative">Conceptos con reducción</h4>
-                <div class="analysis-items">
-                    ${decreases.map(c => `
-                        <div class="analysis-item">
-                            <div class="analysis-item-header">
-                                <span class="analysis-concept">${c.co.toLowerCase()}</span>
-                                <span class="badge badge-${c.na.toLowerCase()}" style="font-size:0.65rem;">${c.na}</span>
-                            </div>
-                            <div class="analysis-item-values">
-                                <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">&rarr;</span>
-                                <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
-                                <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
-                            </div>
-                        </div>
-                    `).join('')}
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon descuentos">
+                        <i data-lucide="percent"></i>
+                    </span>
+                    <span class="analysis-card-label">Descuentos</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <i data-lucide="${descArrow}" class="analysis-card-arrow ${descArrowClass}"></i>
+                    <span class="analysis-card-badge ${descBadgeClass}">${descPctStr}</span>
                 </div>
             </div>
-        `;
-    }
-    
-    // New concepts appearing
-    const newConcepts = changes.filter(c => (p1Map[c.co] === undefined || p1Map[c.co] === 0) && c.v2 !== 0);
-    let newConceptsHTML = '';
-    if (newConcepts.length > 0) {
-        newConceptsHTML = `
-            <div class="analysis-section">
-                <h4 class="analysis-section-title" style="color: var(--info);">&#9679; Conceptos nuevos en ${period2}</h4>
-                <div class="analysis-items">
-                    ${newConcepts.slice(0, 5).map(c => `
-                        <div class="analysis-item">
-                            <span class="analysis-concept">${c.co.toLowerCase()}</span>
-                            <span class="analysis-diff" style="color: var(--info);">${currencyFormatter.format(c.v2)}</span>
-                        </div>
-                    `).join('')}
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon neto">
+                        <i data-lucide="wallet"></i>
+                    </span>
+                    <span class="analysis-card-label">Neto</span>
                 </div>
-            </div>
-        `;
-    }
-    
-    // Removed concepts
-    const removedConcepts = changes.filter(c => (p2Map[c.co] === undefined || p2Map[c.co] === 0) && c.v1 !== 0);
-    let removedHTML = '';
-    if (removedConcepts.length > 0) {
-        removedHTML = `
-            <div class="analysis-section">
-                <h4 class="analysis-section-title" style="color: var(--text-muted);">&#9675; Conceptos que desaparecen en ${period2}</h4>
-                <div class="analysis-items">
-                    ${removedConcepts.slice(0, 5).map(c => `
-                        <div class="analysis-item">
-                            <span class="analysis-concept">${c.co.toLowerCase()}</span>
-                            <span class="analysis-diff" style="color: var(--text-muted);">${currencyFormatter.format(c.v1)} &rarr; $0</span>
-                        </div>
-                    `).join('')}
+                <div class="analysis-card-bottom">
+                    <i data-lucide="${netArrow}" class="analysis-card-arrow ${netArrowClass}"></i>
+                    <span class="analysis-card-badge ${netBadgeClass}">${netPctStr}</span>
                 </div>
-            </div>
-        `;
-    }
-    
-    // Summary bar
-    const summaryHTML = `
-        <div class="analysis-summary-bar">
-            <div class="analysis-summary-item">
-                <span class="analysis-label">Devengos</span>
-                <span class="analysis-val">${currencyFormatter.format(totals.DEVENGO.p1)}</span>
-                <span class="analysis-val">&rarr; ${currencyFormatter.format(totals.DEVENGO.p2)}</span>
-                <span class="${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? 'analysis-positive' : 'analysis-negative'}">
-                    ${totals.DEVENGO.p2 - totals.DEVENGO.p1 >= 0 ? '+' : '-'} ${currencyFormatter.format(Math.abs(totals.DEVENGO.p2 - totals.DEVENGO.p1))}
-                </span>
-            </div>
-            <div class="analysis-summary-item">
-                <span class="analysis-label">Descuentos</span>
-                <span class="analysis-val">${currencyFormatter.format(Math.abs(totals.DESCUENTO.p1))}</span>
-                <span class="analysis-val">&rarr; ${currencyFormatter.format(Math.abs(totals.DESCUENTO.p2))}</span>
-                <span class="${Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1) <= 0 ? 'analysis-positive' : 'analysis-negative'}">
-                    ${Math.abs(totals.DESCUENTO.p2) <= Math.abs(totals.DESCUENTO.p1) ? '-' : '+'} ${currencyFormatter.format(Math.abs(Math.abs(totals.DESCUENTO.p2) - Math.abs(totals.DESCUENTO.p1)))}
-                </span>
-            </div>
-            <div class="analysis-summary-item" style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
-                <span class="analysis-label" style="font-weight:600;">Neto</span>
-                <span class="analysis-val" style="font-weight:600;">${currencyFormatter.format(netP1)}</span>
-                <span class="analysis-val" style="font-weight:600;">&rarr; ${currencyFormatter.format(netP2)}</span>
-                <span class="${netDiff >= 0 ? 'analysis-positive' : 'analysis-negative'}" style="font-weight:700;">
-                    ${netDiff >= 0 ? '+' : '-'} ${currencyFormatter.format(Math.abs(netDiff))}
-                </span>
             </div>
         </div>
     `;
+
+    // Top positive and negative
+    const topPositive = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff)[0];
+    const topNegative = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff)[0];
+    const newConcepts = changes.filter(c => (p1Map[c.co] === undefined || p1Map[c.co] === 0) && c.v2 !== 0);
+    const removedConcepts = changes.filter(c => (p2Map[c.co] === undefined || p2Map[c.co] === 0) && c.v1 !== 0);
+    const newCount = newConcepts.length;
+    const removedCount = removedConcepts.length;
     
+    let summaryListItems = [];
+    
+    if (topPositive) {
+        let explanation = "";
+        if (topPositive.na === 'DEVENGO') {
+            explanation = `Aumento en el devengo <strong>${topPositive.co.toLowerCase()}</strong> (+$${currencyFormatter.format(topPositive.diff).replace('$', '')})`;
+        } else {
+            explanation = `Disminución en el descuento <strong>${topPositive.co.toLowerCase()}</strong> (representa un ahorro de +$${currencyFormatter.format(Math.abs(topPositive.diff)).replace('$', '')})`;
+        }
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot pos"></span>
+                <div><strong>Mayor impacto positivo:</strong> ${explanation}.</div>
+            </li>
+        `);
+    }
+    
+    if (topNegative) {
+        let explanation = "";
+        if (topNegative.na === 'DEVENGO') {
+            explanation = `Reducción en el devengo <strong>${topNegative.co.toLowerCase()}</strong> (-$${currencyFormatter.format(Math.abs(topNegative.diff)).replace('$', '')})`;
+        } else {
+            explanation = `Incremento en el descuento <strong>${topNegative.co.toLowerCase()}</strong> (mayor deducción de -$${currencyFormatter.format(Math.abs(topNegative.diff)).replace('$', '')})`;
+        }
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot neg"></span>
+                <div><strong>Mayor impacto negativo:</strong> ${explanation}.</div>
+            </li>
+        `);
+    }
+    
+    if (newCount > 0) {
+        const sampleNew = newConcepts.slice(0, 2).map(c => `<strong>${c.co.toLowerCase()}</strong>`).join(', ');
+        const extraText = newCount > 2 ? ` y ${newCount - 2} más` : '';
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot pos"></span>
+                <div><strong>Nuevos conceptos:</strong> Se incorporaron ${newCount} conceptos de pago (${sampleNew}${extraText}).</div>
+            </li>
+        `);
+    }
+    
+    if (removedCount > 0) {
+        const sampleRemoved = removedConcepts.slice(0, 2).map(c => `<strong>${c.co.toLowerCase()}</strong>`).join(', ');
+        const extraText = removedCount > 2 ? ` y ${removedCount - 2} más` : '';
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot neg"></span>
+                <div><strong>Conceptos finalizados:</strong> Dejaron de aplicarse ${removedCount} conceptos (${sampleRemoved}${extraText}).</div>
+            </li>
+        `);
+    }
+
+    if (summaryListItems.length === 0) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot info"></span>
+                <div>No se registraron variaciones en los conceptos individuales entre los periodos analizados.</div>
+            </li>
+        `);
+    }
+
+    const executiveSummaryHTML = `
+        <div class="analysis-executive-summary-wrapper">
+            <div class="analysis-sparkle-badge">
+                <i data-lucide="sparkles"></i>
+            </div>
+            <div class="analysis-executive-summary">
+                <h5>Resumen de Variaciones Clave</h5>
+                <ul class="analysis-summary-list">
+                    ${summaryListItems.join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Positives and Negatives lists
+    const positives = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff);
+    const negatives = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff);
+
+    let positivesHTML = '';
+    if (positives.length > 0) {
+        positivesHTML = `
+            <div class="analysis-section">
+                <h4 class="analysis-section-title">Impactos Positivos (Suman al Neto)</h4>
+                <div class="analysis-cards-list">
+                    ${positives.map(c => `
+                        <div class="analysis-impact-card pos">
+                            <span class="analysis-impact-name">${formatConceptName(c.co)}</span>
+                            <span class="analysis-impact-value pos">+${currencyFormatter.format(c.diff)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    let negativesHTML = '';
+    if (negatives.length > 0) {
+        negativesHTML = `
+            <div class="analysis-section">
+                <h4 class="analysis-section-title">Impactos Negativos (Restan al Neto)</h4>
+                <div class="analysis-cards-list">
+                    ${negatives.map(c => `
+                        <div class="analysis-impact-card neg">
+                            <span class="analysis-impact-name">${formatConceptName(c.co)}</span>
+                            <span class="analysis-impact-value neg">-${currencyFormatter.format(Math.abs(c.diff))}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
     // Build modal
     const overlay = document.createElement('div');
     overlay.id = 'analysis-modal-overlay';
@@ -4377,22 +4995,19 @@ function showAnalysisModal(cedula, name, period1, period2) {
     overlay.innerHTML = `
         <div class="analysis-modal">
             <div class="analysis-modal-header">
-                <div>
-                    <h3 class="analysis-modal-title">Análisis de Variaciones</h3>
-                    <p class="analysis-modal-subtitle">${name} · C.C. ${cedula}</p>
-                    <p class="analysis-modal-periods">${period1} vs ${period2}</p>
-                </div>
-                <button class="analysis-close-btn" id="analysis-close-btn">
+                <h3 class="analysis-modal-title">Análisis de Variaciones</h3>
+                <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar análisis">
                     <i data-lucide="x" style="width:18px;height:18px;"></i>
                 </button>
             </div>
             <div class="analysis-modal-body">
-                ${narrative}
-                ${summaryHTML}
-                ${increasesHTML}
-                ${decreasesHTML}
-                ${newConceptsHTML}
-                ${removedHTML}
+                <h4 class="analysis-employee-name">${name.toUpperCase()}</h4>
+                <p class="analysis-employee-periods">${period1} vs ${period2}</p>
+                
+                ${summaryCardsHTML}
+                ${executiveSummaryHTML}
+                ${positivesHTML}
+                ${negativesHTML}
             </div>
         </div>
     `;
@@ -4420,6 +5035,1111 @@ function showAnalysisModal(cedula, name, period1, period2) {
     // Init lucide icons inside modal
     if (window.lucide) {
         window.lucide.createIcons();
+    }
+}
+
+// ==========================================
+// MODAL DE ANÁLISIS INDIVIDUAL DE PERSONA
+// ==========================================
+function showPersonDetailModal(cedula, name, period1, period2) {
+    const existing = document.getElementById('person-detail-modal-overlay');
+    if (existing) existing.remove();
+
+    // 1. Get raw data for the employee (unfiltered by global filters for the modal's self-contained 6-month history)
+    const allEmployeeDataAcrossYears = state.data.filter(d => d.c === cedula);
+
+    // 2. Identify the last 6 months present in the employee's history
+    const employeeMonthYears = Array.from(new Set(allEmployeeDataAcrossYears.map(d => `${d.a} - ${d.m}`)))
+        .sort((a, b) => {
+            const [yA, mA] = a.split(' - ');
+            const [yB, mB] = b.split(' - ');
+            const yearDiff = parseInt(yA) - parseInt(yB);
+            if (yearDiff !== 0) return yearDiff;
+            return (MONTH_ORDER[mA] || 0) - (MONTH_ORDER[mB] || 0);
+        });
+    const last6MonthYearsList = employeeMonthYears.slice(-6);
+    const last6MonthYearsSet = new Set(last6MonthYearsList);
+
+    // 3. Restrict all data inside this modal strictly to the last 6 months
+    const rawEmployeeData = allEmployeeDataAcrossYears.filter(d => last6MonthYearsSet.has(`${d.a} - ${d.m}`));
+    const rawAllEmployeeDataAcrossYears = rawEmployeeData;
+
+    // Build overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'person-detail-modal-overlay';
+    overlay.className = 'individual-analysis-overlay';
+    
+    // HTML structure of the modal content (including new local filters row)
+    overlay.innerHTML = `
+        <div class="individual-analysis-modal">
+            <div class="analysis-modal-header" style="background: linear-gradient(135deg, #1e1b4b, #312e81); border-radius: 16px 16px 0 0; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; color: white;">
+                <div>
+                    <h3 class="analysis-modal-title" style="color: #fff; font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="user" style="width: 20px; height: 20px; color: #a78bfa;"></i>
+                        Análisis Individual del Colaborador <span style="font-size: 0.72rem; font-weight: normal; background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 20px; margin-left: 10px; color: #e9d5ff;">Últimos 6 meses</span>
+                    </h3>
+                    <div style="display: flex; gap: 12px; margin-top: 4px; align-items: center;">
+                        <strong id="modal-employee-title-name" style="font-size: 1rem; color: #f1f5f9;">${name}</strong>
+                        <span style="color: #64748b;">|</span>
+                        <span id="modal-employee-title-id" style="font-size: 0.85rem; color: #cbd5e1;">Cédula: ${cedula}</span>
+                    </div>
+                </div>
+                <button class="analysis-close-btn" id="person-detail-close-btn" aria-label="Cerrar" style="background: rgba(255, 255, 255, 0.15); color: #fff; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+            
+            <div class="analysis-modal-body" style="padding: 24px; overflow-y: auto; flex: 1; background-color: var(--bg-main, #f8fafc); display: flex; flex-direction: column; gap: 24px;">
+                <!-- Local Filter Bar for Employee-specific Year, Month, Quincena, Tipo -->
+                <div class="modal-filters-row" style="display: flex; gap: 12px; align-items: center; background: #fff; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--border-color); flex-wrap: wrap; margin-bottom: 8px;">
+                    <!-- Años -->
+                    <div class="select-wrapper" style="width: 125px; position: relative;">
+                        <i data-lucide="calendar" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none; z-index: 10;"></i>
+                        <select id="modal-filter-year" class="custom-select" style="padding: 0 36px 0 32px !important; font-size: 0.8rem !important; height: 32px !important; border-radius: 20px !important; border: 1px solid rgba(108,0,211,0.2) !important; color: #4b5563; font-weight: 600;">
+                            <option value="ALL">Años</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Meses -->
+                    <div class="select-wrapper" style="width: 125px; position: relative;">
+                        <i data-lucide="calendar-days" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none; z-index: 10;"></i>
+                        <select id="modal-filter-month" class="custom-select" style="padding: 0 36px 0 32px !important; font-size: 0.8rem !important; height: 32px !important; border-radius: 20px !important; border: 1px solid rgba(108,0,211,0.2) !important; color: #4b5563; font-weight: 600;">
+                            <option value="ALL">Meses</option>
+                        </select>
+                    </div>
+
+                    <!-- Quincenas -->
+                    <div class="select-wrapper" style="width: 135px; position: relative;">
+                        <i data-lucide="calendar-range" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none; z-index: 10;"></i>
+                        <select id="modal-filter-quincena" class="custom-select" style="padding: 0 36px 0 32px !important; font-size: 0.8rem !important; height: 32px !important; border-radius: 20px !important; border: 1px solid rgba(108,0,211,0.2) !important; color: #4b5563; font-weight: 600;">
+                            <option value="ALL">Quincenas</option>
+                        </select>
+                    </div>
+
+                    <!-- Tipo -->
+                    <div class="select-wrapper" style="width: 120px; position: relative;">
+                        <i data-lucide="tag" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none; z-index: 10;"></i>
+                        <select id="modal-filter-tn" class="custom-select" style="padding: 0 36px 0 32px !important; font-size: 0.8rem !important; height: 32px !important; border-radius: 20px !important; border: 1px solid rgba(108,0,211,0.2) !important; color: #4b5563; font-weight: 600;">
+                            <option value="ALL">Tipo</option>
+                        </select>
+                    </div>
+                    
+                    <button id="modal-filter-clear-btn" class="btn btn-secondary" style="margin-left: auto; padding: 4px 10px; font-size: 0.78rem; height: 32px; display: none; align-items: center; gap: 4px; border-radius: 20px !important;">
+                        <i data-lucide="filter-x" style="width: 13px; height: 13px;"></i> Limpiar Filtros
+                    </button>
+                </div>
+
+                <!-- KPIs del Empleado -->
+                <div class="kpi-grid">
+                    <div class="kpi-card kpi-blue">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Salario Neto Pagado</span>
+                            <div class="kpi-icon"><i data-lucide="credit-card"></i></div>
+                        </div>
+                        <div id="modal-emp-kpi-neto" class="kpi-value">$ 0</div>
+                        <div class="kpi-subtitle">Ingresos netos transferidos</div>
+                    </div>
+                    <div class="kpi-card kpi-emerald">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Ingresos Totales (Devengos)</span>
+                            <div class="kpi-icon"><i data-lucide="plus-circle"></i></div>
+                        </div>
+                        <div id="modal-emp-kpi-devengos" class="kpi-value">$ 0</div>
+                        <div class="kpi-subtitle">Total devengado bruto</div>
+                    </div>
+                    <div class="kpi-card kpi-danger">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Deducciones Totales</span>
+                            <div class="kpi-icon"><i data-lucide="minus-circle"></i></div>
+                        </div>
+                        <div id="modal-emp-kpi-descuentos" class="kpi-value">$ 0</div>
+                        <div class="kpi-subtitle">Total retenido / descontado</div>
+                    </div>
+                    <div class="kpi-card kpi-info">
+                        <div class="kpi-header">
+                            <span class="kpi-title">Sueldo Básico Actual</span>
+                            <div class="kpi-icon"><i data-lucide="award"></i></div>
+                        </div>
+                        <div id="modal-emp-kpi-basico" class="kpi-value">$ 0</div>
+                        <div class="kpi-subtitle">Última asignación básica mensual</div>
+                    </div>
+                </div>
+
+                <!-- Fila de Gráficos -->
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3 class="chart-card-title">Evolución Salarial Mensual</h3>
+                        </div>
+                        <div class="chart-container" style="height: 280px; position: relative;">
+                            <canvas id="modal-employee-history-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3 class="chart-card-title">Distribución de Conceptos</h3>
+                        </div>
+                        <div class="chart-container" style="height: 280px; position: relative;">
+                            <canvas id="modal-employee-distribution-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila de Endeudamiento y Detalle de Transacciones -->
+                <div class="overview-charts" style="align-items: stretch; grid-template-columns: 1.1fr 0.9fr; display: grid; gap: 24px;">
+                    <!-- Gráfico de Endeudamiento -->
+                    <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+                        <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <h3 class="chart-card-title">Capacidad de Endeudamiento por Periodo</h3>
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <div class="debt-limit-control" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-main); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-color); font-weight: 500;">
+                                    <span>Límite:</span>
+                                    <input type="number" id="modal-debt-limit-input" value="40" min="0" max="100" style="width: 32px; background: transparent; border: none; color: var(--primary); font-weight: 700; text-align: center; outline: none; font-family: inherit; font-size: 0.8rem; padding: 0;" />
+                                    <span>%</span>
+                                </div>
+                                <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">Fórmula: Descuentos / Ingresos</span>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="flex-grow: 1; min-height: 280px; height: 100%; position: relative;">
+                            <canvas id="modal-employee-debt-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Detalle -->
+                    <div class="table-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+                        <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                            <h3 class="table-title">Detalle de Transacciones de Pago</h3>
+                            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Periodo:</span>
+                                    <div class="select-wrapper" style="width: 150px;">
+                                        <select id="modal-employee-detail-filter-period" class="custom-select" style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
+                                            <option value="ALL">Todos los Periodos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Concepto:</span>
+                                    <div class="select-wrapper" style="width: 170px;">
+                                        <select id="modal-employee-detail-filter-concept" class="custom-select" style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
+                                            <option value="ALL">Todos los Conceptos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-wrapper" style="flex-grow: 1; max-height: 280px; overflow-y: auto;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Periodo</th>
+                                        <th style="width: 35%;">Concepto</th>
+                                        <th style="text-align: right; width: 20%;">Ingresos</th>
+                                        <th style="text-align: right; width: 20%;">Descuentos</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modal-employee-details-tbody">
+                                    <!-- Dinámico por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    
+    // Animate modal entry
+    requestAnimationFrame(() => {
+        overlay.classList.add('visible');
+    });
+
+    const modalCharts = {};
+
+    // Calculate options present in employee's 6-month history for pre-selection validation
+    const empYears = new Set();
+    const empMonths = new Set();
+    const empQuincenas = new Set();
+    const empTns = new Set();
+    rawEmployeeData.forEach(d => {
+        if (d.a) empYears.add(String(d.a));
+        if (d.m) empMonths.add(d.m);
+        const hasQuincena = (d.pa !== undefined && d.pa !== null);
+        const qStr = hasQuincena ? ((parseInt(d.pa) % 2 === 1) ? 'Q1' : 'Q2') : 'MES';
+        empQuincenas.add(qStr);
+        if (d.tn) empTns.add(d.tn);
+    });
+
+    let selectedYear = (state.selectedYears && state.selectedYears.length === 1 && empYears.has(String(state.selectedYears[0]))) ? String(state.selectedYears[0]) : 'ALL';
+    let selectedMonth = (state.selectedMonths && state.selectedMonths.length === 1 && empMonths.has(state.selectedMonths[0])) ? state.selectedMonths[0] : 'ALL';
+    let selectedQuincena = (state.selectedQuincenas && state.selectedQuincenas.length === 1 && empQuincenas.has(state.selectedQuincenas[0])) ? state.selectedQuincenas[0] : 'ALL';
+    let selectedTn = (state.selectedTipoNomina && state.selectedTipoNomina.length === 1 && empTns.has(state.selectedTipoNomina[0])) ? state.selectedTipoNomina[0] : 'ALL';
+    let modalEmployeeDetailPeriod = 'ALL';
+    let modalEmployeeDetailConcept = 'ALL';
+    let modalDebtLimit = 40;
+
+    const closeModal = () => {
+        overlay.classList.remove('visible');
+        setTimeout(() => {
+            Object.keys(modalCharts).forEach(key => {
+                if (modalCharts[key]) modalCharts[key].destroy();
+            });
+            overlay.remove();
+        }, 300);
+    };
+
+    document.getElementById('person-detail-close-btn').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal();
+    });
+
+    // Run the initialization and rendering (in a small timeout so DOM settles and canvas size is computed)
+    setTimeout(() => {
+        if (window.lucide) window.lucide.createIcons();
+        renderModalEmployeeView(cedula);
+    }, 100);
+
+    function getFilteredEmployeeData() {
+        let data = rawEmployeeData;
+        if (selectedYear !== 'ALL') {
+            data = data.filter(d => String(d.a) === String(selectedYear));
+        }
+        if (selectedMonth !== 'ALL') {
+            data = data.filter(d => d.m === selectedMonth);
+        }
+        if (selectedQuincena !== 'ALL') {
+            data = data.filter(d => {
+                const hasQuincena = (d.pa !== undefined && d.pa !== null);
+                const qStr = hasQuincena ? ((parseInt(d.pa) % 2 === 1) ? 'Q1' : 'Q2') : 'MES';
+                return qStr === selectedQuincena;
+            });
+        }
+        if (selectedTn !== 'ALL') {
+            data = data.filter(d => d.tn === selectedTn);
+        }
+        return data;
+    }
+
+    function getFilteredAllYearsData() {
+        let data = rawAllEmployeeDataAcrossYears;
+        if (selectedYear !== 'ALL') {
+            data = data.filter(d => String(d.a) === String(selectedYear));
+        }
+        if (selectedMonth !== 'ALL') {
+            data = data.filter(d => d.m === selectedMonth);
+        }
+        if (selectedQuincena !== 'ALL') {
+            data = data.filter(d => {
+                const hasQuincena = (d.pa !== undefined && d.pa !== null);
+                const qStr = hasQuincena ? ((parseInt(d.pa) % 2 === 1) ? 'Q1' : 'Q2') : 'MES';
+                return qStr === selectedQuincena;
+            });
+        }
+        if (selectedTn !== 'ALL') {
+            data = data.filter(d => d.tn === selectedTn);
+        }
+        return data;
+    }
+
+    function renderModalEmployeeView(cedula) {
+        // Initial populate of Year, Month, Quincena, and TN filters based on rawEmployeeData
+        const years = new Set();
+        const months = new Set();
+        const quincenas = new Set();
+        const tns = new Set();
+        
+        rawEmployeeData.forEach(d => {
+            if (d.a) years.add(String(d.a));
+            if (d.m) months.add(d.m);
+            const hasQuincena = (d.pa !== undefined && d.pa !== null);
+            const qStr = hasQuincena ? ((parseInt(d.pa) % 2 === 1) ? 'Q1' : 'Q2') : 'MES';
+            quincenas.add(qStr);
+            if (d.tn) tns.add(d.tn);
+        });
+        
+        const sortedYears = [...years].sort((a, b) => b.localeCompare(a));
+        const sortedMonths = [...months].sort((a, b) => (MONTH_ORDER[a] || 0) - (MONTH_ORDER[b] || 0));
+        const sortedQuincenas = [...quincenas].sort((a, b) => a.localeCompare(b));
+        const sortedTns = [...tns].sort((a, b) => a.localeCompare(b));
+        
+        const yearSelect = document.getElementById('modal-filter-year');
+        if (yearSelect) {
+            yearSelect.innerHTML = '<option value="ALL">Años</option>';
+            sortedYears.forEach(y => {
+                yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+            });
+            yearSelect.value = selectedYear;
+            if (!yearSelect.dataset.listenerBound) {
+                yearSelect.addEventListener('change', (e) => {
+                    selectedYear = e.target.value;
+                    updateModalView();
+                });
+                yearSelect.dataset.listenerBound = 'true';
+            }
+        }
+        
+        const monthSelect = document.getElementById('modal-filter-month');
+        if (monthSelect) {
+            monthSelect.innerHTML = '<option value="ALL">Meses</option>';
+            sortedMonths.forEach(m => {
+                monthSelect.innerHTML += `<option value="${m}">${m}</option>`;
+            });
+            monthSelect.value = selectedMonth;
+            if (!monthSelect.dataset.listenerBound) {
+                monthSelect.addEventListener('change', (e) => {
+                    selectedMonth = e.target.value;
+                    updateModalView();
+                });
+                monthSelect.dataset.listenerBound = 'true';
+            }
+        }
+        
+        const quincenaSelect = document.getElementById('modal-filter-quincena');
+        if (quincenaSelect) {
+            quincenaSelect.innerHTML = '<option value="ALL">Quincenas</option>';
+            sortedQuincenas.forEach(q => {
+                quincenaSelect.innerHTML += `<option value="${q}">${q}</option>`;
+            });
+            quincenaSelect.value = selectedQuincena;
+            if (!quincenaSelect.dataset.listenerBound) {
+                quincenaSelect.addEventListener('change', (e) => {
+                    selectedQuincena = e.target.value;
+                    updateModalView();
+                });
+                quincenaSelect.dataset.listenerBound = 'true';
+            }
+        }
+        
+        const tnSelect = document.getElementById('modal-filter-tn');
+        if (tnSelect) {
+            tnSelect.innerHTML = '<option value="ALL">Tipo</option>';
+            sortedTns.forEach(t => {
+                tnSelect.innerHTML += `<option value="${t}">${t}</option>`;
+            });
+            tnSelect.value = selectedTn;
+            if (!tnSelect.dataset.listenerBound) {
+                tnSelect.addEventListener('change', (e) => {
+                    selectedTn = e.target.value;
+                    updateModalView();
+                });
+                tnSelect.dataset.listenerBound = 'true';
+            }
+        }
+        
+        const clearBtn = document.getElementById('modal-filter-clear-btn');
+        if (clearBtn && !clearBtn.dataset.listenerBound) {
+            clearBtn.addEventListener('click', () => {
+                selectedYear = 'ALL';
+                selectedMonth = 'ALL';
+                selectedQuincena = 'ALL';
+                selectedTn = 'ALL';
+                if (yearSelect) yearSelect.value = 'ALL';
+                if (monthSelect) monthSelect.value = 'ALL';
+                if (quincenaSelect) quincenaSelect.value = 'ALL';
+                if (tnSelect) tnSelect.value = 'ALL';
+                updateModalView();
+            });
+            clearBtn.dataset.listenerBound = 'true';
+        }
+
+        // Debt limit input listener
+        const limitInput = document.getElementById('modal-debt-limit-input');
+        if (limitInput && !limitInput.dataset.listenerBound) {
+            limitInput.value = modalDebtLimit;
+            limitInput.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) return;
+                if (val < 0) val = 0;
+                if (val > 100) val = 100;
+                modalDebtLimit = val;
+                const filteredEmpData = getFilteredEmployeeData();
+                const filteredAllYearsData = getFilteredAllYearsData();
+                renderModalEmployeeDebtChart(filteredEmpData, filteredAllYearsData);
+            });
+            limitInput.addEventListener('change', (e) => {
+                let val = parseFloat(e.target.value);
+                if (isNaN(val) || val < 0) val = 40;
+                if (val > 100) val = 100;
+                e.target.value = val;
+                modalDebtLimit = val;
+                const filteredEmpData = getFilteredEmployeeData();
+                const filteredAllYearsData = getFilteredAllYearsData();
+                renderModalEmployeeDebtChart(filteredEmpData, filteredAllYearsData);
+            });
+            limitInput.dataset.listenerBound = 'true';
+        }
+
+        // Table filters
+        const periodSelect = document.getElementById('modal-employee-detail-filter-period');
+        const conceptSelect = document.getElementById('modal-employee-detail-filter-concept');
+        if (periodSelect && !periodSelect.dataset.listenerBound) {
+            periodSelect.addEventListener('change', (e) => {
+                modalEmployeeDetailPeriod = e.target.value;
+                const filteredEmpData = getFilteredEmployeeData();
+                renderModalEmployeeDetailsTable(filteredEmpData);
+            });
+            periodSelect.dataset.listenerBound = 'true';
+        }
+        if (conceptSelect && !conceptSelect.dataset.listenerBound) {
+            conceptSelect.addEventListener('change', (e) => {
+                modalEmployeeDetailConcept = e.target.value;
+                const filteredEmpData = getFilteredEmployeeData();
+                renderModalEmployeeDetailsTable(filteredEmpData);
+            });
+            conceptSelect.dataset.listenerBound = 'true';
+        }
+
+        // Perform initial render
+        updateModalView();
+    }
+
+    function updateModalView() {
+        const filteredEmpData = getFilteredEmployeeData();
+        const filteredAllYearsData = getFilteredAllYearsData();
+        
+        // Show/hide clear filters button
+        const clearBtn = document.getElementById('modal-filter-clear-btn');
+        if (clearBtn) {
+            if (selectedYear !== 'ALL' || selectedMonth !== 'ALL' || selectedQuincena !== 'ALL' || selectedTn !== 'ALL') {
+                clearBtn.style.display = 'inline-flex';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+        }
+        
+        // Update KPIs
+        let totalDev = 0;
+        let totalDesc = 0;
+        let sueldoBasico = 0;
+        
+        const sortedData = [...filteredEmpData].sort((a,b) => {
+            const yearDiff = a.a - b.a;
+            if (yearDiff !== 0) return yearDiff;
+            return (MONTH_ORDER[a.m] || 0) - (MONTH_ORDER[b.m] || 0);
+        });
+        
+        sortedData.forEach(d => {
+            if (d.na === 'DEVENGO') totalDev += d.v;
+            else if (d.na === 'DESCUENTO') totalDesc += d.v;
+            
+            if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO') {
+                sueldoBasico = d.v;
+            }
+        });
+        
+        const netTotal = totalDev + totalDesc;
+        
+        if (sueldoBasico === 0) {
+            const sortedAllData = [...filteredAllYearsData].sort((a,b) => {
+                const yearDiff = a.a - b.a;
+                if (yearDiff !== 0) return yearDiff;
+                return (MONTH_ORDER[a.m] || 0) - (MONTH_ORDER[b.m] || 0);
+            });
+            sortedAllData.forEach(d => {
+                if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO') {
+                    sueldoBasico = d.v;
+                }
+            });
+        }
+        
+        document.getElementById('modal-emp-kpi-neto').innerText = currencyFormatter.format(netTotal);
+        document.getElementById('modal-emp-kpi-devengos').innerText = currencyFormatter.format(totalDev);
+        document.getElementById('modal-emp-kpi-descuentos').innerText = currencyFormatter.format(Math.abs(totalDesc));
+        document.getElementById('modal-emp-kpi-basico').innerText = sueldoBasico > 0 ? currencyFormatter.format(sueldoBasico) : 'No registra';
+        
+        // Charts rendering
+        renderModalEmployeeHistoryChart(filteredEmpData, filteredAllYearsData);
+        renderModalEmployeeDistributionChart(filteredEmpData);
+        renderModalEmployeeDebtChart(filteredEmpData, filteredAllYearsData);
+        
+        // Update table filters options
+        updateTableFilters(filteredEmpData);
+        
+        // Render details table
+        renderModalEmployeeDetailsTable(filteredEmpData);
+    }
+
+    function updateTableFilters(filteredEmpData) {
+        const periodSelect = document.getElementById('modal-employee-detail-filter-period');
+        const conceptSelect = document.getElementById('modal-employee-detail-filter-concept');
+        
+        const uniquePeriods = new Set();
+        const uniqueConcepts = new Set();
+        filteredEmpData.forEach(r => {
+            uniquePeriods.add(`${r.m}, ${r.a}`);
+            uniqueConcepts.add(r.co);
+        });
+        
+        const sortedUniquePeriods = [...uniquePeriods].sort((a, b) => {
+            const partsA = a.split(', ');
+            const partsB = b.split(', ');
+            const yA = parseInt(partsA[1]);
+            const yB = parseInt(partsB[1]);
+            if (yA !== yB) return yB - yA;
+            return (MONTH_ORDER[partsB[0]] || 0) - (MONTH_ORDER[partsA[0]] || 0);
+        });
+        
+        const sortedUniqueConcepts = [...uniqueConcepts].sort((a, b) => a.localeCompare(b));
+        
+        if (periodSelect) {
+            const prevVal = modalEmployeeDetailPeriod;
+            periodSelect.innerHTML = '<option value="ALL">Todos los Periodos</option>';
+            sortedUniquePeriods.forEach(p => {
+                periodSelect.innerHTML += `<option value="${p}">${p}</option>`;
+            });
+            if (uniquePeriods.has(prevVal)) {
+                periodSelect.value = prevVal;
+            } else {
+                modalEmployeeDetailPeriod = 'ALL';
+                periodSelect.value = 'ALL';
+            }
+        }
+        
+        if (conceptSelect) {
+            const prevVal = modalEmployeeDetailConcept;
+            conceptSelect.innerHTML = '<option value="ALL">Todos los Conceptos</option>';
+            sortedUniqueConcepts.forEach(c => {
+                conceptSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+            if (uniqueConcepts.has(prevVal)) {
+                conceptSelect.value = prevVal;
+            } else {
+                modalEmployeeDetailConcept = 'ALL';
+                conceptSelect.value = 'ALL';
+            }
+        }
+    }
+
+    function renderModalEmployeeHistoryChart(currentYearData, allYearsData) {
+        const ctx = document.getElementById('modal-employee-history-chart');
+        if (!ctx) return;
+        
+        if (modalCharts['empHistory']) {
+            modalCharts['empHistory'].destroy();
+        }
+        
+        const isFiltered = selectedYear !== 'ALL';
+        const chartData = currentYearData;
+        
+        const monthlyNet = {};
+        chartData.forEach(d => {
+            const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
+            if (!monthlyNet[labelKey]) {
+                monthlyNet[labelKey] = { sortVal: 0, net: 0, dev: 0, desc: 0 };
+            }
+            
+            if (isFiltered) {
+                monthlyNet[labelKey].sortVal = MONTH_ORDER[d.m] || 0;
+            } else {
+                monthlyNet[labelKey].sortVal = (d.a * 100) + (MONTH_ORDER[d.m] || 0);
+            }
+            
+            if (d.na === 'DEVENGO') {
+                monthlyNet[labelKey].net += d.v;
+                monthlyNet[labelKey].dev += d.v;
+            } else if (d.na === 'DESCUENTO') {
+                monthlyNet[labelKey].net += d.v;
+                monthlyNet[labelKey].desc += Math.abs(d.v);
+            }
+        });
+        
+        const sortedKeys = Object.keys(monthlyNet).sort((a,b) => monthlyNet[a].sortVal - monthlyNet[b].sortVal);
+        const labels = sortedKeys;
+        const netVals = sortedKeys.map(k => monthlyNet[k].net);
+        const devVals = sortedKeys.map(k => monthlyNet[k].dev);
+        const descVals = sortedKeys.map(k => monthlyNet[k].desc);
+        
+        modalCharts['empHistory'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Salario Neto Recibido',
+                        data: netVals,
+                        borderColor: '#6C00D3',
+                        backgroundColor: 'rgba(108, 0, 211, 0.07)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#6C00D3',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.35,
+                        order: 0
+                    },
+                    {
+                        label: 'Ingresos Totales',
+                        data: devVals,
+                        borderColor: 'rgba(16, 185, 129, 0.65)',
+                        borderWidth: 1.5,
+                        borderDash: [5, 4],
+                        fill: false,
+                        pointRadius: 0,
+                        order: 1
+                    },
+                    {
+                        label: 'Deducciones Totales',
+                        data: descVals,
+                        borderColor: 'rgba(239, 68, 68, 0.65)',
+                        borderWidth: 1.5,
+                        borderDash: [5, 4],
+                        fill: false,
+                        pointRadius: 0,
+                        order: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#6B7280', font: { family: 'Outfit', size: 11 }, boxWidth: 12, padding: 16 }
+                    },
+                    tooltip: {
+                        backgroundColor: '#FFFFFF',
+                        titleColor: '#1A1D2E',
+                        bodyColor: '#6B7280',
+                        borderColor: 'rgba(0,0,0,0.08)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `  ${context.dataset.label}: ${currencyFormatter.format(context.raw)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+                        ticks: { color: '#9CA3AF', font: { family: 'Outfit', size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: {
+                            color: '#9CA3AF',
+                            font: { family: 'Outfit', size: 10 },
+                            callback: function(value) { return formatShortCurrency(value); }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderModalEmployeeDistributionChart(employeeData) {
+        const ctx = document.getElementById('modal-employee-distribution-chart');
+        if (!ctx) return;
+        
+        if (modalCharts['empDistribution']) {
+            modalCharts['empDistribution'].destroy();
+        }
+        
+        const concepts = {};
+        employeeData.forEach(d => {
+            if (!concepts[d.co]) {
+                concepts[d.co] = { val: 0, na: d.na };
+            }
+            concepts[d.co].val += Math.abs(d.v);
+        });
+        
+        const list = Object.keys(concepts).map(name => ({
+            name: name,
+            val: concepts[name].val,
+            na: concepts[name].na
+        })).sort((a,b) => b.val - a.val);
+        
+        const topConcepts = list.slice(0, 7);
+        
+        if (list.length > 7) {
+            const remaining = list.slice(7);
+            let remDev = 0;
+            let remDesc = 0;
+            remaining.forEach(item => {
+                if (item.na === 'DEVENGO' || item.na === 'BENEFICIO') remDev += item.val;
+                else remDesc += item.val;
+            });
+            
+            if (remDev > 0) {
+                topConcepts.push({ name: 'Otros Ingresos/Beneficios', val: remDev, na: 'DEVENGO' });
+            }
+            if (remDesc > 0) {
+                topConcepts.push({ name: 'Otros Descuentos', val: remDesc, na: 'DESCUENTO' });
+            }
+        }
+        
+        const labels = topConcepts.map(c => c.name);
+        const vals = topConcepts.map(c => c.val);
+        
+        const PASTEL_PALETTE = [
+            'rgba(167, 139, 250, 0.80)',
+            'rgba(244, 114, 182, 0.80)',
+            'rgba(129, 140, 248, 0.80)',
+            'rgba(196, 181, 253, 0.80)',
+            'rgba(251, 191, 36,  0.80)',
+            'rgba(110, 231, 183, 0.80)',
+            'rgba(147, 197, 253, 0.80)',
+            'rgba(253, 164, 175, 0.80)',
+            'rgba(216, 180, 254, 0.80)',
+            'rgba(134, 239, 172, 0.80)',
+            'rgba(249, 168, 212, 0.80)',
+            'rgba(165, 243, 252, 0.80)'
+        ];
+
+        const bgColors = topConcepts.map((_, i) => PASTEL_PALETTE[i % PASTEL_PALETTE.length]);
+        const borderColors = topConcepts.map(() => '#FFFFFF');
+        
+        modalCharts['empDistribution'] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: vals,
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#6B7280',
+                            font: { family: 'Outfit', size: 10 },
+                            padding: 12,
+                            boxWidth: 10,
+                            borderRadius: 3
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#FFFFFF',
+                        titleColor: '#1A1D2E',
+                        bodyColor: '#6B7280',
+                        borderColor: 'rgba(0,0,0,0.08)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `  ${context.label}: ${currencyFormatter.format(context.raw)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderModalEmployeeDebtChart(currentYearData, allYearsData) {
+        const ctx = document.getElementById('modal-employee-debt-chart');
+        if (!ctx) return;
+        
+        if (modalCharts['empDebt']) {
+            modalCharts['empDebt'].destroy();
+        }
+        
+        const limitValue = modalDebtLimit;
+        
+        const isFiltered = selectedYear !== 'ALL';
+        const chartData = currentYearData;
+        
+        const monthlyNet = {};
+        chartData.forEach(d => {
+            const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
+            if (!monthlyNet[labelKey]) {
+                monthlyNet[labelKey] = { sortVal: 0, dev: 0, desc: 0 };
+            }
+            
+            if (isFiltered) {
+                monthlyNet[labelKey].sortVal = MONTH_ORDER[d.m] || 0;
+            } else {
+                monthlyNet[labelKey].sortVal = (d.a * 100) + (MONTH_ORDER[d.m] || 0);
+            }
+            
+            if (d.na === 'DEVENGO') {
+                monthlyNet[labelKey].dev += d.v;
+            } else if (d.na === 'DESCUENTO') {
+                monthlyNet[labelKey].desc += Math.abs(d.v);
+            }
+        });
+        
+        const sortedKeys = Object.keys(monthlyNet).sort((a,b) => monthlyNet[a].sortVal - monthlyNet[b].sortVal);
+        const labels = sortedKeys;
+        const debtRatios = sortedKeys.map(k => {
+            const dev = monthlyNet[k].dev;
+            const desc = monthlyNet[k].desc;
+            if (dev === 0) return 0;
+            return parseFloat(((desc / dev) * 100).toFixed(2));
+        });
+        
+        const finalLabels = [...labels];
+        const finalDebtRatios = [...debtRatios];
+        if (labels.length > 0) {
+            const avgRatio = debtRatios.reduce((sum, val) => sum + val, 0) / debtRatios.length;
+            finalDebtRatios.push(parseFloat(avgRatio.toFixed(2)));
+            finalLabels.push('Promedio');
+        }
+        
+        const recommendedLimit = finalLabels.map(() => limitValue);
+        const canvasCtx = ctx.getContext('2d');
+        
+        const orangeGrad = canvasCtx.createLinearGradient(0, 0, 0, 300);
+        orangeGrad.addColorStop(0, '#FF5500');
+        orangeGrad.addColorStop(1, 'rgba(255, 153, 0, 0.4)');
+        
+        const purpleGrad = canvasCtx.createLinearGradient(0, 0, 0, 300);
+        purpleGrad.addColorStop(0, '#8B2FEF');
+        purpleGrad.addColorStop(1, 'rgba(108, 0, 211, 0.4)');
+        
+        const orangeGradHover = canvasCtx.createLinearGradient(0, 0, 0, 300);
+        orangeGradHover.addColorStop(0, '#FF6B1A');
+        orangeGradHover.addColorStop(1, 'rgba(255, 170, 20, 0.6)');
+        
+        const purpleGradHover = canvasCtx.createLinearGradient(0, 0, 0, 300);
+        purpleGradHover.addColorStop(0, '#9D48FF');
+        purpleGradHover.addColorStop(1, 'rgba(120, 10, 230, 0.6)');
+
+        const backgroundColors = finalLabels.map((label, idx) => {
+            if (idx === finalLabels.length - 1) return purpleGrad;
+            return orangeGrad;
+        });
+        
+        const hoverBackgroundColors = finalLabels.map((label, idx) => {
+            if (idx === finalLabels.length - 1) return purpleGradHover;
+            return orangeGradHover;
+        });
+        
+        modalCharts['empDebt'] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: finalLabels,
+                datasets: [
+                    {
+                        label: 'Porcentaje de Endeudamiento',
+                        data: finalDebtRatios,
+                        backgroundColor: backgroundColors,
+                        hoverBackgroundColor: hoverBackgroundColors,
+                        borderRadius: 6,
+                        borderWidth: 0,
+                        order: 1
+                    },
+                    {
+                        type: 'line',
+                        label: `Límite Recomendado (${limitValue}%)`,
+                        data: recommendedLimit,
+                        borderColor: 'rgba(239, 68, 68, 0.55)',
+                        borderWidth: 1.5,
+                        borderDash: [6, 6],
+                        fill: false,
+                        pointRadius: 0,
+                        hoverRadius: 0,
+                        order: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#6B7280', font: { family: 'Outfit', size: 11 }, boxWidth: 12, padding: 16 }
+                    },
+                    tooltip: {
+                        backgroundColor: '#FFFFFF',
+                        titleColor: '#1A1D2E',
+                        bodyColor: '#6B7280',
+                        borderColor: 'rgba(0,0,0,0.08)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `  ${context.dataset.label}: ${context.raw}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+                        ticks: { color: '#9CA3AF', font: { family: 'Outfit', size: 10 } }
+                    },
+                    y: {
+                        grace: '15%',
+                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: {
+                            color: '#9CA3AF',
+                            font: { family: 'Outfit', size: 10 },
+                            callback: function(value) { return value + '%'; }
+                        }
+                    }
+                }
+            },
+            plugins: [
+                {
+                    id: 'barLabels',
+                    afterDatasetsDraw(chart) {
+                        const { ctx, data } = chart;
+                        ctx.save();
+                        ctx.font = '500 11px Outfit, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        const meta = chart.getDatasetMeta(0);
+                        if (!meta || meta.hidden) return;
+                        
+                        meta.data.forEach((bar, index) => {
+                            const value = data.datasets[0].data[index];
+                            if (value !== undefined && value !== null) {
+                                const x = bar.x;
+                                const y = bar.y;
+                                
+                                if (index === meta.data.length - 1) {
+                                    ctx.fillStyle = '#8B2FEF';
+                                } else {
+                                    ctx.fillStyle = '#FF5500';
+                                }
+                                
+                                ctx.fillText(value + '%', x, y - 6);
+                            }
+                        });
+                        ctx.restore();
+                    }
+                }
+            ]
+        });
+    }
+
+    function renderModalEmployeeDetailsTable(employeeData) {
+        const tbody = document.getElementById('modal-employee-details-tbody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        let filteredData = employeeData;
+        if (modalEmployeeDetailPeriod && modalEmployeeDetailPeriod !== 'ALL') {
+            filteredData = filteredData.filter(r => `${r.m}, ${r.a}` === modalEmployeeDetailPeriod);
+        }
+        if (modalEmployeeDetailConcept && modalEmployeeDetailConcept !== 'ALL') {
+            filteredData = filteredData.filter(r => r.co === modalEmployeeDetailConcept);
+        }
+        
+        if (filteredData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No hay transacciones registradas para este filtro</td></tr>';
+            return;
+        }
+        
+        const grouped = {};
+        filteredData.forEach(r => {
+            const key = `${r.a} - ${r.m}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(r);
+        });
+        
+        const periods = Object.keys(grouped).sort((a, b) => {
+            const partsA = a.split(' - ');
+            const partsB = b.split(' - ');
+            const yA = parseInt(partsA[0]);
+            const yB = parseInt(partsB[0]);
+            if (yA !== yB) return yB - yA;
+            return (MONTH_ORDER[partsB[1]] || 0) - (MONTH_ORDER[partsA[1]] || 0);
+        });
+        
+        let grandDev = 0;
+        let grandDesc = 0;
+        
+        periods.forEach(periodKey => {
+            const rows = grouped[periodKey];
+            
+            const sortedRows = rows.sort((a, b) => {
+                if (a.na === 'DEVENGO' && b.na === 'DESCUENTO') return -1;
+                if (a.na === 'DESCUENTO' && b.na === 'DEVENGO') return 1;
+                return Math.abs(b.v) - Math.abs(a.v);
+            });
+            
+            let totalDev = 0;
+            let totalDesc = 0;
+            
+            sortedRows.forEach(r => {
+                let ingresosHtml = '-';
+                let descuentosHtml = '-';
+                
+                if (r.na === 'DEVENGO') {
+                    totalDev += r.v;
+                    const valPrefix = r.v > 0 ? '+' : '';
+                    ingresosHtml = `<span style="color: #059669; font-weight: normal;">${valPrefix}${currencyFormatter.format(r.v)}</span>`;
+                } else if (r.na === 'DESCUENTO') {
+                    totalDesc += r.v;
+                    descuentosHtml = `<span style="color: #EF4444; font-weight: normal;">-${currencyFormatter.format(Math.abs(r.v))}</span>`;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r.m}, ${r.a}</td>
+                    <td>${r.co}</td>
+                    <td style="text-align: right;">${ingresosHtml}</td>
+                    <td style="text-align: right;">${descuentosHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            grandDev += totalDev;
+            grandDesc += totalDesc;
+            
+            const subtotalTr = document.createElement('tr');
+            subtotalTr.className = 'subtotal-row';
+            subtotalTr.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+            subtotalTr.style.borderTop = '1px solid var(--border-color)';
+            subtotalTr.style.borderBottom = '1px solid var(--border-color)';
+            
+            const [year, month] = periodKey.split(' - ');
+            const netVal = totalDev + totalDesc;
+            const netColor = netVal >= 0 ? 'var(--text-primary)' : '#EF4444';
+            
+            const devLabel = totalDev > 0 ? '+' + currencyFormatter.format(totalDev) : '$ 0';
+            const descLabel = totalDesc < 0 ? '-' + currencyFormatter.format(Math.abs(totalDesc)) : '$ 0';
+            
+            subtotalTr.innerHTML = `
+                <td colspan="2" style="color: var(--text-secondary); font-weight: normal;">
+                    Subtotal ${month}, ${year} 
+                    <span style="margin-left: 12px; font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">Neto: </span>
+                    <span style="color: ${netColor}; font-size: 0.8rem; font-weight: normal;">${currencyFormatter.format(netVal)}</span>
+                </td>
+                <td style="text-align: right; color: #059669; font-weight: normal;">${devLabel}</td>
+                <td style="text-align: right; color: #EF4444; font-weight: normal;">${descLabel}</td>
+            `;
+            tbody.appendChild(subtotalTr);
+        });
+        
+        const totalTr = document.createElement('tr');
+        totalTr.className = 'total-row';
+        totalTr.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+        totalTr.style.fontWeight = 'bold';
+        totalTr.style.borderTop = '2px solid var(--border-color)';
+        
+        const grandNet = grandDev + grandDesc;
+        const netColor = grandNet >= 0 ? 'var(--text-primary)' : '#EF4444';
+        
+        const devLabel = grandDev > 0 ? '+' + currencyFormatter.format(grandDev) : '$ 0';
+        const descLabel = grandDesc < 0 ? '-' + currencyFormatter.format(Math.abs(grandDesc)) : '$ 0';
+        
+        totalTr.innerHTML = `
+            <td colspan="2" style="color: var(--text-primary); font-weight: bold;">
+                Total General
+                <span style="margin-left: 12px; font-size: 0.82rem; color: var(--text-muted); font-weight: normal;">Neto: </span>
+                <span style="color: ${netColor}; font-size: 0.82rem; font-weight: bold;">${currencyFormatter.format(grandNet)}</span>
+            </td>
+            <td style="text-align: right; color: #059669; font-weight: bold;">${devLabel}</td>
+            <td style="text-align: right; color: #EF4444; font-weight: bold;">${descLabel}</td>
+        `;
+        tbody.appendChild(totalTr);
     }
 }
 
@@ -4477,6 +6197,14 @@ function initConceptCompareSelectors() {
         });
         btnReport.dataset.listenerBound = 'true';
     }
+
+    const btnConceptExcel = document.getElementById('btn-concept-compare-excel');
+    if (btnConceptExcel && !btnConceptExcel.dataset.listenerBound) {
+        btnConceptExcel.addEventListener('click', () => {
+            exportCompareTableToExcel('concepto');
+        });
+        btnConceptExcel.dataset.listenerBound = 'true';
+    }
 }
 
 // Renderiza la tabla de comparación de conceptos jerárquica
@@ -4497,11 +6225,18 @@ function renderConceptComparison() {
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
-    // Actualizar cabeceras de columnas
-    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
-    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
-    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
-    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
+    // Actualizar cabeceras de columnas con ordenación
+    const headerName = document.getElementById('concept-header-name');
+    const headerDiff = document.getElementById('concept-header-diff');
+    const headerPct = document.getElementById('concept-header-pct');
+    
+    if (headerName) headerName.innerHTML = getHeaderSortHTML('Concepto', 'name', state.conceptSortColumn, state.conceptSortDirection, false);
+    if (headerCantP1) headerCantP1.innerHTML = getHeaderSortHTML('Cant ' + p1Label, 'cant1', state.conceptSortColumn, state.conceptSortDirection, true);
+    if (headerP1) headerP1.innerHTML = getHeaderSortHTML('Valor ' + p1Label, 'p1', state.conceptSortColumn, state.conceptSortDirection, true);
+    if (headerCantP2) headerCantP2.innerHTML = getHeaderSortHTML('Cant ' + p2Label, 'cant2', state.conceptSortColumn, state.conceptSortDirection, true);
+    if (headerP2) headerP2.innerHTML = getHeaderSortHTML('Valor ' + p2Label, 'p2', state.conceptSortColumn, state.conceptSortDirection, true);
+    if (headerDiff) headerDiff.innerHTML = getHeaderSortHTML('Variación', 'diff', state.conceptSortColumn, state.conceptSortDirection, true);
+    if (headerPct) headerPct.innerHTML = getHeaderSortHTML('%', 'pct', state.conceptSortColumn, state.conceptSortDirection, true);
 
     tbody.innerHTML = '';
     
@@ -4511,8 +6246,15 @@ function renderConceptComparison() {
     }
     
     // 1. Filtrar registros para Periodo 1 y Periodo 2
-    const dataP1 = filterDataByPeriod(state.conceptComparePeriod1);
-    const dataP2 = filterDataByPeriod(state.conceptComparePeriod2);
+    let dataP1 = filterDataByPeriod(state.conceptComparePeriod1);
+    let dataP2 = filterDataByPeriod(state.conceptComparePeriod2);
+    
+    // Filtro por Centro de Costo
+    const selectedCecos = state.conceptCompareSelectedCecos || [];
+    if (selectedCecos.length > 0) {
+        dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+        dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+    }
     
     // 2. Obtener lista única de todos los conceptos
     const allConcepts = [...new Set(state.data.map(d => d.co))];
@@ -4628,14 +6370,50 @@ function renderConceptComparison() {
         });
     });
     
-    // Ordenar conceptos: DEVENGO (1), DESCUENTO (2), BENEFICIO (3), y luego por variación absoluta decreciente
-    const natOrder = { 'DEVENGO': 1, 'DESCUENTO': 2, 'BENEFICIO': 3 };
-    conceptDataList.sort((a, b) => {
-        const ordA = natOrder[a.na] || 99;
-        const ordB = natOrder[b.na] || 99;
-        if (ordA !== ordB) return ordA - ordB;
-        return Math.abs(b.diff) - Math.abs(a.diff); // de mayor variación absoluta a menor
-    });
+    // Ordenar conceptos según el estado o por defecto
+    const sortCol = state.conceptSortColumn || 'default';
+    const sortDir = state.conceptSortDirection || 'asc';
+    
+    if (sortCol !== 'default' && sortCol !== 'name') {
+        conceptDataList.sort((a, b) => {
+            let valA, valB;
+            if (sortCol === 'p1') {
+                valA = a.v1;
+                valB = b.v1;
+            } else if (sortCol === 'p2') {
+                valA = a.v2;
+                valB = b.v2;
+            } else if (sortCol === 'diff') {
+                valA = a.diff;
+                valB = b.diff;
+            } else if (sortCol === 'pct') {
+                valA = a.pct;
+                valB = b.pct;
+            } else if (sortCol === 'cant1') {
+                valA = a.cant1;
+                valB = b.cant1;
+            } else if (sortCol === 'cant2') {
+                valA = a.cant2;
+                valB = b.cant2;
+            } else {
+                return 0;
+            }
+            return sortDir === 'asc' ? valA - valB : valB - valA;
+        });
+    } else if (sortCol === 'name') {
+        conceptDataList.sort((a, b) => {
+            return sortDir === 'asc' ? a.co.localeCompare(b.co) : b.co.localeCompare(a.co);
+        });
+    } else {
+        // Ordenar por defecto: DEVENGO (1), DESCUENTO (2), BENEFICIO (3), y luego por variación absoluta decreciente
+        const natOrder = { 'DEVENGO': 1, 'DESCUENTO': 2, 'BENEFICIO': 3 };
+        conceptDataList.sort((a, b) => {
+            const ordA = natOrder[a.na] || 99;
+            const ordB = natOrder[b.na] || 99;
+            if (ordA !== ordB) return ordA - ordB;
+            return Math.abs(b.diff) - Math.abs(a.diff); // de mayor variación absoluta a menor
+        });
+    }
     
     if (conceptDataList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No hay transacciones registradas para este rango de periodos</td></tr>';
@@ -4669,9 +6447,8 @@ function renderConceptComparison() {
             <td style="text-align: right;">${formatVariationHTML(item.diff)}</td>
             <td style="text-align: right;">${formatVariationHTML(item.pct, true)}</td>
             <td>
-                <button class="btn-analyze btn-analyze-concept" data-concept="${encodeURIComponent(coName)}" data-nature="${item.na}" title="Analizar variaciones">
-                    <i data-lucide="search" style="width:13px;height:13px;"></i>
-                    <span>Analizar</span>
+                <button class="btn-analyze btn-analyze-concept" data-concept="${encodeURIComponent(coName)}" data-nature="${item.na}" title="Revisar variaciones">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
                 </button>
             </td>
         `;
@@ -4731,9 +6508,117 @@ function renderConceptComparison() {
         });
     });
     
+    // Renderizar fila TOTAL en el pie de la tabla
+    (function renderConceptTableTotals() {
+        const footerBar = document.getElementById('concept-compare-footer');
+        if (!footerBar) return;
+        if (conceptDataList.length === 0) { footerBar.innerHTML = ''; return; }
+
+        let sumV1 = 0, sumV2 = 0;
+        // Para el total de nómina usamos solo DEVENGO y DESCUENTO (igual que el neto)
+        conceptDataList.forEach(c => { if (c.na === 'DEVENGO' || c.na === 'DESCUENTO') { sumV1 += c.v1; sumV2 += c.v2; } });
+        const sumDiff = sumV2 - sumV1;
+        const sumPct  = sumV1 !== 0 ? (sumDiff / Math.abs(sumV1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        footerBar.innerHTML = `
+            <table>
+                <tbody>
+                    <tr style="font-weight: 700; color: #000000;">
+                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumV1)}</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumV2)}</strong></td>
+                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
+                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
+                        <td style="width: 140px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    })();
+
+    // Actualizar Tarjetas Resumen (Conceptos)
+    (function updateConceptSummaryCards() {
+        const totalEl     = document.getElementById('concept-stat-total');
+        const totalSubEl  = document.getElementById('concept-stat-total-sub');
+        const highNameEl  = document.getElementById('concept-stat-highest-name');
+        const highValEl   = document.getElementById('concept-stat-highest-val');
+        const savNameEl   = document.getElementById('concept-stat-savings-name');
+        const savValEl    = document.getElementById('concept-stat-savings-val');
+        const payrollEl   = document.getElementById('concept-stat-total-payroll');
+        const payrollSubEl= document.getElementById('concept-stat-total-payroll-sub');
+        if (!totalEl) return;
+
+        const p1LabelC = getPeriodLabel(state.conceptComparePeriod1) || 'P1';
+        const countP2 = conceptDataList.filter(c => c.v2 !== 0).length;
+        const countP1 = conceptDataList.filter(c => c.v1 !== 0).length;
+        const diffCount = countP2 - countP1;
+        totalEl.innerText = countP2;
+
+        if (diffCount > 0) {
+            totalSubEl.innerHTML = `<span style="color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +${diffCount} respecto a ${p1LabelC}</span>`;
+        } else if (diffCount < 0) {
+            totalSubEl.innerHTML = `<span style="color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> ${diffCount} respecto a ${p1LabelC}</span>`;
+        } else {
+            totalSubEl.innerHTML = `<span>Sin cambios respecto a ${p1LabelC}</span>`;
+        }
+
+        // Mayor incremento
+        let topIncrease = null, maxDiff = 0;
+        conceptDataList.forEach(c => { if (c.diff > maxDiff) { maxDiff = c.diff; topIncrease = c; } });
+        if (topIncrease) {
+            const shortName = topIncrease.co.length > 20 ? topIncrease.co.substring(0, 18) + '…' : topIncrease.co;
+            highNameEl.innerHTML = `<span title="${topIncrease.co}" style="text-transform:uppercase;">${shortName}</span>`;
+            highValEl.innerHTML = `<span style="color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +${topIncrease.pct.toFixed(1)}%</span> (+${currencyFormatter.format(topIncrease.diff)})`;
+        } else {
+            highNameEl.innerText = '-'; highValEl.innerText = 'Sin incrementos';
+        }
+
+        // Mayor ahorro
+        let topSavings = null, minDiff = 0;
+        conceptDataList.forEach(c => { if (c.diff < minDiff) { minDiff = c.diff; topSavings = c; } });
+        if (topSavings) {
+            const shortName = topSavings.co.length > 20 ? topSavings.co.substring(0, 18) + '…' : topSavings.co;
+            savNameEl.innerHTML = `<span title="${topSavings.co}" style="text-transform:uppercase;">${shortName}</span>`;
+            savValEl.innerHTML = `<span style="color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> ${topSavings.pct.toFixed(1)}%</span> (${currencyFormatter.format(topSavings.diff)})`;
+        } else {
+            savNameEl.innerText = '-'; savValEl.innerText = 'Sin ahorros';
+        }
+
+        // Nómina comparada
+        let totalV1 = 0, totalV2 = 0;
+        conceptDataList.forEach(c => { if (c.na === 'DEVENGO' || c.na === 'DESCUENTO') { totalV1 += c.v1; totalV2 += c.v2; } });
+        const totalDiff = totalV2 - totalV1;
+        const totalPct  = totalV1 !== 0 ? (totalDiff / Math.abs(totalV1)) * 100 : (totalDiff > 0 ? 100 : (totalDiff < 0 ? -100 : 0));
+        const totalSign = totalDiff > 0 ? '+' : '';
+        const totalColor = totalDiff > 0 ? '#10b981' : (totalDiff < 0 ? '#ef4444' : 'var(--text-secondary)');
+        const totalIcon  = totalDiff > 0 ? 'trending-up' : (totalDiff < 0 ? 'trending-down' : 'minus');
+        payrollEl.innerHTML = `<strong style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">P1:</strong> <span style="font-weight:normal;">${currencyFormatter.format(totalV1)}</span><br><strong style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">P2:</strong> <span style="font-weight:normal;">${currencyFormatter.format(totalV2)}</span>`;
+        payrollEl.style.fontSize = '1.05rem';
+        payrollEl.style.lineHeight = '1.35';
+        payrollSubEl.innerHTML = `Dif: <span style="color:${totalColor};font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="${totalIcon}" style="width:12px;height:12px;"></i> ${totalSign}${currencyFormatter.format(totalDiff)} (${totalSign}${totalPct.toFixed(2)}%)</span>`;
+    })();
+
     if (window.lucide) {
         window.lucide.createIcons();
     }
+
+    // Listeners para botones de ordenación
+    document.querySelectorAll('#concept-header-name .small-sort-btn, #concept-period-header-cant-p1 .small-sort-btn, #concept-period-header-p1 .small-sort-btn, #concept-period-header-cant-p2 .small-sort-btn, #concept-period-header-p2 .small-sort-btn, #concept-header-diff .small-sort-btn, #concept-header-pct .small-sort-btn')
+        .forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const col = btn.getAttribute('data-col');
+                if (state.conceptSortColumn === col) {
+                    state.conceptSortDirection = state.conceptSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.conceptSortColumn = col;
+                    state.conceptSortDirection = 'desc'; // Por defecto de mayor a menor
+                }
+                renderConceptComparison();
+            });
+        });
 }
 
 // ==========================================
@@ -4778,6 +6663,22 @@ function initCecoCompareSelectors() {
         });
         btnCollapse.dataset.listenerBound = 'true';
     }
+
+    const btnCecoReport = document.getElementById('btn-ceco-compare-report');
+    if (btnCecoReport && !btnCecoReport.dataset.listenerBound) {
+        btnCecoReport.addEventListener('click', () => {
+            generateManagerialReport('ceco');
+        });
+        btnCecoReport.dataset.listenerBound = 'true';
+    }
+
+    const btnCecoExcel = document.getElementById('btn-ceco-compare-excel');
+    if (btnCecoExcel && !btnCecoExcel.dataset.listenerBound) {
+        btnCecoExcel.addEventListener('click', () => {
+            exportCompareTableToExcel('ceco');
+        });
+        btnCecoExcel.dataset.listenerBound = 'true';
+    }
 }
 
 function renderCecoComparison() {
@@ -4796,11 +6697,18 @@ function renderCecoComparison() {
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
-    // Actualizar cabeceras de columnas
-    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
-    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
-    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
-    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
+    // Actualizar cabeceras de columnas con ordenación
+    const headerName = document.getElementById('ceco-compare-header-name');
+    const headerDiff = document.getElementById('ceco-compare-header-diff');
+    const headerPct = document.getElementById('ceco-compare-header-pct');
+    
+    if (headerName) headerName.innerHTML = getHeaderSortHTML('Centro de Costo', 'name', state.cecoSortColumn, state.cecoSortDirection, false);
+    if (headerCantP1) headerCantP1.innerHTML = getHeaderSortHTML('Cant ' + p1Label, 'cant1', state.cecoSortColumn, state.cecoSortDirection, true);
+    if (headerP1) headerP1.innerHTML = getHeaderSortHTML('Valor ' + p1Label, 'p1', state.cecoSortColumn, state.cecoSortDirection, true);
+    if (headerCantP2) headerCantP2.innerHTML = getHeaderSortHTML('Cant ' + p2Label, 'cant2', state.cecoSortColumn, state.cecoSortDirection, true);
+    if (headerP2) headerP2.innerHTML = getHeaderSortHTML('Valor ' + p2Label, 'p2', state.cecoSortColumn, state.cecoSortDirection, true);
+    if (headerDiff) headerDiff.innerHTML = getHeaderSortHTML('Variación', 'diff', state.cecoSortColumn, state.cecoSortDirection, true);
+    if (headerPct) headerPct.innerHTML = getHeaderSortHTML('%', 'pct', state.cecoSortColumn, state.cecoSortDirection, true);
     
     tbody.innerHTML = '';
     
@@ -4820,13 +6728,14 @@ function renderCecoComparison() {
     const filteredCecos = [...cecosSet].filter(c => {
         if (selectedCecos.length === 0) return true;
         return selectedCecos.includes(c);
-    }).sort();
+    });
     
     if (filteredCecos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No se encontraron centros de costo que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
+    const cecoStatsList = [];
     filteredCecos.forEach(cecoKey => {
         const p1RowsCeco = dataP1.filter(d => `${d.cc} - ${d.dcc}` === cecoKey);
         const p2RowsCeco = dataP2.filter(d => `${d.cc} - ${d.dcc}` === cecoKey);
@@ -4844,6 +6753,61 @@ function renderCecoComparison() {
         
         const cecoNetDiff = cecoNetP2 - cecoNetP1;
         const cecoNetPct = cecoNetP1 !== 0 ? (cecoNetDiff / Math.abs(cecoNetP1)) * 100 : (cecoNetDiff > 0 ? 100 : (cecoNetDiff < 0 ? -100 : 0));
+        
+        cecoStatsList.push({
+            name: cecoKey,
+            p1: cecoNetP1,
+            p2: cecoNetP2,
+            cant1: cecoCantP1,
+            cant2: cecoCantP2,
+            diff: cecoNetDiff,
+            pct: cecoNetPct,
+            p1RowsCeco: p1RowsCeco,
+            p2RowsCeco: p2RowsCeco
+        });
+    });
+
+    // Ordenar cecoStatsList según la columna y dirección
+    const sortCol = state.cecoSortColumn || 'name';
+    const sortDir = state.cecoSortDirection || 'asc';
+    cecoStatsList.sort((a, b) => {
+        let valA, valB;
+        if (sortCol === 'name') {
+            valA = a.name;
+            valB = b.name;
+            return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (sortCol === 'p1') {
+            valA = a.p1;
+            valB = b.p1;
+        } else if (sortCol === 'p2') {
+            valA = a.p2;
+            valB = b.p2;
+        } else if (sortCol === 'diff') {
+            valA = a.diff;
+            valB = b.diff;
+        } else if (sortCol === 'pct') {
+            valA = a.pct;
+            valB = b.pct;
+        } else if (sortCol === 'cant1') {
+            valA = a.cant1;
+            valB = b.cant1;
+        } else if (sortCol === 'cant2') {
+            valA = a.cant2;
+            valB = b.cant2;
+        } else {
+            return 0;
+        }
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+    });
+
+    cecoStatsList.forEach(cecoItem => {
+        const cecoKey = cecoItem.name;
+        const cecoNetP1 = cecoItem.p1;
+        const cecoNetP2 = cecoItem.p2;
+        const cecoNetDiff = cecoItem.diff;
+        const cecoNetPct = cecoItem.pct;
+        const p1RowsCeco = cecoItem.p1RowsCeco;
+        const p2RowsCeco = cecoItem.p2RowsCeco;
         const cecoSafe = cecoKey.replace(/[^a-zA-Z0-9]/g, '_');
         
         // NIVEL 1: CECO
@@ -4859,7 +6823,11 @@ function renderCecoComparison() {
             <td style="text-align:right;">${currencyFormatter.format(cecoNetP2)}</td>
             <td style="text-align:right;">${formatVariationHTML(cecoNetDiff)}</td>
             <td style="text-align:right;">${formatVariationHTML(cecoNetPct, true)}</td>
-            <td></td>
+            <td style="text-align:center;">
+                <button class="btn-analyze btn-analyze-ceco" data-ceco="${encodeURIComponent(cecoKey)}" title="Revisar variaciones">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                </button>
+            </td>
         `;
         tbody.appendChild(cecoRow);
         
@@ -4944,7 +6912,8 @@ function renderCecoComparison() {
         });
         
         // Click CECO &rarr; mostrar/ocultar trabajadores (colapsa sus sub-hijos también)
-        cecoRow.addEventListener('click', () => {
+        cecoRow.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-analyze')) return;
             cecoRow.classList.toggle('expanded');
             const isExp = cecoRow.classList.contains('expanded');
             document.querySelectorAll(`.child-of-${cecoSafe}`).forEach(child => {
@@ -4958,7 +6927,172 @@ function renderCecoComparison() {
         });
     });
     
+    // Bind Analizar buttons (CECO)
+    document.querySelectorAll('.btn-analyze-ceco').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cecoName = decodeURIComponent(btn.getAttribute('data-ceco'));
+            showCecoAnalysisModal(cecoName, state.cecoComparePeriod1, state.cecoComparePeriod2);
+        });
+    });
+    
+    // Actualizar Tarjetas Resumen (Compactas y en Español)
+    (function updateSummaryCards() {
+        const totalCecosEl = document.getElementById('ceco-stat-total');
+        const totalSubEl = document.getElementById('ceco-stat-total-sub');
+        const highestNameEl = document.getElementById('ceco-stat-highest-name');
+        const highestValEl = document.getElementById('ceco-stat-highest-val');
+        const savingsNameEl = document.getElementById('ceco-stat-savings-name');
+        const savingsValEl = document.getElementById('ceco-stat-savings-val');
+        const totalPayrollEl = document.getElementById('ceco-stat-total-payroll');
+        const totalPayrollSubEl = document.getElementById('ceco-stat-total-payroll-sub');
+
+        if (!totalCecosEl || !totalSubEl || !highestNameEl || !highestValEl || !savingsNameEl || !savingsValEl || !totalPayrollEl || !totalPayrollSubEl) {
+            return;
+        }
+
+        const countP1 = cecoStatsList.filter(c => c.p1 !== 0).length;
+        const countP2 = cecoStatsList.filter(c => c.p2 !== 0).length;
+        const diffCecos = countP2 - countP1;
+
+        totalCecosEl.innerText = countP2;
+
+        let totalSubHTML = '';
+        if (diffCecos > 0) {
+            totalSubHTML = `<span style="color:#10b981; font-weight:600; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="trending-up" style="width:12px; height:12px;"></i> +${diffCecos} respecto a ${p1Label}</span>`;
+        } else if (diffCecos < 0) {
+            totalSubHTML = `<span style="color:#ef4444; font-weight:600; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="trending-down" style="width:12px; height:12px;"></i> ${diffCecos} respecto a ${p1Label}</span>`;
+        } else {
+            totalSubHTML = `<span>Sin cambios respecto a ${p1Label}</span>`;
+        }
+        totalSubEl.innerHTML = totalSubHTML;
+
+        // 1. Mayor Incremento (CECO con mayor diff positivo)
+        let worstWarningCeco = null;
+        let maxDiff = 0;
+        cecoStatsList.forEach(c => {
+            if (c.diff > maxDiff) {
+                maxDiff = c.diff;
+                worstWarningCeco = c;
+            }
+        });
+
+        if (worstWarningCeco) {
+            const parts = worstWarningCeco.name.split(' - ');
+            const codeOnly = parts[0];
+            const nameOnly = parts.length > 1 ? parts[1] : '';
+            highestNameEl.innerHTML = `${codeOnly} <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-secondary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">(${nameOnly})</span>`;
+            // Positivo -> Verde (#10b981)
+            highestValEl.innerHTML = `<span style="color:#10b981; font-weight:600; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="trending-up" style="width:12px; height:12px;"></i> +${worstWarningCeco.pct.toFixed(1)}%</span> (+${currencyFormatter.format(worstWarningCeco.diff)})`;
+        } else {
+            highestNameEl.innerText = '-';
+            highestValEl.innerText = 'Sin incrementos';
+        }
+
+        // 2. Mayor Ahorro (CECO con mayor diff negativo)
+        let bestSavingsCeco = null;
+        let minDiff = 0;
+        cecoStatsList.forEach(c => {
+            if (c.diff < minDiff) {
+                minDiff = c.diff;
+                bestSavingsCeco = c;
+            }
+        });
+
+        if (bestSavingsCeco) {
+            const parts = bestSavingsCeco.name.split(' - ');
+            const codeOnly = parts[0];
+            const nameOnly = parts.length > 1 ? parts[1] : '';
+            savingsNameEl.innerHTML = `${codeOnly} <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-secondary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">(${nameOnly})</span>`;
+            // Negativo -> Rojo (#ef4444)
+            savingsValEl.innerHTML = `<span style="color:#ef4444; font-weight:600; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="trending-down" style="width:12px; height:12px;"></i> ${bestSavingsCeco.pct.toFixed(1)}%</span> (${currencyFormatter.format(bestSavingsCeco.diff)})`;
+        } else {
+            savingsNameEl.innerText = '-';
+            savingsValEl.innerText = 'Sin ahorros';
+        }
+
+        // 3. Nómina Comparada (Suma P1, Suma P2 y variación)
+        let totalP1 = 0;
+        let totalP2 = 0;
+        cecoStatsList.forEach(c => {
+            totalP1 += c.p1;
+            totalP2 += c.p2;
+        });
+        const totalDiff = totalP2 - totalP1;
+        const totalPct = totalP1 !== 0 ? (totalDiff / Math.abs(totalP1)) * 100 : (totalDiff > 0 ? 100 : (totalDiff < 0 ? -100 : 0));
+
+        // P1 y P2 en negrita, valores sin negrita
+        totalPayrollEl.innerHTML = `
+            <strong style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary);">P1:</strong> <span style="font-weight: normal;">${currencyFormatter.format(totalP1)}</span><br>
+            <strong style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary);">P2:</strong> <span style="font-weight: normal;">${currencyFormatter.format(totalP2)}</span>
+        `;
+        totalPayrollEl.style.fontSize = '1.05rem';
+        totalPayrollEl.style.lineHeight = '1.35';
+        
+        let totalPayrollSubHTML = '';
+        const totalSign = totalDiff > 0 ? '+' : '';
+        // Positivo = Verde (#10b981), Negativo = Rojo (#ef4444)
+        const totalColor = totalDiff > 0 ? '#10b981' : (totalDiff < 0 ? '#ef4444' : 'var(--text-secondary)');
+        const totalIcon = totalDiff > 0 ? 'trending-up' : (totalDiff < 0 ? 'trending-down' : 'minus');
+
+        totalPayrollSubHTML = `Dif: <span style="color:${totalColor}; font-weight:600; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="${totalIcon}" style="width:12px; height:12px;"></i> ${totalSign}${currencyFormatter.format(totalDiff)} (${totalSign}${totalPct.toFixed(2)}%)</span>`;
+        totalPayrollSubEl.innerHTML = totalPayrollSubHTML;
+    })();
+
+    // Renderizar Totales en la Barra de Pie de Tabla (Fuera de la Tabla)
+    (function renderTableTotals() {
+        const footerBar = document.getElementById('ceco-compare-footer');
+        if (!footerBar) return;
+        
+        if (cecoStatsList.length === 0) {
+            footerBar.innerHTML = '';
+            return;
+        }
+        
+        let sumP1 = 0;
+        let sumP2 = 0;
+        cecoStatsList.forEach(c => {
+            sumP1 += c.p1;
+            sumP2 += c.p2;
+        });
+        const sumDiff = sumP2 - sumP1;
+        const sumPct = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        footerBar.innerHTML = `
+            <table>
+                <tbody>
+                    <tr style="font-weight: 700; color: #000000;">
+                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
+                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
+                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
+                        <td style="width: 140px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    })();
+
     if (window.lucide) window.lucide.createIcons();
+
+    // Listeners para botones de ordenación
+    document.querySelectorAll('#ceco-compare-header-name .small-sort-btn, #ceco-compare-header-cant-p1 .small-sort-btn, #ceco-compare-header-p1 .small-sort-btn, #ceco-compare-header-cant-p2 .small-sort-btn, #ceco-compare-header-p2 .small-sort-btn, #ceco-compare-header-diff .small-sort-btn, #ceco-compare-header-pct .small-sort-btn')
+        .forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const col = btn.getAttribute('data-col');
+                if (state.cecoSortColumn === col) {
+                    state.cecoSortDirection = state.cecoSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.cecoSortColumn = col;
+                    state.cecoSortDirection = 'desc'; // Por defecto de mayor a menor
+                }
+                renderCecoComparison();
+            });
+        });
 }
 
 // ==========================================
@@ -5003,6 +7137,22 @@ function initCargoCompareSelectors() {
         });
         btnCollapse.dataset.listenerBound = 'true';
     }
+
+    const btnCargoReport = document.getElementById('btn-cargo-compare-report');
+    if (btnCargoReport && !btnCargoReport.dataset.listenerBound) {
+        btnCargoReport.addEventListener('click', () => {
+            generateManagerialReport('cargo');
+        });
+        btnCargoReport.dataset.listenerBound = 'true';
+    }
+
+    const btnCargoExcel = document.getElementById('btn-cargo-compare-excel');
+    if (btnCargoExcel && !btnCargoExcel.dataset.listenerBound) {
+        btnCargoExcel.addEventListener('click', () => {
+            exportCompareTableToExcel('cargo');
+        });
+        btnCargoExcel.dataset.listenerBound = 'true';
+    }
 }
 
 function renderCargoComparison() {
@@ -5019,11 +7169,18 @@ function renderCargoComparison() {
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
     
-    // Actualizar cabeceras de columnas
-    if (headerCantP1) headerCantP1.innerText = 'Cant ' + p1Label;
-    if (headerP1) headerP1.innerText = 'Valor ' + p1Label;
-    if (headerCantP2) headerCantP2.innerText = 'Cant ' + p2Label;
-    if (headerP2) headerP2.innerText = 'Valor ' + p2Label;
+    // Actualizar cabeceras de columnas con ordenación
+    const headerName = document.getElementById('cargo-compare-header-name');
+    const headerDiff = document.getElementById('cargo-compare-header-diff');
+    const headerPct = document.getElementById('cargo-compare-header-pct');
+    
+    if (headerName) headerName.innerHTML = getHeaderSortHTML('Cargo', 'name', state.cargoSortColumn, state.cargoSortDirection, false);
+    if (headerCantP1) headerCantP1.innerHTML = getHeaderSortHTML('Cant ' + p1Label, 'cant1', state.cargoSortColumn, state.cargoSortDirection, true);
+    if (headerP1) headerP1.innerHTML = getHeaderSortHTML('Valor ' + p1Label, 'p1', state.cargoSortColumn, state.cargoSortDirection, true);
+    if (headerCantP2) headerCantP2.innerHTML = getHeaderSortHTML('Cant ' + p2Label, 'cant2', state.cargoSortColumn, state.cargoSortDirection, true);
+    if (headerP2) headerP2.innerHTML = getHeaderSortHTML('Valor ' + p2Label, 'p2', state.cargoSortColumn, state.cargoSortDirection, true);
+    if (headerDiff) headerDiff.innerHTML = getHeaderSortHTML('Variación', 'diff', state.cargoSortColumn, state.cargoSortDirection, true);
+    if (headerPct) headerPct.innerHTML = getHeaderSortHTML('%', 'pct', state.cargoSortColumn, state.cargoSortDirection, true);
     
     tbody.innerHTML = '';
     
@@ -5032,8 +7189,15 @@ function renderCargoComparison() {
         return;
     }
     
-    const dataP1 = filterDataByPeriod(state.cargoComparePeriod1);
-    const dataP2 = filterDataByPeriod(state.cargoComparePeriod2);
+    let dataP1 = filterDataByPeriod(state.cargoComparePeriod1);
+    let dataP2 = filterDataByPeriod(state.cargoComparePeriod2);
+    
+    // Filtro por Centro de Costo
+    const selectedCecos = state.cargoCompareSelectedCecos || [];
+    if (selectedCecos.length > 0) {
+        dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+        dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+    }
     
     const cargosSet = new Set();
     [...dataP1, ...dataP2].forEach(d => { if (d.cg) cargosSet.add(d.cg); });
@@ -5043,13 +7207,14 @@ function renderCargoComparison() {
     const filteredCargos = [...cargosSet].filter(c => {
         if (selectedCargos.length === 0) return true;
         return selectedCargos.includes(c);
-    }).sort();
+    });
     
     if (filteredCargos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted);">No se encontraron cargos que coincidan con los filtros seleccionados</td></tr>';
         return;
     }
     
+    const cargoStatsList = [];
     filteredCargos.forEach(cargo => {
         const p1RowsCargo = dataP1.filter(d => d.cg === cargo);
         const p2RowsCargo = dataP2.filter(d => d.cg === cargo);
@@ -5064,6 +7229,61 @@ function renderCargoComparison() {
         const cargoCantP2 = cargoTotals.DEVENGO.c2 + cargoTotals.DESCUENTO.c2;
         const cargoNetDiff = cargoNetP2 - cargoNetP1;
         const cargoNetPct = cargoNetP1 !== 0 ? (cargoNetDiff / Math.abs(cargoNetP1)) * 100 : (cargoNetDiff > 0 ? 100 : (cargoNetDiff < 0 ? -100 : 0));
+        
+        cargoStatsList.push({
+            cargo: cargo,
+            p1: cargoNetP1,
+            p2: cargoNetP2,
+            cant1: cargoCantP1,
+            cant2: cargoCantP2,
+            diff: cargoNetDiff,
+            pct: cargoNetPct,
+            p1RowsCargo: p1RowsCargo,
+            p2RowsCargo: p2RowsCargo
+        });
+    });
+
+    // Ordenar cargoStatsList según la columna y dirección
+    const sortCol = state.cargoSortColumn || 'name';
+    const sortDir = state.cargoSortDirection || 'asc';
+    cargoStatsList.sort((a, b) => {
+        let valA, valB;
+        if (sortCol === 'name') {
+            valA = a.cargo;
+            valB = b.cargo;
+            return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else if (sortCol === 'p1') {
+            valA = a.p1;
+            valB = b.p1;
+        } else if (sortCol === 'p2') {
+            valA = a.p2;
+            valB = b.p2;
+        } else if (sortCol === 'diff') {
+            valA = a.diff;
+            valB = b.diff;
+        } else if (sortCol === 'pct') {
+            valA = a.pct;
+            valB = b.pct;
+        } else if (sortCol === 'cant1') {
+            valA = a.cant1;
+            valB = b.cant1;
+        } else if (sortCol === 'cant2') {
+            valA = a.cant2;
+            valB = b.cant2;
+        } else {
+            return 0;
+        }
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+    });
+
+    cargoStatsList.forEach(cargoItem => {
+        const cargo = cargoItem.cargo;
+        const cargoNetP1 = cargoItem.p1;
+        const cargoNetP2 = cargoItem.p2;
+        const cargoNetDiff = cargoItem.diff;
+        const cargoNetPct = cargoItem.pct;
+        const p1RowsCargo = cargoItem.p1RowsCargo;
+        const p2RowsCargo = cargoItem.p2RowsCargo;
         const cargoSafe = cargo.replace(/[^a-zA-Z0-9]/g, '_');
         
         // NIVEL 1: Cargo
@@ -5079,7 +7299,11 @@ function renderCargoComparison() {
             <td style="text-align:right;">${currencyFormatter.format(cargoNetP2)}</td>
             <td style="text-align:right;">${formatVariationHTML(cargoNetDiff)}</td>
             <td style="text-align:right;">${formatVariationHTML(cargoNetPct, true)}</td>
-            <td></td>
+            <td style="text-align:center;">
+                <button class="btn-analyze btn-analyze-cargo" data-cargo="${encodeURIComponent(cargo)}" title="Revisar variaciones">
+                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                </button>
+            </td>
         `;
         tbody.appendChild(cargoRow);
         
@@ -5161,7 +7385,8 @@ function renderCargoComparison() {
             });
         });
         
-        cargoRow.addEventListener('click', () => {
+        cargoRow.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-analyze')) return;
             cargoRow.classList.toggle('expanded');
             const isExp = cargoRow.classList.contains('expanded');
             document.querySelectorAll(`.child-of-${cargoSafe}`).forEach(child => {
@@ -5175,7 +7400,123 @@ function renderCargoComparison() {
         });
     });
     
+    // Bind Analizar buttons (Cargo)
+    document.querySelectorAll('.btn-analyze-cargo').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cargoName = decodeURIComponent(btn.getAttribute('data-cargo'));
+            showCargoAnalysisModal(cargoName, state.cargoComparePeriod1, state.cargoComparePeriod2);
+        });
+    });
+    
+    // Renderizar fila TOTAL en el pie de la tabla
+    (function renderCargoTableTotals() {
+        const footerBar = document.getElementById('cargo-compare-footer');
+        if (!footerBar) return;
+        if (cargoStatsList.length === 0) { footerBar.innerHTML = ''; return; }
+
+        let sumP1 = 0, sumP2 = 0;
+        cargoStatsList.forEach(c => { sumP1 += c.p1; sumP2 += c.p2; });
+        const sumDiff = sumP2 - sumP1;
+        const sumPct  = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        footerBar.innerHTML = `
+            <table>
+                <tbody>
+                    <tr style="font-weight: 700; color: #000000;">
+                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
+                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
+                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
+                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
+                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
+                        <td style="width: 140px;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    })();
+
+    // Actualizar Tarjetas Resumen (Cargos)
+    (function updateCargoSummaryCards() {
+        const totalEl     = document.getElementById('cargo-stat-total');
+        const totalSubEl  = document.getElementById('cargo-stat-total-sub');
+        const highNameEl  = document.getElementById('cargo-stat-highest-name');
+        const highValEl   = document.getElementById('cargo-stat-highest-val');
+        const savNameEl   = document.getElementById('cargo-stat-savings-name');
+        const savValEl    = document.getElementById('cargo-stat-savings-val');
+        const payrollEl   = document.getElementById('cargo-stat-total-payroll');
+        const payrollSubEl= document.getElementById('cargo-stat-total-payroll-sub');
+        if (!totalEl) return;
+
+        const p1LabelCg = getPeriodLabel(state.cargoComparePeriod1) || 'P1';
+        const countP2 = cargoStatsList.filter(c => c.p2 !== 0).length;
+        const countP1 = cargoStatsList.filter(c => c.p1 !== 0).length;
+        const diffCount = countP2 - countP1;
+        totalEl.innerText = countP2;
+
+        if (diffCount > 0) {
+            totalSubEl.innerHTML = `<span style="color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +${diffCount} respecto a ${p1LabelCg}</span>`;
+        } else if (diffCount < 0) {
+            totalSubEl.innerHTML = `<span style="color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> ${diffCount} respecto a ${p1LabelCg}</span>`;
+        } else {
+            totalSubEl.innerHTML = `<span>Sin cambios respecto a ${p1LabelCg}</span>`;
+        }
+
+        // Mayor incremento
+        let topIncrease = null, maxDiff = 0;
+        cargoStatsList.forEach(c => { if (c.diff > maxDiff) { maxDiff = c.diff; topIncrease = c; } });
+        if (topIncrease) {
+            const shortName = topIncrease.cargo.length > 20 ? topIncrease.cargo.substring(0, 18) + '…' : topIncrease.cargo;
+            highNameEl.innerHTML = `<span title="${topIncrease.cargo}">${shortName}</span>`;
+            highValEl.innerHTML = `<span style="color:#10b981;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> +${topIncrease.pct.toFixed(1)}%</span> (+${currencyFormatter.format(topIncrease.diff)})`;
+        } else {
+            highNameEl.innerText = '-'; highValEl.innerText = 'Sin incrementos';
+        }
+
+        // Mayor ahorro
+        let topSavings = null, minDiff = 0;
+        cargoStatsList.forEach(c => { if (c.diff < minDiff) { minDiff = c.diff; topSavings = c; } });
+        if (topSavings) {
+            const shortName = topSavings.cargo.length > 20 ? topSavings.cargo.substring(0, 18) + '…' : topSavings.cargo;
+            savNameEl.innerHTML = `<span title="${topSavings.cargo}">${shortName}</span>`;
+            savValEl.innerHTML = `<span style="color:#ef4444;font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> ${topSavings.pct.toFixed(1)}%</span> (${currencyFormatter.format(topSavings.diff)})`;
+        } else {
+            savNameEl.innerText = '-'; savValEl.innerText = 'Sin ahorros';
+        }
+
+        // Nómina comparada
+        let totalP1 = 0, totalP2 = 0;
+        cargoStatsList.forEach(c => { totalP1 += c.p1; totalP2 += c.p2; });
+        const totalDiff = totalP2 - totalP1;
+        const totalPct  = totalP1 !== 0 ? (totalDiff / Math.abs(totalP1)) * 100 : (totalDiff > 0 ? 100 : (totalDiff < 0 ? -100 : 0));
+        const totalSign = totalDiff > 0 ? '+' : '';
+        const totalColor = totalDiff > 0 ? '#10b981' : (totalDiff < 0 ? '#ef4444' : 'var(--text-secondary)');
+        const totalIcon  = totalDiff > 0 ? 'trending-up' : (totalDiff < 0 ? 'trending-down' : 'minus');
+        payrollEl.innerHTML = `<strong style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">P1:</strong> <span style="font-weight:normal;">${currencyFormatter.format(totalP1)}</span><br><strong style="font-size:0.85rem;font-weight:700;color:var(--text-primary);">P2:</strong> <span style="font-weight:normal;">${currencyFormatter.format(totalP2)}</span>`;
+        payrollEl.style.fontSize = '1.05rem';
+        payrollEl.style.lineHeight = '1.35';
+        payrollSubEl.innerHTML = `Dif: <span style="color:${totalColor};font-weight:600;display:inline-flex;align-items:center;gap:2px;"><i data-lucide="${totalIcon}" style="width:12px;height:12px;"></i> ${totalSign}${currencyFormatter.format(totalDiff)} (${totalSign}${totalPct.toFixed(2)}%)</span>`;
+    })();
+
     if (window.lucide) window.lucide.createIcons();
+
+    // Listeners para botones de ordenación
+    document.querySelectorAll('#cargo-compare-header-name .small-sort-btn, #cargo-compare-header-cant-p1 .small-sort-btn, #cargo-compare-header-p1 .small-sort-btn, #cargo-compare-header-cant-p2 .small-sort-btn, #cargo-compare-header-p2 .small-sort-btn, #cargo-compare-header-diff .small-sort-btn, #cargo-compare-header-pct .small-sort-btn')
+        .forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const col = btn.getAttribute('data-col');
+                if (state.cargoSortColumn === col) {
+                    state.cargoSortDirection = state.cargoSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.cargoSortColumn = col;
+                    state.cargoSortDirection = 'desc'; // Por defecto de mayor a menor
+                }
+                renderCargoComparison();
+            });
+        });
 }
 
 
@@ -5228,73 +7569,153 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     const totalDiff = totalP2 - totalP1;
     const totalPct = totalP1 !== 0 ? (totalDiff / Math.abs(totalP1)) * 100 : 0;
     
+    // Format helper
+    const formatTitleCase = (str) => {
+        if (!str) return '';
+        return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    };
+
+    // Cards row calculations
+    let varArrow = 'arrow-up-right';
+    let varArrowClass = 'pos';
+    let varBadgeClass = 'badge-pos';
+    if (totalDiff < 0) {
+        varArrow = 'arrow-down-right';
+        varArrowClass = 'neg';
+        varBadgeClass = 'badge-neg';
+    } else if (totalDiff === 0) {
+        varArrow = 'arrow-right';
+        varArrowClass = 'muted';
+        varBadgeClass = 'badge-neutral';
+    }
+    const totalPctStr = `${totalDiff >= 0 ? '+' : ''}${totalPct.toFixed(2)}%`;
+
+    const summaryCardsHTML = `
+        <div class="analysis-cards-row">
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="calendar"></i>
+                    </span>
+                    <span class="analysis-card-label">${period1}</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <span class="analysis-card-badge badge-neutral">${currencyFormatter.format(Math.abs(totalP1))}</span>
+                </div>
+            </div>
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="calendar"></i>
+                    </span>
+                    <span class="analysis-card-label">${period2}</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <span class="analysis-card-badge badge-neutral">${currencyFormatter.format(Math.abs(totalP2))}</span>
+                </div>
+            </div>
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon neto">
+                        <i data-lucide="trending-up"></i>
+                    </span>
+                    <span class="analysis-card-label">Variación</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <i data-lucide="${varArrow}" class="analysis-card-arrow ${varArrowClass}"></i>
+                    <span class="analysis-card-badge ${varBadgeClass}">${totalPctStr}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
     // Top increases and decreases
-    const increases = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff).slice(0, 5);
-    const decreases = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff).slice(0, 5);
+    const topPositive = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff)[0];
+    const topNegative = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff)[0];
     
-    // Build narrative
-    let narrative = '';
-    if (Math.abs(totalDiff) < 100) {
-        narrative = `<p class="analysis-summary">El desembolso consolidado para el concepto <strong>${conceptName}</strong> se mantuvo estable entre ambos periodos.</p>`;
-    } else {
-        const direction = totalDiff > 0 ? 'aumentó' : 'disminuyó';
-        const signChar = totalDiff >= 0 ? '+' : '-';
-        const colorClass = totalDiff > 0 ? 'analysis-positive' : 'analysis-negative';
-        
-        narrative = `<p class="analysis-summary">El monto total consolidado de <strong>${conceptName}</strong> (${nature.toLowerCase()}) ${direction} en <span class="${colorClass}"><strong>${signChar}${currencyFormatter.format(Math.abs(totalDiff))}</strong> (${totalPct > 0 ? '+' : ''}${totalPct.toFixed(1)}%)</span> entre ${period1} y ${period2}.</p>`;
+    let summaryListItems = [];
+    const conceptNameFormatted = conceptName.toUpperCase();
+    
+    const directionWord = totalDiff >= 0 ? 'aumento' : 'reducción';
+    const amountStr = `$${currencyFormatter.format(Math.abs(totalDiff)).replace('$', '')}`;
+    summaryListItems.push(`
+        <li>
+            <span class="bullet-dot ${totalDiff >= 0 ? 'pos' : 'neg'}"></span>
+            <div>El desembolso consolidado para <strong>${conceptNameFormatted}</strong> registró un ${directionWord} neto de <strong>${totalDiff >= 0 ? '+' : '-'}${amountStr}</strong> (${totalPctStr}) a nivel compañía.</div>
+        </li>
+    `);
+    
+    if (topPositive) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot pos"></span>
+                <div><strong>Mayor incremento:</strong> El colaborador <strong>${formatTitleCase(topPositive.name)}</strong> registró la mayor alza del concepto con <strong>+${currencyFormatter.format(topPositive.diff)}</strong>.</div>
+            </li>
+        `);
     }
     
-    let increasesHTML = '';
-    if (increases.length > 0) {
-        increasesHTML = `
+    if (topNegative) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot neg"></span>
+                <div><strong>Mayor reducción:</strong> El colaborador <strong>${formatTitleCase(topNegative.name)}</strong> registró la mayor baja del concepto con <strong>-${currencyFormatter.format(Math.abs(topNegative.diff))}</strong>.</div>
+            </li>
+        `);
+    }
+
+    const executiveSummaryHTML = `
+        <div class="analysis-executive-summary-wrapper">
+            <div class="analysis-sparkle-badge">
+                <i data-lucide="sparkles"></i>
+            </div>
+            <div class="analysis-executive-summary">
+                <h5>Resumen de Variaciones Clave</h5>
+                <ul class="analysis-summary-list">
+                    ${summaryListItems.join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Positives and Negatives lists
+    const positives = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff);
+    const negatives = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff);
+
+    let positivesHTML = '';
+    if (positives.length > 0) {
+        positivesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-positive">Colaboradores con mayor incremento</h4>
-                <div class="analysis-items">
-                    ${increases.map(c => `
-                        <div class="analysis-item">
-                            <div class="analysis-item-header">
-                                <span class="analysis-concept">${c.name.toLowerCase()}</span>
-                                <span style="font-size:0.65rem; color:var(--text-muted);">${c.cedula}</span>
-                            </div>
-                            <div class="analysis-item-values">
-                                <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">&rarr;</span>
-                                <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
-                                <span class="analysis-diff analysis-positive">+${currencyFormatter.format(c.diff)}</span>
-                            </div>
+                <h4 class="analysis-section-title">Impactos Positivos (Suman al Concepto)</h4>
+                <div class="analysis-cards-list">
+                    ${positives.map(c => `
+                        <div class="analysis-impact-card pos">
+                            <span class="analysis-impact-name">${formatTitleCase(c.name)} <span style="font-size:0.72rem; color:#64748b;">· C.C. ${c.cedula}</span></span>
+                            <span class="analysis-impact-value pos">+${currencyFormatter.format(c.diff)}</span>
                         </div>
                     `).join('')}
                 </div>
             </div>
         `;
     }
-    
-    let decreasesHTML = '';
-    if (decreases.length > 0) {
-        decreasesHTML = `
+
+    let negativesHTML = '';
+    if (negatives.length > 0) {
+        negativesHTML = `
             <div class="analysis-section">
-                <h4 class="analysis-section-title analysis-negative">Colaboradores con mayor reducción</h4>
-                <div class="analysis-items">
-                    ${decreases.map(c => `
-                        <div class="analysis-item">
-                            <div class="analysis-item-header">
-                                <span class="analysis-concept">${c.name.toLowerCase()}</span>
-                                <span style="font-size:0.65rem; color:var(--text-muted);">${c.cedula}</span>
-                            </div>
-                            <div class="analysis-item-values">
-                                <span class="analysis-from">${currencyFormatter.format(c.v1)}</span>
-                                <span class="analysis-arrow">&rarr;</span>
-                                <span class="analysis-to">${currencyFormatter.format(c.v2)}</span>
-                                <span class="analysis-diff analysis-negative">${currencyFormatter.format(c.diff)}</span>
-                            </div>
+                <h4 class="analysis-section-title">Impactos Negativos (Restan al Concepto)</h4>
+                <div class="analysis-cards-list">
+                    ${negatives.map(c => `
+                        <div class="analysis-impact-card neg">
+                            <span class="analysis-impact-name">${formatTitleCase(c.name)} <span style="font-size:0.72rem; color:#64748b;">· C.C. ${c.cedula}</span></span>
+                            <span class="analysis-impact-value neg">-${currencyFormatter.format(Math.abs(c.diff))}</span>
                         </div>
                     `).join('')}
                 </div>
             </div>
         `;
     }
-    
-    // Create DOM structure
+
+    // Build modal
     const overlay = document.createElement('div');
     overlay.id = 'analysis-modal-overlay';
     overlay.className = 'analysis-overlay';
@@ -5302,60 +7723,530 @@ function showConceptAnalysisModal(conceptName, nature, period1, period2) {
     overlay.innerHTML = `
         <div class="analysis-modal">
             <div class="analysis-modal-header">
-                <div>
-                    <h3 class="analysis-modal-title" style="text-transform:uppercase;">${conceptName}</h3>
-                    <p class="analysis-modal-subtitle">Análisis comparativo de variaciones</p>
-                    <p class="analysis-modal-periods">${period1} vs ${period2}</p>
-                </div>
+                <h3 class="analysis-modal-title">Análisis de Concepto</h3>
                 <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar análisis">
                     <i data-lucide="x" style="width:18px;height:18px;"></i>
                 </button>
             </div>
             <div class="analysis-modal-body">
-                ${narrative}
+                <h4 class="analysis-employee-name">${conceptNameFormatted}</h4>
+                <p class="analysis-employee-periods">${period1} vs ${period2} · <span class="badge badge-${nature.toLowerCase()}">${nature}</span></p>
                 
-                <div class="analysis-summary-bar">
-                    <div class="analysis-summary-item">
-                        <span class="analysis-label">Naturaleza:</span>
-                        <span class="analysis-val"><span class="badge badge-${nature.toLowerCase()}">${nature}</span></span>
-                    </div>
-                    <div class="analysis-summary-item">
-                        <span class="analysis-label">${period1}:</span>
-                        <span class="analysis-val">${currencyFormatter.format(totalP1)}</span>
-                    </div>
-                    <div class="analysis-summary-item">
-                        <span class="analysis-label">${period2}:</span>
-                        <span class="analysis-val">${currencyFormatter.format(totalP2)}</span>
-                    </div>
-                    <div class="analysis-summary-item">
-                        <span class="analysis-label">Variación:</span>
-                        <span class="analysis-val" style="font-weight:600;">${formatVariationHTML(totalDiff)}</span>
-                    </div>
-                </div>
-                
-                ${increasesHTML}
-                ${decreasesHTML}
+                ${summaryCardsHTML}
+                ${executiveSummaryHTML}
+                ${positivesHTML}
+                ${negativesHTML}
             </div>
         </div>
     `;
     
     document.body.appendChild(overlay);
     
-    // Animate in
-    requestAnimationFrame(() => overlay.classList.add('visible'));
-    
-    // Close events
-    const closeBtn = overlay.querySelector('#analysis-close-btn');
-    const closeOverlay = () => {
-        overlay.classList.remove('visible');
-        setTimeout(() => overlay.remove(), 250);
-    };
-    
-    if (closeBtn) closeBtn.addEventListener('click', closeOverlay);
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeOverlay();
+    // Animate transition
+    requestAnimationFrame(() => {
+        overlay.classList.add('visible');
     });
     
+    // Close events
+    document.getElementById('analysis-close-btn').addEventListener('click', () => {
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.remove(), 250);
+    });
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 250);
+        }
+    });
+    
+    // Init lucide icons inside modal
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+function showCecoAnalysisModal(cecoName, period1, period2) {
+    const existing = document.getElementById('analysis-modal-overlay');
+    if (existing) existing.remove();
+    
+    // Parse periods
+    const dataP1 = filterDataByPeriod(period1).filter(d => `${d.cc} - ${d.dcc}` === cecoName);
+    const dataP2 = filterDataByPeriod(period2).filter(d => `${d.cc} - ${d.dcc}` === cecoName);
+    
+    // Map values by employee
+    const p1Map = {}, p2Map = {}, allCedulas = new Set();
+    const employeeNames = {};
+    
+    dataP1.forEach(r => {
+        p1Map[r.c] = (p1Map[r.c] || 0) + r.v;
+        allCedulas.add(r.c);
+        employeeNames[r.c] = r.n;
+    });
+    dataP2.forEach(r => {
+        p2Map[r.c] = (p2Map[r.c] || 0) + r.v;
+        allCedulas.add(r.c);
+        employeeNames[r.c] = r.n;
+    });
+    
+    // Calculate employee-level variation
+    const changes = Array.from(allCedulas).map(cedula => {
+        const v1 = p1Map[cedula] || 0;
+        const v2 = p2Map[cedula] || 0;
+        return {
+            cedula,
+            name: employeeNames[cedula] || 'Desconocido',
+            v1,
+            v2,
+            diff: v2 - v1,
+            pct: v1 !== 0 ? ((v2 - v1) / Math.abs(v1)) * 100 : (v2 !== 0 ? 100 : 0)
+        };
+    }).filter(c => Math.abs(c.diff) > 0);
+    
+    // Aggregated ceco values
+    let totalP1 = 0;
+    let totalP2 = 0;
+    dataP1.forEach(r => totalP1 += r.v);
+    dataP2.forEach(r => totalP2 += r.v);
+    
+    const totalDiff = totalP2 - totalP1;
+    const totalPct = totalP1 !== 0 ? (totalDiff / Math.abs(totalP1)) * 100 : 0;
+    
+    // Format helper
+    const formatTitleCase = (str) => {
+        if (!str) return '';
+        return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    };
+
+    // Cards row calculations
+    let varArrow = 'arrow-up-right';
+    let varArrowClass = 'pos';
+    let varBadgeClass = 'badge-pos';
+    if (totalDiff < 0) {
+        varArrow = 'arrow-down-right';
+        varArrowClass = 'neg';
+        varBadgeClass = 'badge-neg';
+    } else if (totalDiff === 0) {
+        varArrow = 'arrow-right';
+        varArrowClass = 'muted';
+        varBadgeClass = 'badge-neutral';
+    }
+    const totalPctStr = `${totalDiff >= 0 ? '+' : ''}${totalPct.toFixed(2)}%`;
+
+    const summaryCardsHTML = `
+        <div class="analysis-cards-row">
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="calendar"></i>
+                    </span>
+                    <span class="analysis-card-label">${period1}</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <span class="analysis-card-badge badge-neutral">${currencyFormatter.format(Math.abs(totalP1))}</span>
+                </div>
+            </div>
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="calendar"></i>
+                    </span>
+                    <span class="analysis-card-label">${period2}</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <span class="analysis-card-badge badge-neutral">${currencyFormatter.format(Math.abs(totalP2))}</span>
+                </div>
+            </div>
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon neto">
+                        <i data-lucide="trending-up"></i>
+                    </span>
+                    <span class="analysis-card-label">Variación</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <i data-lucide="${varArrow}" class="analysis-card-arrow ${varArrowClass}"></i>
+                    <span class="analysis-card-badge ${varBadgeClass}">${totalPctStr}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Top increases and decreases
+    const topPositive = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff)[0];
+    const topNegative = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff)[0];
+    
+    let summaryListItems = [];
+    const cecoNameFormatted = cecoName.toUpperCase();
+    
+    const directionWord = totalDiff >= 0 ? 'aumento' : 'reducción';
+    const amountStr = `$${currencyFormatter.format(Math.abs(totalDiff)).replace('$', '')}`;
+    summaryListItems.push(`
+        <li>
+            <span class="bullet-dot ${totalDiff >= 0 ? 'pos' : 'neg'}"></span>
+            <div>El costo consolidado de nómina para el Centro de Costo <strong>${cecoNameFormatted}</strong> registró un ${directionWord} de <strong>${totalDiff >= 0 ? '+' : '-'}${amountStr}</strong> (${totalPctStr}) a nivel global.</div>
+        </li>
+    `);
+    
+    if (topPositive) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot pos"></span>
+                <div><strong>Mayor incremento:</strong> El colaborador <strong>${formatTitleCase(topPositive.name)}</strong> tuvo la mayor variación de incremento en su salario neto con <strong>+${currencyFormatter.format(topPositive.diff)}</strong>.</div>
+            </li>
+        `);
+    }
+    
+    if (topNegative) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot neg"></span>
+                <div><strong>Mayor reducción:</strong> El colaborador <strong>${formatTitleCase(topNegative.name)}</strong> tuvo la mayor variación de reducción en su salario neto con <strong>-${currencyFormatter.format(Math.abs(topNegative.diff))}</strong>.</div>
+            </li>
+        `);
+    }
+
+    const executiveSummaryHTML = `
+        <div class="analysis-executive-summary-wrapper">
+            <div class="analysis-sparkle-badge">
+                <i data-lucide="sparkles"></i>
+            </div>
+            <div class="analysis-executive-summary">
+                <h5>Resumen de Variaciones Clave</h5>
+                <ul class="analysis-summary-list">
+                    ${summaryListItems.join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Positives and Negatives lists
+    const positives = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff);
+    const negatives = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff);
+
+    let positivesHTML = '';
+    if (positives.length > 0) {
+        positivesHTML = `
+            <div class="analysis-section">
+                <h4 class="analysis-section-title">Impactos Positivos (Incrementos Neto)</h4>
+                <div class="analysis-cards-list">
+                    ${positives.map(c => `
+                        <div class="analysis-impact-card pos">
+                            <span class="analysis-impact-name">${formatTitleCase(c.name)} <span style="font-size:0.72rem; color:#64748b;">· C.C. ${c.cedula}</span></span>
+                            <span class="analysis-impact-value pos">+${currencyFormatter.format(c.diff)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    let negativesHTML = '';
+    if (negatives.length > 0) {
+        negativesHTML = `
+            <div class="analysis-section">
+                <h4 class="analysis-section-title">Impactos Negativos (Reducciones Neto)</h4>
+                <div class="analysis-cards-list">
+                    ${negatives.map(c => `
+                        <div class="analysis-impact-card neg">
+                            <span class="analysis-impact-name">${formatTitleCase(c.name)} <span style="font-size:0.72rem; color:#64748b;">· C.C. ${c.cedula}</span></span>
+                            <span class="analysis-impact-value neg">-${currencyFormatter.format(Math.abs(c.diff))}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Build modal
+    const overlay = document.createElement('div');
+    overlay.id = 'analysis-modal-overlay';
+    overlay.className = 'analysis-overlay';
+    
+    overlay.innerHTML = `
+        <div class="analysis-modal">
+            <div class="analysis-modal-header">
+                <h3 class="analysis-modal-title">Análisis de Centro de Costo</h3>
+                <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar análisis">
+                    <i data-lucide="x" style="width:18px;height:18px;"></i>
+                </button>
+            </div>
+            <div class="analysis-modal-body">
+                <h4 class="analysis-employee-name">${cecoNameFormatted}</h4>
+                <p class="analysis-employee-periods">${period1} vs ${period2} · Centro de Costo</p>
+                
+                ${summaryCardsHTML}
+                ${executiveSummaryHTML}
+                ${positivesHTML}
+                ${negativesHTML}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Animate transition
+    requestAnimationFrame(() => {
+        overlay.classList.add('visible');
+    });
+    
+    // Close events
+    document.getElementById('analysis-close-btn').addEventListener('click', () => {
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.remove(), 250);
+    });
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 250);
+        }
+    });
+    
+    // Init lucide icons inside modal
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}
+
+function showCargoAnalysisModal(cargoName, period1, period2) {
+    const existing = document.getElementById('analysis-modal-overlay');
+    if (existing) existing.remove();
+    
+    // Parse periods
+    const dataP1 = filterDataByPeriod(period1).filter(d => d.cg === cargoName);
+    const dataP2 = filterDataByPeriod(period2).filter(d => d.cg === cargoName);
+    
+    // Map values by employee
+    const p1Map = {}, p2Map = {}, allCedulas = new Set();
+    const employeeNames = {};
+    
+    dataP1.forEach(r => {
+        p1Map[r.c] = (p1Map[r.c] || 0) + r.v;
+        allCedulas.add(r.c);
+        employeeNames[r.c] = r.n;
+    });
+    dataP2.forEach(r => {
+        p2Map[r.c] = (p2Map[r.c] || 0) + r.v;
+        allCedulas.add(r.c);
+        employeeNames[r.c] = r.n;
+    });
+    
+    // Calculate employee-level variation
+    const changes = Array.from(allCedulas).map(cedula => {
+        const v1 = p1Map[cedula] || 0;
+        const v2 = p2Map[cedula] || 0;
+        return {
+            cedula,
+            name: employeeNames[cedula] || 'Desconocido',
+            v1,
+            v2,
+            diff: v2 - v1,
+            pct: v1 !== 0 ? ((v2 - v1) / Math.abs(v1)) * 100 : (v2 !== 0 ? 100 : 0)
+        };
+    }).filter(c => Math.abs(c.diff) > 0);
+    
+    // Aggregated cargo values
+    let totalP1 = 0;
+    let totalP2 = 0;
+    dataP1.forEach(r => totalP1 += r.v);
+    dataP2.forEach(r => totalP2 += r.v);
+    
+    const totalDiff = totalP2 - totalP1;
+    const totalPct = totalP1 !== 0 ? (totalDiff / Math.abs(totalP1)) * 100 : 0;
+    
+    // Format helper
+    const formatTitleCase = (str) => {
+        if (!str) return '';
+        return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    };
+
+    // Cards row calculations
+    let varArrow = 'arrow-up-right';
+    let varArrowClass = 'pos';
+    let varBadgeClass = 'badge-pos';
+    if (totalDiff < 0) {
+        varArrow = 'arrow-down-right';
+        varArrowClass = 'neg';
+        varBadgeClass = 'badge-neg';
+    } else if (totalDiff === 0) {
+        varArrow = 'arrow-right';
+        varArrowClass = 'muted';
+        varBadgeClass = 'badge-neutral';
+    }
+    const totalPctStr = `${totalDiff >= 0 ? '+' : ''}${totalPct.toFixed(2)}%`;
+
+    const summaryCardsHTML = `
+        <div class="analysis-cards-row">
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="calendar"></i>
+                    </span>
+                    <span class="analysis-card-label">${period1}</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <span class="analysis-card-badge badge-neutral">${currencyFormatter.format(Math.abs(totalP1))}</span>
+                </div>
+            </div>
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon devengos">
+                        <i data-lucide="calendar"></i>
+                    </span>
+                    <span class="analysis-card-label">${period2}</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <span class="analysis-card-badge badge-neutral">${currencyFormatter.format(Math.abs(totalP2))}</span>
+                </div>
+            </div>
+            <div class="analysis-card">
+                <div class="analysis-card-top">
+                    <span class="analysis-card-icon neto">
+                        <i data-lucide="trending-up"></i>
+                    </span>
+                    <span class="analysis-card-label">Variación</span>
+                </div>
+                <div class="analysis-card-bottom">
+                    <i data-lucide="${varArrow}" class="analysis-card-arrow ${varArrowClass}"></i>
+                    <span class="analysis-card-badge ${varBadgeClass}">${totalPctStr}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Top increases and decreases
+    const topPositive = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff)[0];
+    const topNegative = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff)[0];
+    
+    let summaryListItems = [];
+    const cargoNameFormatted = cargoName.toUpperCase();
+    
+    const directionWord = totalDiff >= 0 ? 'aumento' : 'reducción';
+    const amountStr = `$${currencyFormatter.format(Math.abs(totalDiff)).replace('$', '')}`;
+    summaryListItems.push(`
+        <li>
+            <span class="bullet-dot ${totalDiff >= 0 ? 'pos' : 'neg'}"></span>
+            <div>El costo consolidado de nómina para el Cargo <strong>${cargoNameFormatted}</strong> registró un ${directionWord} de <strong>${totalDiff >= 0 ? '+' : '-'}${amountStr}</strong> (${totalPctStr}) a nivel global.</div>
+        </li>
+    `);
+    
+    if (topPositive) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot pos"></span>
+                <div><strong>Mayor incremento:</strong> El colaborador <strong>${formatTitleCase(topPositive.name)}</strong> tuvo la mayor variación de incremento en su salario neto con <strong>+${currencyFormatter.format(topPositive.diff)}</strong>.</div>
+            </li>
+        `);
+    }
+    
+    if (topNegative) {
+        summaryListItems.push(`
+            <li>
+                <span class="bullet-dot neg"></span>
+                <div><strong>Mayor reducción:</strong> El colaborador <strong>${formatTitleCase(topNegative.name)}</strong> tuvo la mayor variación de reducción en su salario neto con <strong>-${currencyFormatter.format(Math.abs(topNegative.diff))}</strong>.</div>
+            </li>
+        `);
+    }
+
+    const executiveSummaryHTML = `
+        <div class="analysis-executive-summary-wrapper">
+            <div class="analysis-sparkle-badge">
+                <i data-lucide="sparkles"></i>
+            </div>
+            <div class="analysis-executive-summary">
+                <h5>Resumen de Variaciones Clave</h5>
+                <ul class="analysis-summary-list">
+                    ${summaryListItems.join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Positives and Negatives lists
+    const positives = changes.filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff);
+    const negatives = changes.filter(c => c.diff < 0).sort((a, b) => a.diff - b.diff);
+
+    let positivesHTML = '';
+    if (positives.length > 0) {
+        positivesHTML = `
+            <div class="analysis-section">
+                <h4 class="analysis-section-title">Impactos Positivos (Incrementos Neto)</h4>
+                <div class="analysis-cards-list">
+                    ${positives.map(c => `
+                        <div class="analysis-impact-card pos">
+                            <span class="analysis-impact-name">${formatTitleCase(c.name)} <span style="font-size:0.72rem; color:#64748b;">· C.C. ${c.cedula}</span></span>
+                            <span class="analysis-impact-value pos">+${currencyFormatter.format(c.diff)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    let negativesHTML = '';
+    if (negatives.length > 0) {
+        negativesHTML = `
+            <div class="analysis-section">
+                <h4 class="analysis-section-title">Impactos Negativos (Reducciones Neto)</h4>
+                <div class="analysis-cards-list">
+                    ${negatives.map(c => `
+                        <div class="analysis-impact-card neg">
+                            <span class="analysis-impact-name">${formatTitleCase(c.name)} <span style="font-size:0.72rem; color:#64748b;">· C.C. ${c.cedula}</span></span>
+                            <span class="analysis-impact-value neg">-${currencyFormatter.format(Math.abs(c.diff))}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Build modal
+    const overlay = document.createElement('div');
+    overlay.id = 'analysis-modal-overlay';
+    overlay.className = 'analysis-overlay';
+    
+    overlay.innerHTML = `
+        <div class="analysis-modal">
+            <div class="analysis-modal-header">
+                <h3 class="analysis-modal-title">Análisis de Cargo</h3>
+                <button class="analysis-close-btn" id="analysis-close-btn" aria-label="Cerrar análisis">
+                    <i data-lucide="x" style="width:18px;height:18px;"></i>
+                </button>
+            </div>
+            <div class="analysis-modal-body">
+                <h4 class="analysis-employee-name">${cargoNameFormatted}</h4>
+                <p class="analysis-employee-periods">${period1} vs ${period2} · Cargo</p>
+                
+                ${summaryCardsHTML}
+                ${executiveSummaryHTML}
+                ${positivesHTML}
+                ${negativesHTML}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Animate transition
+    requestAnimationFrame(() => {
+        overlay.classList.add('visible');
+    });
+    
+    // Close events
+    document.getElementById('analysis-close-btn').addEventListener('click', () => {
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.remove(), 250);
+    });
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.remove(), 250);
+        }
+    });
+    
+    // Init lucide icons inside modal
     if (window.lucide) {
         window.lucide.createIcons();
     }
@@ -5737,17 +8628,81 @@ function loadHtml2Pdf() {
     });
 }
 
-function calculateManagerialInsights() {
-    const p1 = state.conceptComparePeriod1;
-    const p2 = state.conceptComparePeriod2;
+// HELPER: Traducción de Conceptos Técnicos a Lenguaje de Negocios
+function getConceptTranslation(co) {
+    if (!co) return 'Concepto de Nómina';
+    const upper = co.toUpperCase();
+    if (upper.includes('EXT.DIUR.ORDIN') || upper.includes('H.EXT') || upper.includes('HORAS EXTRA')) {
+        return 'Horas Extras Diurnas Ordinarias';
+    }
+    if (upper.includes('COMIS')) {
+        return 'Comisiones Comerciales por Objetivos';
+    }
+    if (upper.includes('BONIF') || upper.includes('BONO')) {
+        return 'Bonificaciones Especiales y Reconocimientos';
+    }
+    if (upper.includes('RET.FTE') || upper.includes('R.FTE')) {
+        return 'Retención en la Fuente (Impuesto de Renta)';
+    }
+    if (upper.includes('SALARIO') || upper.includes('SUELDO')) {
+        return 'Sueldo Básico Estructural';
+    }
+    if (upper.includes('AUX.TRANSPORTE') || upper.includes('AUX.TRANS')) {
+        return 'Auxilio Legal de Transporte';
+    }
+    if (upper.includes('SALUD')) {
+        return 'Aporte a Salud de Ley';
+    }
+    if (upper.includes('PENSION')) {
+        return 'Aporte a Pensión de Ley';
+    }
+    if (upper.includes('INCAPAC')) {
+        return 'Incapacidades Médicas Asumidas';
+    }
+    if (upper.includes('PRESTAMO') || upper.includes('PRÉSTAMO')) {
+        return 'Deducción por Préstamos Internos';
+    }
+    return co;
+}
+
+function formatPercentage(val) {
+    return (val >= 0 ? '+' : '') + Number(val).toFixed(2) + '%';
+}
+
+function calculateManagerialInsights(reportType = 'concepto') {
+    let p1, p2;
+    let selectedConcepts = [];
+    let selectedCecos = [];
+    if (reportType === 'persona') {
+        p1 = state.comparePeriod1;
+        p2 = state.comparePeriod2;
+        selectedCecos = state.periodCompareSelectedCecos || [];
+    } else if (reportType === 'ceco') {
+        p1 = state.cecoComparePeriod1;
+        p2 = state.cecoComparePeriod2;
+    } else if (reportType === 'cargo') {
+        p1 = state.cargoComparePeriod1;
+        p2 = state.cargoComparePeriod2;
+        selectedCecos = state.cargoCompareSelectedCecos || [];
+    } else {
+        p1 = state.conceptComparePeriod1;
+        p2 = state.conceptComparePeriod2;
+        selectedConcepts = state.conceptCompareSelectedConcepts || [];
+        selectedCecos = state.conceptCompareSelectedCecos || [];
+    }
+
     if (!p1 || !p2) return null;
 
-    const dataP1 = filterDataByPeriod(p1);
-    const dataP2 = filterDataByPeriod(p2);
+    let dataP1 = filterDataByPeriod(p1);
+    let dataP2 = filterDataByPeriod(p2);
+
+    if (selectedCecos.length > 0) {
+        dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+        dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+    }
 
     const payrollData = state.data || [];
     const allConcepts = [...new Set(payrollData.map(d => d.co))];
-    const selectedConcepts = state.conceptCompareSelectedConcepts || [];
     const filteredConcepts = allConcepts.filter(co => {
         if (selectedConcepts.length === 0) return true;
         return selectedConcepts.includes(co);
@@ -5844,8 +8799,6 @@ function calculateManagerialInsights() {
 
     conceptDetails.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 
-    const topIncreases = conceptDetails.filter(c => c.diff > 0).slice(0, 3);
-    const topReductions = conceptDetails.filter(c => c.diff < 0).sort((a,b) => a.diff - b.diff).slice(0, 3);
     const newConcepts = conceptDetails.filter(c => c.v1 === 0 && c.v2 > 0);
     const inactiveConcepts = conceptDetails.filter(c => c.v1 > 0 && c.v2 === 0);
 
@@ -5860,8 +8813,8 @@ function calculateManagerialInsights() {
             cecoDetails.push({ cc, v1, v2, diff, pct });
         }
     });
-    cecoDetails.sort((a, b) => b.diff - a.diff);
-    const topCecoIncreases = cecoDetails.slice(0, 3);
+    cecoDetails.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+    const topCecoIncreases = cecoDetails.filter(c => c.diff > 0).slice(0, 3);
 
     const cargoDetails = [];
     const allCargos = new Set([...Object.keys(cargoP1), ...Object.keys(cargoP2)]);
@@ -5874,8 +8827,8 @@ function calculateManagerialInsights() {
             cargoDetails.push({ cg, v1, v2, diff, pct });
         }
     });
-    cargoDetails.sort((a, b) => b.diff - a.diff);
-    const topCargoIncreases = cargoDetails.slice(0, 3);
+    cargoDetails.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+    const topCargoIncreases = cargoDetails.filter(c => c.diff > 0).slice(0, 3);
 
     const empDetails = [];
     const allEmps = new Set([...Object.keys(empNetP1), ...Object.keys(empNetP2)]);
@@ -5898,6 +8851,103 @@ function calculateManagerialInsights() {
     empDetails.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
     const topEmpImpacts = empDetails.slice(0, 5);
 
+    // Seleccionar incrementos principales y disminuciones según el tipo de reporte
+    let primaryDetails = [];
+    if (reportType === 'persona') {
+        primaryDetails = empDetails;
+    } else if (reportType === 'ceco') {
+        primaryDetails = cecoDetails;
+    } else if (reportType === 'cargo') {
+        primaryDetails = cargoDetails;
+    } else {
+        primaryDetails = conceptDetails;
+    }
+
+    const topIncreases = primaryDetails.filter(c => c.diff > 0).slice(0, 3);
+    const topReductions = primaryDetails.filter(c => c.diff < 0).sort((a,b) => a.diff - b.diff).slice(0, 3);
+
+    // NUEVO: Efecto Headcount (Altas / Bajas)
+    const empsP1 = {};
+    const empsP2 = {};
+    dataP1.forEach(d => {
+        if (!empsP1[d.c]) empsP1[d.c] = { name: d.n || 'Desconocido', net: 0 };
+        if (d.na === 'DEVENGO') empsP1[d.c].net += d.v;
+        if (d.na === 'DESCUENTO') empsP1[d.c].net -= d.v;
+    });
+    dataP2.forEach(d => {
+        if (!empsP2[d.c]) empsP2[d.c] = { name: d.n || 'Desconocido', net: 0 };
+        if (d.na === 'DEVENGO') empsP2[d.c].net += d.v;
+        if (d.na === 'DESCUENTO') empsP2[d.c].net -= d.v;
+    });
+
+    const bajas = [];
+    const altas = [];
+    for (const c in empsP1) {
+        if (!empsP2[c] || empsP2[c].net <= 0) {
+            bajas.push({ c, name: empsP1[c].name, net: empsP1[c].net });
+        }
+    }
+    for (const c in empsP2) {
+        if (!empsP1[c] || empsP1[c].net <= 0) {
+            altas.push({ c, name: empsP2[c].name, net: empsP2[c].net });
+        }
+    }
+    const totalBajasAmt = bajas.reduce((acc, curr) => acc + curr.net, 0);
+    const totalAltasAmt = altas.reduce((acc, curr) => acc + curr.net, 0);
+    const headcountNetEffect = totalAltasAmt - totalBajasAmt;
+
+    // NUEVO: Aislamiento de Headcount (Altas / Bajas Efectivas)
+    const sortedBajas = [...bajas].sort((a, b) => b.net - a.net);
+    const sortedAltas = [...altas].sort((a, b) => b.net - a.net);
+    
+    const topBaja = sortedBajas[0] || null;
+    const topAlta = sortedAltas[0] || null;
+    
+    let headcountPct = 0;
+    if (netDiff !== 0) {
+        headcountPct = Math.round((Math.abs(headcountNetEffect) / Math.abs(netDiff)) * 100);
+    }
+    
+    let topBajaPct = 0;
+    if (topBaja && netDiff < 0) {
+        topBajaPct = Math.round((Math.abs(topBaja.net) / Math.abs(netDiff)) * 100);
+    }
+    
+    let topAltaPct = 0;
+    if (topAlta && netDiff > 0) {
+        topAltaPct = Math.round((Math.abs(topAlta.net) / Math.abs(netDiff)) * 100);
+    }
+
+    // NUEVO: Alerta de Descalce / Compliance
+    let complianceAlert = { severity: 'success', title: 'Auditoría de Cumplimiento Limpia', message: 'No se detectaron anomalías contables o descalces en la nómina del periodo.' };
+    const devPctChange = devengosP1 > 0 ? (devengosP2 - devengosP1) / devengosP1 : 0;
+    const descPctChange = descuentosP1 > 0 ? (descuentosP2 - descuentosP1) / descuentosP1 : 0;
+
+    if (devPctChange < -0.005 && descPctChange > 0.005) {
+        complianceAlert = {
+            severity: 'danger',
+            title: 'Alerta de Descalce en Seguridad Social',
+            message: `Se detectó una anomalía: los devengos totales disminuyeron en ${formatPercentage(devPctChange * 100)}, pero las deducciones aumentaron en ${formatPercentage(descPctChange * 100)}. Se sugiere auditoría preventiva de aportes PILA.`
+        };
+    } else {
+        const ratioP1 = devengosP1 > 0 ? descuentosP1 / devengosP1 : 0;
+        const ratioP2 = devengosP2 > 0 ? descuentosP2 / devengosP2 : 0;
+        const ratioDiff = ratioP2 - ratioP1;
+        if (Math.abs(ratioDiff) > 0.02) {
+            complianceAlert = {
+                severity: 'warning',
+                title: 'Variación de Ratio de Retención',
+                message: `La proporción de deducciones frente a los devengos varió significativamente en el periodo (+${formatPercentage(ratioDiff * 100)}). Valida nuevos préstamos o retenciones especiales.`
+            };
+        }
+    }
+
+    // Calcular magnitud relativa de variación individual en el Top 5
+    const totalAbsPayrollDiff = empDetails.reduce((acc, curr) => acc + Math.abs(curr.diff), 0) || 1;
+    topEmpImpacts.forEach(emp => {
+        emp.magnitudePct = Math.round((Math.abs(emp.diff) / totalAbsPayrollDiff) * 100) || 1;
+    });
+
     return {
         p1,
         p2,
@@ -5907,17 +8957,407 @@ function calculateManagerialInsights() {
             netP1, netP2, netDiff, netPct
         },
         conceptDetails,
+        cecoDetails,
+        cargoDetails,
+        empDetails,
         topIncreases,
         topReductions,
         newConcepts,
         inactiveConcepts,
         topCecoIncreases,
         topCargoIncreases,
-        topEmpImpacts
+        topEmpImpacts,
+        
+        // Retornar campos de headcount
+        bajas,
+        altas,
+        totalBajasAmt,
+        totalAltasAmt,
+        headcountNetEffect,
+        topBaja,
+        topAlta,
+        headcountPct,
+        topBajaPct,
+        topAltaPct,
+        complianceAlert,
+        dataP1,
+        dataP2
     };
 }
 
-function generateManagerialReport() {
+window.exportCompareTableToExcel = function (reportType = 'concepto') {
+    const showAlert = (msg) => {
+        if (typeof window.showNomaiAlert === 'function') {
+            window.showNomaiAlert(msg);
+        } else {
+            alert(msg);
+        }
+    };
+
+    if (!window.XLSX) {
+        showAlert('La librería XLSX no está cargada.');
+        return;
+    }
+
+    try {
+        const insights = calculateManagerialInsights(reportType);
+        let dataToExport = [];
+        let headers = ['Nombre', 'Concepto', 'Cédula / Naturaleza / Tipo', 'Jerarquía', 'Valor P1 ($)', 'Valor P2 ($)', 'Variación ($)', 'Variación (%)'];
+        let filename = '';
+
+        const employeeNames = {};
+        state.data.forEach(d => {
+            employeeNames[d.c] = d.n;
+        });
+
+        if (reportType === 'persona') {
+            let dataP1 = filterDataByPeriod(state.comparePeriod1);
+            let dataP2 = filterDataByPeriod(state.comparePeriod2);
+            const selectedCecos = state.periodCompareSelectedCecos || [];
+            if (selectedCecos.length > 0) {
+                dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+                dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+            }
+            const people = getUniquePeopleSorted();
+            const selectedCeds = state.periodCompareSelectedEmployees || [];
+            const filteredPeople = people.filter(p => {
+                if (selectedCeds.length === 0) return true;
+                return selectedCeds.includes(p.cedula);
+            });
+
+            filteredPeople.forEach(person => {
+                const cedula = person.cedula;
+                const name = person.name;
+                const p1Rows = dataP1.filter(d => d.c === cedula);
+                const p2Rows = dataP2.filter(d => d.c === cedula);
+                if (p1Rows.length === 0 && p2Rows.length === 0) return;
+
+                const p1Concepts = {};
+                const p2Concepts = {};
+                const allConceptsMeta = {};
+                p1Rows.forEach(r => {
+                    p1Concepts[r.co] = (p1Concepts[r.co] || 0) + r.v;
+                    allConceptsMeta[r.co] = { na: r.na, t: r.t };
+                });
+                p2Rows.forEach(r => {
+                    p2Concepts[r.co] = (p2Concepts[r.co] || 0) + r.v;
+                    allConceptsMeta[r.co] = { na: r.na, t: r.t };
+                });
+
+                let netP1 = 0, netP2 = 0;
+                Object.keys(allConceptsMeta).forEach(co => {
+                    const meta = allConceptsMeta[co];
+                    const val1 = p1Concepts[co] || 0;
+                    const val2 = p2Concepts[co] || 0;
+                    const factor = meta.na === 'DEVENGO' ? 1 : -1;
+                    netP1 += val1 * factor;
+                    netP2 += val2 * factor;
+                });
+                const diff = netP2 - netP1;
+                const pct = netP1 !== 0 ? (diff / Math.abs(netP1)) * 100 : 0;
+
+                dataToExport.push([
+                    name,
+                    '(Total Neto)',
+                    cedula,
+                    'Colaborador (Total)',
+                    netP1,
+                    netP2,
+                    diff,
+                    pct / 100
+                ]);
+
+                const sortedConcepts = Object.keys(allConceptsMeta).sort((a,b) => {
+                    const ordA = allConceptsMeta[a].na === 'DEVENGO' ? 1 : allConceptsMeta[a].na === 'DESCUENTO' ? 2 : 3;
+                    const ordB = allConceptsMeta[b].na === 'DEVENGO' ? 1 : allConceptsMeta[b].na === 'DESCUENTO' ? 2 : 3;
+                    if (ordA !== ordB) return ordA - ordB;
+                    return a.localeCompare(b);
+                });
+
+                sortedConcepts.forEach(co => {
+                    const meta = allConceptsMeta[co];
+                    const val1 = p1Concepts[co] || 0;
+                    const val2 = p2Concepts[co] || 0;
+                    const cDiff = val2 - val1;
+                    const cPct = val1 !== 0 ? (cDiff / Math.abs(val1)) * 100 : 0;
+
+                    dataToExport.push([
+                        name,
+                        co,
+                        meta.na,
+                        'Concepto Detalle',
+                        val1,
+                        val2,
+                        cDiff,
+                        cPct / 100
+                    ]);
+                });
+            });
+
+            filename = `Comparativo_Personas_Jerarquico_${getPeriodLabel(insights.p1).replace(/\s+/g, '_')}_vs_${getPeriodLabel(insights.p2).replace(/\s+/g, '_')}.xlsx`;
+
+        } else if (reportType === 'concepto') {
+            let dataP1 = filterDataByPeriod(state.conceptComparePeriod1);
+            let dataP2 = filterDataByPeriod(state.conceptComparePeriod2);
+            const selectedCecos = state.conceptCompareSelectedCecos || [];
+            if (selectedCecos.length > 0) {
+                dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+                dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+            }
+            const allConcepts = [...new Set(state.data.map(d => d.co))];
+            const selectedConcepts = state.conceptCompareSelectedConcepts || [];
+            const filteredConcepts = allConcepts.filter(co => {
+                if (selectedConcepts.length === 0) return true;
+                return selectedConcepts.includes(co);
+            });
+
+            filteredConcepts.forEach(co => {
+                const p1Rows = dataP1.filter(d => d.co === co);
+                const p2Rows = dataP2.filter(d => d.co === co);
+                if (p1Rows.length === 0 && p2Rows.length === 0) return;
+
+                const p1Employees = {};
+                const p2Employees = {};
+                const allEmployees = new Set();
+                let conceptNature = 'DEVENGO';
+                p1Rows.forEach(r => {
+                    p1Employees[r.c] = (p1Employees[r.c] || 0) + r.v;
+                    allEmployees.add(r.c);
+                    conceptNature = r.na;
+                });
+                p2Rows.forEach(r => {
+                    p2Employees[r.c] = (p2Employees[r.c] || 0) + r.v;
+                    allEmployees.add(r.c);
+                    conceptNature = r.na;
+                });
+
+                let totalP1 = 0, totalP2 = 0;
+                allEmployees.forEach(c => {
+                    totalP1 += p1Employees[c] || 0;
+                    totalP2 += p2Employees[c] || 0;
+                });
+                const diff = totalP2 - totalP1;
+                const pct = totalP1 !== 0 ? (diff / Math.abs(totalP1)) * 100 : 0;
+
+                dataToExport.push([
+                    '(Todos)',
+                    co,
+                    conceptNature,
+                    'Concepto (Total)',
+                    totalP1,
+                    totalP2,
+                    diff,
+                    pct / 100
+                ]);
+
+                const sortedBreakdown = [...allEmployees].map(c => {
+                    const ev1 = p1Employees[c] || 0;
+                    const ev2 = p2Employees[c] || 0;
+                    const ediff = ev2 - ev1;
+                    const epct = ev1 !== 0 ? (ediff / Math.abs(ev1)) * 100 : 0;
+                    return {
+                        cedula: c,
+                        name: employeeNames[c] || 'Desconocido',
+                        v1: ev1,
+                        v2: ev2,
+                        diff: ediff,
+                        pct: epct
+                    };
+                }).sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+                sortedBreakdown.forEach(emp => {
+                    dataToExport.push([
+                        emp.name,
+                        co,
+                        emp.cedula,
+                        'Colaborador Detalle',
+                        emp.v1,
+                        emp.v2,
+                        emp.diff,
+                        emp.pct / 100
+                    ]);
+                });
+            });
+
+            filename = `Comparativo_Conceptos_Jerarquico_${getPeriodLabel(insights.p1).replace(/\s+/g, '_')}_vs_${getPeriodLabel(insights.p2).replace(/\s+/g, '_')}.xlsx`;
+
+        } else if (reportType === 'cargo') {
+            let dataP1 = filterDataByPeriod(state.cargoComparePeriod1);
+            let dataP2 = filterDataByPeriod(state.cargoComparePeriod2);
+            const selectedCecos = state.cargoCompareSelectedCecos || [];
+            if (selectedCecos.length > 0) {
+                dataP1 = dataP1.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+                dataP2 = dataP2.filter(d => selectedCecos.includes(`${d.cc} - ${d.dcc}`));
+            }
+            const cargosSet = new Set();
+            [...dataP1, ...dataP2].forEach(d => { if (d.cg) cargosSet.add(d.cg); });
+            const selectedCargos = state.cargoCompareSelectedCargos || [];
+            const filteredCargos = [...cargosSet].filter(c => {
+                if (selectedCargos.length === 0) return true;
+                return selectedCargos.includes(c);
+            }).sort();
+
+            filteredCargos.forEach(cargo => {
+                const p1RowsCargo = dataP1.filter(d => d.cg === cargo);
+                const p2RowsCargo = dataP2.filter(d => d.cg === cargo);
+                if (p1RowsCargo.length === 0 && p2RowsCargo.length === 0) return;
+
+                const cargoTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
+                p1RowsCargo.forEach(r => { if (cargoTotals[r.na]) cargoTotals[r.na].p1 += r.v; });
+                p2RowsCargo.forEach(r => { if (cargoTotals[r.na]) cargoTotals[r.na].p2 += r.v; });
+
+                const cargoNetP1 = cargoTotals.DEVENGO.p1 + cargoTotals.DESCUENTO.p1;
+                const cargoNetP2 = cargoTotals.DEVENGO.p2 + cargoTotals.DESCUENTO.p2;
+                const cargoNetDiff = cargoNetP2 - cargoNetP1;
+                const cargoNetPct = cargoNetP1 !== 0 ? (cargoNetDiff / Math.abs(cargoNetP1)) * 100 : 0;
+
+                dataToExport.push([
+                    cargo,
+                    '-',
+                    '-',
+                    'Cargo (Total)',
+                    cargoNetP1,
+                    cargoNetP2,
+                    cargoNetDiff,
+                    cargoNetPct / 100
+                ]);
+
+                const peopleMap = {};
+                [...p1RowsCargo, ...p2RowsCargo].forEach(d => { if (!peopleMap[d.c]) peopleMap[d.c] = d.n; });
+                const sortedPeople = Object.keys(peopleMap).sort((a,b) => peopleMap[a].localeCompare(peopleMap[b]));
+
+                sortedPeople.forEach(cedula => {
+                    const personName = peopleMap[cedula];
+                    const persP1 = p1RowsCargo.filter(d => d.c === cedula);
+                    const persP2 = p2RowsCargo.filter(d => d.c === cedula);
+
+                    const pTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
+                    persP1.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p1 += r.v; });
+                    persP2.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p2 += r.v; });
+
+                    const pNetP1 = pTotals.DEVENGO.p1 + pTotals.DESCUENTO.p1;
+                    const pNetP2 = pTotals.DEVENGO.p2 + pTotals.DESCUENTO.p2;
+                    const pNetDiff = pNetP2 - pNetP1;
+                    const pNetPct = pNetP1 !== 0 ? (pNetDiff / Math.abs(pNetP1)) * 100 : 0;
+
+                    dataToExport.push([
+                        personName,
+                        '-',
+                        cedula,
+                        'Colaborador Detalle',
+                        pNetP1,
+                        pNetP2,
+                        pNetDiff,
+                        pNetPct / 100
+                    ]);
+                });
+            });
+
+            filename = `Comparativo_Cargos_Jerarquico_${getPeriodLabel(insights.p1).replace(/\s+/g, '_')}_vs_${getPeriodLabel(insights.p2).replace(/\s+/g, '_')}.xlsx`;
+
+        } else if (reportType === 'ceco') {
+            let dataP1 = filterDataByPeriod(state.cecoComparePeriod1);
+            let dataP2 = filterDataByPeriod(state.cecoComparePeriod2);
+            const cecosSet = new Set();
+            [...dataP1, ...dataP2].forEach(d => { if (d.cc && d.dcc) cecosSet.add(`${d.cc} - ${d.dcc}`); });
+            const selectedCecos = state.cecoCompareSelectedCecos || [];
+            const filteredCecos = [...cecosSet].filter(c => {
+                if (selectedCecos.length === 0) return true;
+                return selectedCecos.includes(c);
+            }).sort();
+
+            filteredCecos.forEach(cecoKey => {
+                const p1RowsCeco = dataP1.filter(d => `${d.cc} - ${d.dcc}` === cecoKey);
+                const p2RowsCeco = dataP2.filter(d => `${d.cc} - ${d.dcc}` === cecoKey);
+                if (p1RowsCeco.length === 0 && p2RowsCeco.length === 0) return;
+
+                const cecoTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
+                p1RowsCeco.forEach(r => { if (cecoTotals[r.na]) cecoTotals[r.na].p1 += r.v; });
+                p2RowsCeco.forEach(r => { if (cecoTotals[r.na]) cecoTotals[r.na].p2 += r.v; });
+
+                const cecoNetP1 = cecoTotals.DEVENGO.p1 + cecoTotals.DESCUENTO.p1;
+                const cecoNetP2 = cecoTotals.DEVENGO.p2 + cecoTotals.DESCUENTO.p2;
+                const cecoNetDiff = cecoNetP2 - cecoNetP1;
+                const cecoNetPct = cecoNetP1 !== 0 ? (cecoNetDiff / Math.abs(cecoNetP1)) * 100 : 0;
+
+                dataToExport.push([
+                    cecoKey,
+                    '-',
+                    '-',
+                    'Centro de Costo (Total)',
+                    cecoNetP1,
+                    cecoNetP2,
+                    cecoNetDiff,
+                    cecoNetPct / 100
+                ]);
+
+                const peopleMap = {};
+                [...p1RowsCeco, ...p2RowsCeco].forEach(d => { if (!peopleMap[d.c]) peopleMap[d.c] = d.n; });
+                const sortedPeople = Object.keys(peopleMap).sort((a,b) => peopleMap[a].localeCompare(peopleMap[b]));
+
+                sortedPeople.forEach(cedula => {
+                    const personName = peopleMap[cedula];
+                    const persP1 = p1RowsCeco.filter(d => d.c === cedula);
+                    const persP2 = p2RowsCeco.filter(d => d.c === cedula);
+
+                    const pTotals = { DEVENGO: {p1:0,p2:0}, DESCUENTO: {p1:0,p2:0} };
+                    persP1.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p1 += r.v; });
+                    persP2.forEach(r => { if (pTotals[r.na]) pTotals[r.na].p2 += r.v; });
+
+                    const pNetP1 = pTotals.DEVENGO.p1 + pTotals.DESCUENTO.p1;
+                    const pNetP2 = pTotals.DEVENGO.p2 + pTotals.DESCUENTO.p2;
+                    const pNetDiff = pNetP2 - pNetP1;
+                    const pNetPct = pNetP1 !== 0 ? (pNetDiff / Math.abs(pNetP1)) * 100 : 0;
+
+                    dataToExport.push([
+                        personName,
+                        '-',
+                        cedula,
+                        'Colaborador Detalle',
+                        pNetP1,
+                        pNetP2,
+                        pNetDiff,
+                        pNetPct / 100
+                    ]);
+                });
+            });
+
+            filename = `Comparativo_Cecos_Jerarquico_${getPeriodLabel(insights.p1).replace(/\s+/g, '_')}_vs_${getPeriodLabel(insights.p2).replace(/\s+/g, '_')}.xlsx`;
+        }
+
+        if (!dataToExport.length) {
+            showAlert('No hay datos disponibles para exportar.');
+            return;
+        }
+
+        const sheetData = [headers, ...dataToExport];
+        const newWb = XLSX.utils.book_new();
+        const newWs = XLSX.utils.aoa_to_sheet(sheetData);
+
+        // Auto-ajustar anchos
+        const colWidths = headers.map((header, colIndex) => {
+            let maxLength = header.length;
+            const sampleSize = Math.min(200, dataToExport.length);
+            for (let i = 0; i < sampleSize; i++) {
+                const val = String(dataToExport[i][colIndex] || '');
+                if (val.length > maxLength) {
+                    maxLength = val.length;
+                }
+            }
+            return { wch: Math.min(45, maxLength + 3) };
+        });
+        newWs['!cols'] = colWidths;
+
+        XLSX.utils.book_append_sheet(newWb, newWs, 'Comparación');
+        XLSX.writeFile(newWb, filename);
+
+    } catch (error) {
+        console.error('Error al exportar tabla a Excel:', error);
+        showAlert('Ocurrió un error al exportar la tabla a Excel.');
+    }
+};
+
+async function generateManagerialReport(reportType = 'concepto') {
     // 1. Mostrar pantalla de progreso step-by-step
     const progressOverlay = document.createElement('div');
     progressOverlay.id = 'report-progress-overlay';
@@ -6024,600 +9464,1103 @@ function generateManagerialReport() {
     updateProgressStep('5-charts', 'pending', 'Renderizando graficos de analisis...');
     updateProgressStep('6-show', 'pending', 'Abriendo previsualizacion en pantalla...');
     
-    setTimeout(() => {
-        try {
-            // Paso 1: Validacion
-            updateProgressStep('1-validate', 'processing', 'Validando periodos y filtros...');
-            const p1 = state.conceptComparePeriod1;
-            const p2 = state.conceptComparePeriod2;
-            
-            if (!p1 || !p2) {
-                throw new Error("Por favor selecciona los periodos (P1 y P2) en la tabla antes de continuar.");
-            }
-            updateProgressStep('1-validate', 'success', 'Periodos validados correctamente.');
-            
-            // Paso 2: Insights
-            updateProgressStep('2-insights', 'processing', 'Calculando insights gerenciales...');
-            const insights = calculateManagerialInsights();
-            if (!insights) {
-                throw new Error("No se pudieron calcular los insights. Verifica los filtros seleccionados.");
-            }
-            updateProgressStep('2-insights', 'success', 'Insights gerenciales calculados.');
-            
-            // Paso 3: Logo
-            updateProgressStep('3-logo', 'processing', 'Cargando logo corporativo de NomAI...');
-            const logoImg = document.querySelector('.logo-img-expanded');
-            let logoBase64 = '';
-            if (logoImg) {
+    // Hacer una pausa mínima para que el overlay se dibuje
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    try {
+        // Paso 1: Validacion
+        updateProgressStep('1-validate', 'processing', 'Validando periodos y filtros...');
+        let p1, p2;
+        if (reportType === 'persona') {
+            p1 = state.comparePeriod1;
+            p2 = state.comparePeriod2;
+        } else if (reportType === 'ceco') {
+            p1 = state.cecoComparePeriod1;
+            p2 = state.cecoComparePeriod2;
+        } else if (reportType === 'cargo') {
+            p1 = state.cargoComparePeriod1;
+            p2 = state.cargoComparePeriod2;
+        } else {
+            p1 = state.conceptComparePeriod1;
+            p2 = state.conceptComparePeriod2;
+        }
+        
+        if (!p1 || !p2) {
+            throw new Error("Por favor selecciona los periodos (P1 y P2) en la tabla antes de continuar.");
+        }
+        updateProgressStep('1-validate', 'success', 'Periodos validados correctamente.');
+        
+        // Paso 2: Insights
+        updateProgressStep('2-insights', 'processing', 'Calculando insights gerenciales...');
+        const insights = calculateManagerialInsights(reportType);
+        if (!insights) {
+            throw new Error("No se pudieron calcular los insights. Verifica los filtros seleccionados.");
+        }
+        updateProgressStep('2-insights', 'success', 'Insights gerenciales calculados.');
+
+        let selectedCecos = [];
+        if (reportType === 'persona') {
+            selectedCecos = state.periodCompareSelectedCecos || [];
+        } else if (reportType === 'cargo') {
+            selectedCecos = state.cargoCompareSelectedCecos || [];
+        } else if (reportType === 'concepto') {
+            selectedCecos = state.conceptCompareSelectedCecos || [];
+        }
+        const selectedCecosLabel = selectedCecos.length > 0
+            ? (selectedCecos.length === 1 ? selectedCecos[0].split(' - ')[0] : `${selectedCecos.length} Seleccionados`)
+            : 'Todos';
+
+        let specificFilterLabel = 'Todos';
+        let specificFilterTitle = 'Filtro Colaborador';
+        if (reportType === 'persona') {
+            specificFilterTitle = 'Filtro Colaborador';
+            const emps = state.periodCompareSelectedEmployees || [];
+            specificFilterLabel = emps.length > 0
+                ? (emps.length === 1 ? getEmployeeNameByCedula(emps[0]) : `${emps.length} Seleccionados`)
+                : 'Todos';
+        } else if (reportType === 'concepto') {
+            specificFilterTitle = 'Filtro Concepto';
+            const concs = state.conceptCompareSelectedConcepts || [];
+            specificFilterLabel = concs.length > 0
+                ? (concs.length === 1 ? concs[0] : `${concs.length} Seleccionados`)
+                : 'Todos';
+        } else if (reportType === 'cargo') {
+            specificFilterTitle = 'Filtro Cargo';
+            const cargos = state.cargoCompareSelectedCargos || [];
+            specificFilterLabel = cargos.length > 0
+                ? (cargos.length === 1 ? cargos[0] : `${cargos.length} Seleccionados`)
+                : 'Todos';
+        } else if (reportType === 'ceco') {
+            specificFilterTitle = 'Filtro Ceco';
+            const cecos = state.cecoCompareSelectedCecos || [];
+            specificFilterLabel = cecos.length > 0
+                ? (cecos.length === 1 ? cecos[0].split(' - ')[0] : `${cecos.length} Seleccionados`)
+                : 'Todos';
+        }
+        
+        // Paso 3: Logo
+        updateProgressStep('3-logo', 'processing', 'Cargando logo corporativo de NomAI...');
+        
+        // Carga dinámica del logo real con fondo blanco garantizado
+        const logoBase64 = await (async () => {
+            try {
+                const img = new Image();
+                // Intentar primero logo-report.png, luego logo-expanded.png como fallback
+                const logoSrc = 'logo-report.png';
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = logoSrc + '?nocache=' + Date.now();
+                });
+                // Dibujar sobre canvas con fondo blanco para eliminar transparencias
+                const canvas = document.createElement('canvas');
+                // Escalar proporcionalmente a max 600px de ancho para el reporte
+                const maxW = 600;
+                const scale = img.width > maxW ? maxW / img.width : 1;
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                return canvas.toDataURL('image/png');
+            } catch (e) {
+                // Fallback: intentar logo-expanded.png
                 try {
-                    const canvas = document.createElement("canvas");
-                    canvas.width = logoImg.naturalWidth || logoImg.width;
-                    canvas.height = logoImg.naturalHeight || logoImg.height;
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(logoImg, 0, 0);
-                    logoBase64 = canvas.toDataURL("image/png");
-                } catch (e) {
-                    console.error("Error al convertir logo a base64:", e);
-                    logoBase64 = 'logo-expanded.png';
+                    const imgFb = new Image();
+                    await new Promise((resolve, reject) => {
+                        imgFb.onload = resolve;
+                        imgFb.onerror = reject;
+                        imgFb.src = 'logo-expanded.png?nocache=' + Date.now();
+                    });
+                    const cvsFb = document.createElement('canvas');
+                    const maxW = 600;
+                    const scale = imgFb.width > maxW ? maxW / imgFb.width : 1;
+                    cvsFb.width = Math.round(imgFb.width * scale);
+                    cvsFb.height = Math.round(imgFb.height * scale);
+                    const ctxFb = cvsFb.getContext('2d');
+                    ctxFb.fillStyle = '#ffffff';
+                    ctxFb.fillRect(0, 0, cvsFb.width, cvsFb.height);
+                    ctxFb.drawImage(imgFb, 0, 0, cvsFb.width, cvsFb.height);
+                    return cvsFb.toDataURL('image/png');
+                } catch (e2) {
+                    // Último fallback: texto SVG como logo
+                    return 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50"><rect width="200" height="50" fill="white"/><text x="10" y="35" font-family="Arial" font-size="28" font-weight="bold" fill="#1e1b4b">NomAI</text></svg>');
                 }
-            } else {
-                logoBase64 = 'logo-expanded.png';
             }
-            updateProgressStep('3-logo', 'success', 'Logo cargado exitosamente.');
+        })();
+        updateProgressStep('3-logo', 'success', 'Logo cargado exitosamente.');
+        
+        // Paso 4: Construyendo maqueta
+        updateProgressStep('4-template', 'processing', 'Construyendo maqueta del reporte...');
+        
+        const formatPercentage = (val) => (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+        
+        // Helper para pintar badges de variación (Verde si > 0, Rojo si < 0)
+        const getTrendBadge = (diff, pct, label = '') => {
+            const isNeutral = Math.abs(diff) < 0.01;
+            let color = '#475569';
+            let bg = '#f1f5f9';
+            let border = '#cbd5e1';
+            let icon = '';
             
-            // Paso 4: Construyendo maqueta
-            updateProgressStep('4-template', 'processing', 'Construyendo maqueta del reporte...');
-            const formatPercentage = (val) => (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+            if (!isNeutral) {
+                if (diff > 0) {
+                    color = '#059669'; // verde para positivo
+                    bg = 'rgba(16, 185, 129, 0.08)';
+                    border = 'rgba(16, 185, 129, 0.2)';
+                    icon = '↑';
+                } else {
+                    color = '#e11d48'; // rojo para negativo
+                    bg = 'rgba(244, 63, 94, 0.08)';
+                    border = 'rgba(244, 63, 94, 0.2)';
+                    icon = '↓';
+                }
+            }
             
-            // Remover modal existente si lo hay
-            const existingPreview = document.getElementById('report-preview-overlay');
-            if (existingPreview) existingPreview.remove();
-            
-            const previewOverlay = document.createElement('div');
-            previewOverlay.id = 'report-preview-overlay';
-            previewOverlay.style.position = 'fixed';
-            previewOverlay.style.top = '0';
-            previewOverlay.style.left = '0';
-            previewOverlay.style.width = '100vw';
-            previewOverlay.style.height = '100vh';
-            previewOverlay.style.background = 'rgba(15, 23, 42, 0.75)';
-            previewOverlay.style.backdropFilter = 'blur(10px)';
-            previewOverlay.style.zIndex = '9999';
-            previewOverlay.style.display = 'flex';
-            previewOverlay.style.flexDirection = 'column';
-            previewOverlay.style.fontFamily = "'Outfit', sans-serif";
-            
-            previewOverlay.innerHTML = `
-                <style>
-                    .report-preview-header {
-                        background: rgba(30, 27, 75, 0.95);
-                        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-                        padding: 15px 30px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        flex-shrink: 0;
-                        color: white;
-                    }
-                    .report-preview-body {
-                        flex-grow: 1;
-                        overflow-y: auto;
-                        padding: 30px 20px;
-                        background: #0f172a;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                    }
+            return `
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 8pt; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border}; white-space: nowrap;">
+                    <span>${icon}</span>
+                    <span>${formatPercentage(pct)}</span>
+                    ${label ? `<span style="font-size: 7.5pt; font-weight: normal; margin-left: 2px; opacity: 0.85;">(${label})</span>` : ''}
+                </span>
+            `;
+        };
+
+        const getTrendBadgeSimple = (diff, pct) => {
+            const isPositive = diff >= 0;
+            const color = isPositive ? '#059669' : '#e11d48';
+            const bg = isPositive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)';
+            const border = isPositive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)';
+            const icon = isPositive ? '↑' : '↓';
+            return `
+                <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 12px; font-size: 7.5pt; font-weight: 600; color: ${color}; background: ${bg}; border: 1px solid ${border};">
+                    <span>${icon}</span>
+                    <span>${formatPercentage(pct)}</span>
+                </span>
+            `;
+        };
+
+        // Helper: etiqueta descriptiva del tipo de reporte
+        const reportTitles = {
+            'concepto': 'Análisis Detallado por Conceptos de Nómina',
+            'persona':  'Análisis Masivo por Persona (Colaborador)',
+            'ceco':     'Análisis Masivo por Centro de Costo',
+            'cargo':    'Análisis Masivo por Cargo'
+        };
+        const reportTitle = reportTitles[reportType] || reportTitles['concepto'];
+
+        // Remover modal existente si lo hay
+        const existingPreview = document.getElementById('report-preview-overlay');
+        if (existingPreview) existingPreview.remove();
+        
+        const previewOverlay = document.createElement('div');
+        previewOverlay.id = 'report-preview-overlay';
+        previewOverlay.style.position = 'fixed';
+        previewOverlay.style.top = '0';
+        previewOverlay.style.left = '0';
+        previewOverlay.style.width = '100vw';
+        previewOverlay.style.height = '100vh';
+        previewOverlay.style.background = 'rgba(15, 23, 42, 0.75)';
+        previewOverlay.style.backdropFilter = 'blur(10px)';
+        previewOverlay.style.zIndex = '9999';
+        previewOverlay.style.display = 'flex';
+        previewOverlay.style.flexDirection = 'column';
+        previewOverlay.style.fontFamily = "'Outfit', sans-serif";
+        
+        const devengosIsPositive = insights.totals.devengosDiff >= 0;
+        const devengosBg = devengosIsPositive ? '#ecfdf5' : '#fef2f2'; // verde si positivo, rojo si negativo
+        const devengosBorder = devengosIsPositive ? '#a7f3d0' : '#fecaca';
+        const devengosText = devengosIsPositive ? '#047857' : '#b91c1c';
+        const devengosValText = devengosIsPositive ? '#065f46' : '#991b1b';
+
+        const descuentosIsPositive = insights.totals.descuentosDiff >= 0;
+        const descuentosBg = descuentosIsPositive ? '#ecfdf5' : '#fef2f2'; // verde si positivo, rojo si negativo
+        const descuentosBorder = descuentosIsPositive ? '#a7f3d0' : '#fecaca';
+        const descuentosText = descuentosIsPositive ? '#047857' : '#b91c1c';
+        const descuentosValText = descuentosIsPositive ? '#065f46' : '#991b1b';
+
+        const netIsPositive = insights.totals.netDiff >= 0;
+        const netBg = netIsPositive ? '#ecfdf5' : '#fef2f2'; // verde si positivo, rojo si negativo
+        const netBorder = netIsPositive ? '#a7f3d0' : '#fecaca';
+        const netText = netIsPositive ? '#047857' : '#b91c1c';
+        const netValText = netIsPositive ? '#065f46' : '#991b1b';
+
+        const alert = insights.complianceAlert;
+        let alertBg = 'rgba(16, 185, 129, 0.02)';
+        let alertBorder = '#a7f3d0';
+        let alertText = '#047857';
+        let alertIcon = '✔️';
+        if (alert.severity === 'danger') {
+            alertBg = 'rgba(239, 68, 68, 0.02)';
+            alertBorder = '#fecaca';
+            alertText = '#b91c1c';
+            alertIcon = '⚠️';
+        } else if (alert.severity === 'warning') {
+            alertBg = 'rgba(245, 158, 11, 0.02)';
+            alertBorder = '#fef3c7';
+            alertText = '#d97706';
+            alertIcon = '⚠️';
+        }
+
+        const atipicEmps = insights.empDetails.filter(e => Math.abs(e.pct) >= 30);
+        const atipicText = atipicEmps.length > 0 
+            ? `Se detectaron desviaciones atípicas de salario neto superiores al 30% en: ${atipicEmps.slice(0, 3).map(e => `<strong>${e.name}</strong> (${formatPercentage(e.pct)})`).join(', ')}. Se sugiere auditar causales de variación.`
+            : `No se registraron colaboradores con desviaciones salariales netas superiores al 30%, indicando un comportamiento individual estable.`;
+
+        previewOverlay.innerHTML = `
+            <style>
+                .report-preview-header {
+                    background: rgba(30, 27, 75, 0.95);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+                    padding: 15px 30px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-shrink: 0;
+                    color: white;
+                }
+                .report-preview-body {
+                    flex-grow: 1;
+                    overflow-y: auto;
+                    padding: 30px 20px;
+                    background: #0f172a;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .report-page-sheet {
+                    width: 215.9mm;
+                    height: 279.4mm; /* Letter size */
+                    background: white;
+                    color: #334155;
+                    padding: 16mm 20mm;
+                    margin-bottom: 40px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                    box-sizing: border-box;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+                .report-header-section {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 2px solid #1e1b4b;
+                    padding-bottom: 8px;
+                    height: 52px;
+                    box-sizing: border-box;
+                }
+                .report-footer-section {
+                    border-top: 1px solid #e2e8f0;
+                    padding-top: 10px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 8pt;
+                    color: #94a3b8;
+                    font-weight: 500;
+                    height: 25px;
+                    box-sizing: border-box;
+                }
+                .report-body-container {
+                    flex-grow: 1;
+                    padding: 15px 0;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-around;
+                }
+                .report-page-sheet table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .report-page-sheet table th {
+                    background: #f8fafc;
+                    border-bottom: 2px solid #e2e8f0;
+                    color: #1e293b;
+                    font-weight: 600;
+                }
+                .report-page-sheet table td {
+                    border-bottom: 1px solid #f1f5f9;
+                    color: #475569;
+                }
+                @media (max-width: 768px) {
                     .report-page-sheet {
-                        width: 210mm;
-                        min-height: 279mm; /* Letter size */
-                        background: white;
-                        color: #1e1b4b;
-                        padding: 20mm;
-                        margin-bottom: 40px;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-                        box-sizing: border-box;
-                        border-radius: 8px;
-                        position: relative;
+                        width: 100%;
+                        height: auto;
+                        min-height: 279mm;
+                        padding: 15px;
+                        margin-bottom: 20px;
                     }
-                    .report-page-sheet table th, .report-page-sheet table td {
-                        border-bottom: 1px solid #e5e7eb;
+                    .report-preview-header {
+                        padding: 10px 15px;
                     }
-                    @media (max-width: 768px) {
-                        .report-page-sheet {
-                            width: 100%;
-                            min-height: auto;
-                            padding: 15px;
-                            margin-bottom: 20px;
-                        }
-                        .report-preview-header {
-                            padding: 10px 15px;
-                        }
-                        .report-preview-title {
-                            font-size: 1rem;
-                        }
+                    .report-preview-title {
+                        font-size: 1rem;
                     }
-                </style>
-                
-                <div class="report-preview-header">
-                    <div>
-                        <h2 class="report-preview-title" style="margin: 0; font-size: 1.2rem; font-weight: 600; color: white;">Previsualizacion de Informe Gerencial NomAI</h2>
-                        <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #cbd5e1;">Periodos: ${getPeriodLabel(insights.p1)} vs ${getPeriodLabel(insights.p2)}</p>
-                    </div>
-                    <div>
-                        <button id="btn-close-report-preview" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; font-weight: 500;">
-                            <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cerrar Informe
-                        </button>
-                    </div>
+                }
+            </style>
+            
+            <div class="report-preview-header">
+                <div>
+                    <h2 class="report-preview-title" style="margin: 0; font-size: 1.2rem; font-weight: 600; color: white;">Previsualización de Informe Gerencial NomAI</h2>
+                    <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #cbd5e1;">Periodos: ${getPeriodLabel(insights.p1)} vs ${getPeriodLabel(insights.p2)}</p>
                 </div>
-                
-                <div class="report-preview-body">
-                    <!-- Page 1: Portada -->
-                    <div class="report-page-sheet">
-                        <!-- Header Portada -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #6C00D3; padding-bottom: 15px;">
-                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 35px;" />
-                            <div style="text-align: right; font-size: 9pt; color: #6b7280; font-weight: 500;">REPORTES CORPORATIVOS</div>
-                        </div>
-
-                        <!-- Cuerpo Portada -->
-                        <div style="margin-top: 40px; min-height: 170mm; display: flex; flex-direction: column; justify-content: center;">
-                            <span style="display: inline-block; width: fit-content; background: rgba(108, 0, 211, 0.08); color: #6C00D3; padding: 5px 12px; border-radius: 20px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">Analisis Financiero de Nomina</span>
-                            <h1 style="font-size: 26pt; font-weight: 800; line-height: 1.2; color: #1e1b4b; margin: 0 0 15px 0;">INFORME GERENCIAL DE VARIACIONES</h1>
-                            <h2 style="font-size: 16pt; font-weight: 500; color: #4b5563; margin: 0 0 30px 0; border-left: 4px solid #6C00D3; padding-left: 15px;">Variaciones de Conceptos de Nomina</h2>
-
-                            <!-- Metadatos de la Comparacion -->
-                            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                <div>
-                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Periodo Base (P1)</div>
-                                    <div style="font-size: 11pt; font-weight: 600; color: #1f2937;">${getPeriodLabel(insights.p1)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Periodo Comparado (P2)</div>
-                                    <div style="font-size: 11pt; font-weight: 600; color: #1f2937;">${getPeriodLabel(insights.p2)}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Filtros de Tipo de Nomina</div>
-                                    <div style="font-size: 10pt; font-weight: 500; color: #1f2937;">${state.selectedTipoNomina && state.selectedTipoNomina.length > 0 ? state.selectedTipoNomina.join(', ') : 'Todos'}</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 8pt; text-transform: uppercase; color: #9ca3af; font-weight: 600; letter-spacing: 0.5px;">Fecha de Emision</div>
-                                    <div style="font-size: 10pt; font-weight: 500; color: #1f2937;">${new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}</div>
-                                </div>
-                            </div>
-
-                            <!-- Resumen Ejecutivo -->
-                            <div style="margin-top: 10px;">
-                                <h3 style="font-size: 13pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px;">Resumen Ejecutivo</h3>
-                                <p style="font-size: 10pt; color: #374151; text-align: justify; line-height: 1.6; margin: 0 0 10px 0;">
-                                    El presente informe provee un analisis gerencial de las variaciones identificadas en la nomina al comparar el periodo <strong>${getPeriodLabel(insights.p1)}</strong> con el periodo <strong>${getPeriodLabel(insights.p2)}</strong>. 
-                                    El gasto neto total por concepto para esta seleccion paso de <strong>${currencyFormatter.format(insights.totals.netP1)}</strong> a <strong>${currencyFormatter.format(insights.totals.netP2)}</strong>, lo que representa una variacion neta de <strong>${currencyFormatter.format(insights.totals.netDiff)}</strong> (${formatPercentage(insights.totals.netPct)}).
-                                </p>
-                                <p style="font-size: 10pt; color: #374151; text-align: justify; line-height: 1.6; margin: 0;">
-                                    Este comportamiento financiero esta determinado principalmente por un cambio en los devengos totales del <strong>${formatPercentage(insights.totals.devengosPct)}</strong> (${currencyFormatter.format(insights.totals.devengosDiff)}) y una variacion en los descuentos totales del <strong>${formatPercentage(insights.totals.descuentosPct)}</strong> (${currencyFormatter.format(insights.totals.descuentosDiff)}). A continuacion se detallan los principales drivers y el desglose de estas variaciones.
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Footer Portada -->
-                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                            <div>Confidencial - Pagina 1 de 4</div>
-                        </div>
+                <div style="display: flex; gap: 12px;">
+                    <button id="btn-download-pdf" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; padding: 6px 18px; border-radius: 20px; font-weight: 500; background: #1e1b4b; border: none; color: white; cursor: pointer; transition: background 0.2s;">
+                        <i data-lucide="download" style="width: 16px; height: 16px;"></i> Descargar PDF
+                    </button>
+                    <button id="btn-close-report-preview" class="btn btn-secondary" style="display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; font-weight: 500; cursor: pointer;">
+                        <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cerrar Informe
+                    </button>
+                </div>
+            </div>
+            
+            <div class="report-preview-body">
+                <!-- Page 1: Portada y Resumen Ejecutivo -->
+                <div class="report-page-sheet">
+                    <div class="report-header-section">
+                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 40px;" />
+                        <div style="text-align: right; font-size: 8pt; color: #94a3b8; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">${reportTitle}</div>
                     </div>
 
-                    <!-- Page 2: Analisis Macroeconomico y Graficos -->
-                    <div class="report-page-sheet">
-                        <!-- Header comun -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
-                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
-                            <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
+                    <div class="report-body-container" style="justify-content: flex-start; gap: 15px; margin-top: 10px;">
+                        <div>
+                            <h1 style="font-size: 20pt; font-weight: 800; line-height: 1.25; color: #1e1b4b; margin: 0 0 5px 0; letter-spacing: -0.5px; border-left: 4px solid #1e1b4b; padding-left: 12px; text-transform: uppercase;">Informe Ejecutivo de Variación de Nómina</h1>
+                            <p style="font-size: 8.5pt; color: #64748b; margin: 2px 0 0 12px;">Diseñado para la Dirección de Recursos Humanos, CFO y Gerencia General.</p>
                         </div>
 
-                        <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">1. Analisis Macroeconomico</h3>
-                        <p style="font-size: 9.5pt; color: #4b5563; margin-bottom: 20px; line-height: 1.4;">
-                            Resumen comparativo de la estructura general de la nomina para los conceptos analizados. Los devengos representan las percepciones brutas de los colaboradores, mientras que los descuentos corresponden a deducciones legales o internas.
-                        </p>
-
-                        <!-- Tabla comparativa macro -->
-                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 9.5pt;">
-                            <thead>
-                                <tr style="background: #6C00D3; color: white;">
-                                    <th style="padding: 10px; text-align: left; font-weight: 600; border-top-left-radius: 6px; border-bottom-left-radius: 6px;">Estructura de Nomina</th>
-                                    <th style="padding: 10px; text-align: right; font-weight: 600;">P1: ${getPeriodLabel(insights.p1)}</th>
-                                    <th style="padding: 10px; text-align: right; font-weight: 600;">P2: ${getPeriodLabel(insights.p2)}</th>
-                                    <th style="padding: 10px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                    <th style="padding: 10px; text-align: right; font-weight: 600; border-top-right-radius: 6px; border-bottom-right-radius: 6px;">Variacion (%)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="border-bottom: 1px solid #e5e7eb;">
-                                    <td style="padding: 10px; font-weight: 500;">(+) Devengos Totales</td>
-                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.devengosP1)}</td>
-                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.devengosP2)}</td>
-                                    <td style="padding: 10px; text-align: right; font-weight: 500; color: ${insights.totals.devengosDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.devengosDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.devengosDiff)}</td>
-                                    <td style="padding: 10px; text-align: right; font-weight: 600; color: ${insights.totals.devengosDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.devengosDiff >= 0 ? '+' : ''}${insights.totals.devengosPct.toFixed(2)}%</td>
-                                </tr>
-                                <tr style="border-bottom: 1px solid #e5e7eb;">
-                                    <td style="padding: 10px; font-weight: 500;">(-) Descuentos Totales</td>
-                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.descuentosP1)}</td>
-                                    <td style="padding: 10px; text-align: right;">${currencyFormatter.format(insights.totals.descuentosP2)}</td>
-                                    <td style="padding: 10px; text-align: right; font-weight: 500; color: ${insights.totals.descuentosDiff >= 0 ? '#ef4444' : '#10b981'};">${insights.totals.descuentosDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.descuentosDiff)}</td>
-                                    <td style="padding: 10px; text-align: right; font-weight: 600; color: ${insights.totals.descuentosDiff >= 0 ? '#ef4444' : '#10b981'};">${insights.totals.descuentosDiff >= 0 ? '+' : ''}${insights.totals.descuentosPct.toFixed(2)}%</td>
-                                </tr>
-                                <tr style="background: #f9fafb; font-weight: bold; border-bottom: 2px solid #e5e7eb;">
-                                    <td style="padding: 12px 10px; color: #6C00D3;">(=) Gasto Neto Consolidado</td>
-                                    <td style="padding: 12px 10px; text-align: right;">${currencyFormatter.format(insights.totals.netP1)}</td>
-                                    <td style="padding: 12px 10px; text-align: right;">${currencyFormatter.format(insights.totals.netP2)}</td>
-                                    <td style="padding: 12px 10px; text-align: right; color: ${insights.totals.netDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.netDiff >= 0 ? '+' : ''}${currencyFormatter.format(insights.totals.netDiff)}</td>
-                                    <td style="padding: 12px 10px; text-align: right; color: ${insights.totals.netDiff >= 0 ? '#10b981' : '#ef4444'};">${insights.totals.netDiff >= 0 ? '+' : ''}${insights.totals.netPct.toFixed(2)}%</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <!-- Graficos de Comparacion -->
-                        <div style="margin-top: 15px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; align-items: center;">
-                            <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
-                                <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0; text-transform: uppercase;">Comparacion Estructural de Periodos</h4>
-                                <canvas id="chart-macro-comparison" width="310" height="170" style="margin: 0 auto;"></canvas>
+                        <!-- Metadatos de Filtros Aplicados -->
+                        <div style="background: #1e1b4b; color: white; border-radius: 12px; padding: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 7.5pt; box-sizing: border-box;">
+                            <div>
+                                <span style="opacity: 0.75; display: block; text-transform: uppercase; font-size: 6.5pt; font-weight: 600; letter-spacing: 0.2px;">Periodo 1 (Base)</span>
+                                <strong style="font-size: 8.5pt; margin-top: 2px; display: block;">${getPeriodLabel(insights.p1)}</strong>
                             </div>
-                            <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
-                                <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 12px 0; text-transform: uppercase;">Composicion P2</h4>
-                                <canvas id="chart-macro-pie" width="230" height="170" style="margin: 0 auto;"></canvas>
+                            <div>
+                                <span style="opacity: 0.75; display: block; text-transform: uppercase; font-size: 6.5pt; font-weight: 600; letter-spacing: 0.2px;">Periodo 2 (Comparado)</span>
+                                <strong style="font-size: 8.5pt; margin-top: 2px; display: block;">${getPeriodLabel(insights.p2)}</strong>
+                            </div>
+                            <div>
+                                <span style="opacity: 0.75; display: block; text-transform: uppercase; font-size: 6.5pt; font-weight: 600; letter-spacing: 0.2px;">Filtro Centro Costo</span>
+                                <strong style="font-size: 8pt; margin-top: 2px; display: block; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${selectedCecosLabel}">${selectedCecosLabel}</strong>
+                            </div>
+                            <div>
+                                <span style="opacity: 0.75; display: block; text-transform: uppercase; font-size: 6.5pt; font-weight: 600; letter-spacing: 0.2px;">Filtro Cargo / Específico</span>
+                                <strong style="font-size: 8pt; margin-top: 2px; display: block; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${specificFilterLabel}">${specificFilterLabel}</strong>
                             </div>
                         </div>
 
-                        <!-- Footer Pagina 2 -->
-                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 35px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                            <div>Confidencial - Pagina 2 de 4</div>
-                        </div>
-                    </div>
-
-                    <!-- Page 3: Principales Variaciones e Insights -->
-                    <div class="report-page-sheet">
-                        <!-- Header comun -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
-                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
-                            <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
-                        </div>
-
-                        <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">2. Drivers Principales de Variacion</h3>
-                        
-                        <!-- Bloque de Insights Principales -->
-                        <div style="margin-bottom: 20px;">
-                            <div style="background: rgba(108, 0, 211, 0.03); border-left: 4px solid #6C00D3; border-radius: 0 8px 8px 0; padding: 12px; margin-bottom: 12px; font-size: 9.5pt;">
-                                <strong style="color: #6C00D3; display: block; margin-bottom: 4px;">Principales Incrementos de Costo (Drivers de Alza)</strong>
-                                ${insights.topIncreases.length > 0 ? `
-                                    <ul style="margin: 0; padding-left: 20px; line-height: 1.4; color: #374151;">
-                                        ${insights.topIncreases.map(inc => `
-                                            <li>El concepto <strong>${inc.co}</strong> (${inc.na}) aumento en <strong>${currencyFormatter.format(inc.diff)}</strong> (+${inc.pct.toFixed(1)}%).</li>
-                                        `).join('')}
-                                    </ul>
-                                ` : '<span style="color:#6b7280;">No se registraron incrementos significativos de costo.</span>'}
+                        <!-- Balance Financiero Comparativo (Macros) -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; box-sizing: border-box;">
+                            <h3 style="font-size: 8.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px;">Balance Financiero Global (P1 vs P2)</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                                <!-- KPI Devengos -->
+                                <div style="border: 1px solid ${devengosBorder}; border-radius: 10px; padding: 10px; background: ${devengosBg};">
+                                    <div style="font-size: 7.5pt; font-weight: 600; color: ${devengosText}; text-transform: uppercase;">Total Devengos</div>
+                                    <div style="font-size: 11pt; font-weight: 800; color: ${devengosValText}; margin: 3px 0;">${currencyFormatter.format(insights.totals.devengosP2)}</div>
+                                    <div style="font-size: 7pt; color: #64748b;">Antes: ${currencyFormatter.format(insights.totals.devengosP1)}</div>
+                                    <div style="margin-top: 6px;">
+                                        ${getTrendBadge(insights.totals.devengosDiff, insights.totals.devengosPct)}
+                                    </div>
+                                </div>
+                                <!-- KPI Descuentos -->
+                                <div style="border: 1px solid ${descuentosBorder}; border-radius: 10px; padding: 10px; background: ${descuentosBg};">
+                                    <div style="font-size: 7.5pt; font-weight: 600; color: ${descuentosText}; text-transform: uppercase;">Total Descuentos</div>
+                                    <div style="font-size: 11pt; font-weight: 800; color: ${descuentosValText}; margin: 3px 0;">${currencyFormatter.format(insights.totals.descuentosP2)}</div>
+                                    <div style="font-size: 7pt; color: #64748b;">Antes: ${currencyFormatter.format(insights.totals.descuentosP1)}</div>
+                                    <div style="margin-top: 6px;">
+                                        ${getTrendBadge(insights.totals.descuentosDiff, insights.totals.descuentosPct)}
+                                    </div>
+                                </div>
+                                <!-- KPI Neto -->
+                                <div style="border: 1px solid ${netBorder}; border-radius: 10px; padding: 10px; background: ${netBg};">
+                                    <div style="font-size: 7.5pt; font-weight: 600; color: ${netText}; text-transform: uppercase;">Gasto Neto Nómina</div>
+                                    <div style="font-size: 11pt; font-weight: 800; color: ${netValText}; margin: 3px 0;">${currencyFormatter.format(insights.totals.netP2)}</div>
+                                    <div style="font-size: 7pt; color: #64748b;">Antes: ${currencyFormatter.format(insights.totals.netP1)}</div>
+                                    <div style="margin-top: 6px;">
+                                        ${getTrendBadge(insights.totals.netDiff, insights.totals.netPct)}
+                                    </div>
+                                </div>
                             </div>
+                        </div>
 
-                            <div style="background: rgba(239, 68, 68, 0.03); border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0; padding: 12px; margin-bottom: 12px; font-size: 9.5pt;">
-                                <strong style="color: #ef4444; display: block; margin-bottom: 4px;">Principales Reducciones de Costo o Retenciones</strong>
-                                ${insights.topReductions.length > 0 ? `
-                                    <ul style="margin: 0; padding-left: 20px; line-height: 1.4; color: #374151;">
-                                        ${insights.topReductions.map(red => `
-                                            <li>El concepto <strong>${red.co}</strong> (${red.na}) disminuyo en <strong>${currencyFormatter.format(Math.abs(red.diff))}</strong> (${red.pct.toFixed(1)}%).</li>
-                                        `).join('')}
-                                    </ul>
-                                ` : '<span style="color:#6b7280;">No se registraron reducciones significativas.</span>'}
+                        <!-- Conector visual dashed direct -->
+                        <div style="width: 100%; display: flex; justify-content: center; align-items: center; margin: 2px 0;">
+                            <div style="width: 95%; height: 1.5px; border-top: 1.5px dashed #cbd5e1;"></div>
+                        </div>
+
+                        <!-- Sección de Headcount (Altas vs Bajas con montos) -->
+                        <div style="border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden; box-sizing: border-box;">
+                            <div style="background: #f8fafc; border-bottom: 1px solid #cbd5e1; padding: 8px 12px; font-weight: 700; font-size: 8pt; color: #1e1b4b; text-transform: uppercase; letter-spacing: 0.5px;">
+                                👥 Análisis de Ingresos y Retiros de Personal (Efecto Headcount)
                             </div>
-
-                            <!-- Conceptos nuevos y descontinuados -->
-                            ${insights.newConcepts.length > 0 || insights.inactiveConcepts.length > 0 ? `
-                                <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 9pt;">
-                                    <strong style="color: #1e1b4b; display: block; margin-bottom: 6px; text-transform: uppercase; font-size: 8.5pt;">Matriz de Conceptos: Cambios Estructurales</strong>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                        <div>
-                                            <span style="font-weight: 600; color: #10b981; font-size: 8.5pt;">Nuevos Conceptos (P2):</span>
-                                            ${insights.newConcepts.length > 0 ? `
-                                                <ul style="margin: 4px 0 0 0; padding-left: 15px; color: #4b5563;">
-                                                    ${insights.newConcepts.slice(0, 3).map(nc => `<li><strong>${nc.co}</strong>: ${currencyFormatter.format(nc.v2)}</li>`).join('')}
-                                                </ul>
-                                            ` : '<div style="color:#9ca3af; margin-top:2px;">Ninguno</div>'}
-                                        </div>
-                                        <div>
-                                            <span style="font-weight: 600; color: #ef4444; font-size: 8.5pt;">Conceptos Inactivos (P1):</span>
-                                            ${insights.inactiveConcepts.length > 0 ? `
-                                                <ul style="margin: 4px 0 0 0; padding-left: 15px; color: #4b5563;">
-                                                    ${insights.inactiveConcepts.slice(0, 3).map(ic => `<li><strong>${ic.co}</strong>: ${currencyFormatter.format(ic.v1)}</li>`).join('')}
-                                                </ul>
-                                            ` : '<div style="color:#9ca3af; margin-top:2px;">Ninguno</div>'}
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 12px;">
+                                <!-- INGRESOS (Altas) -->
+                                <div style="border: 1px solid #a7f3d0; background: rgba(16, 185, 129, 0.01); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <strong style="color: #047857; text-transform: uppercase; font-size: 7.5pt; display: block; margin-bottom: 6px;">Nuevos Ingresos en P2 (${insights.altas.length} Colaboradores)</strong>
+                                        <div style="font-size: 11pt; font-weight: 800; color: #065f46; margin-bottom: 8px;">Costo Generado: +${currencyFormatter.format(insights.totalAltasAmt)}</div>
+                                        <div style="font-size: 7pt; color: #334155; line-height: 1.45;">
+                                            ${insights.altas.slice(0, 3).map(a => `• ${a.name}: +${currencyFormatter.format(a.net)}`).join('<br>')}
+                                            ${insights.altas.length > 3 ? `<em style="color:#64748b; font-size:6.5pt; display:block; margin-top:2px;">y ${insights.altas.length - 3} colaboradores más.</em>` : ''}
                                         </div>
                                     </div>
                                 </div>
-                            ` : ''}
-                        </div>
-
-                        <!-- Grafico de Variacion por Concepto (Top 10) -->
-                        <div style="margin-top: 15px;">
-                            <h4 style="font-size: 11pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase;">Top Variaciones de Conceptos (Impacto de Variacion Absoluta)</h4>
-                            <div style="background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 15px; text-align: center;">
-                                <canvas id="chart-top-concept-variations" width="560" height="190" style="margin: 0 auto;"></canvas>
+                                <!-- RETIROS (Bajas) -->
+                                <div style="border: 1px solid #fecaca; background: rgba(244, 63, 94, 0.01); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <strong style="color: #b91c1c; text-transform: uppercase; font-size: 7.5pt; display: block; margin-bottom: 6px;">Retiros / Bajas en P1 (${insights.bajas.length} Colaboradores)</strong>
+                                        <div style="font-size: 11pt; font-weight: 800; color: #991b1b; margin-bottom: 8px;">Ahorro Generado: -${currencyFormatter.format(insights.totalBajasAmt)}</div>
+                                        <div style="font-size: 7pt; color: #334155; line-height: 1.45;">
+                                            ${insights.bajas.slice(0, 3).map(b => `• ${b.name}: -${currencyFormatter.format(b.net)}`).join('<br>')}
+                                            ${insights.bajas.length > 3 ? `<em style="color:#64748b; font-size:6.5pt; display:block; margin-top:2px;">y ${insights.bajas.length - 3} colaboradores más.</em>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- Footer Pagina 3 -->
-                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 35px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                            <div>Confidencial - Pagina 3 de 4</div>
+                            <div style="background: #f8fafc; border-top: 1px solid #cbd5e1; padding: 8px 12px; font-size: 7.8pt; color: #475569; line-height: 1.4;">
+                                <strong>Variación Financiera Neta por Headcount:</strong>
+                                <span style="font-weight: 700; color: ${insights.headcountNetEffect >= 0 ? '#059669' : '#e11d48'};">
+                                    ${insights.headcountNetEffect >= 0 ? '+' : ''}${currencyFormatter.format(insights.headcountNetEffect)}
+                                </span>
+                                (Explica el <strong>${insights.headcountPct}%</strong> de la variación total del periodo comparado).
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Page 4: Impacto en Colaboradores e Impacto Estructural -->
-                    <div class="report-page-sheet">
-                        <!-- Header comun -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 25px;">
-                            <img src="${logoBase64}" alt="NomAI Logo" style="height: 25px;" />
-                            <div style="font-size: 8pt; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Analisis de Variaciones de Nomina</div>
-                        </div>
+                    <div class="report-footer-section">
+                        <div>NomAI Dashboard - Inteligencia Financiera de Nómina</div>
+                        <div>Confidencial - Página 1 de 4</div>
+                    </div>
+                </div>
 
-                        <h3 style="font-size: 14pt; font-weight: 700; color: #1e1b4b; margin: 0 0 15px 0; border-bottom: 2px solid #6C00D3; padding-bottom: 5px;">3. Distribucion Estructural y Casos Atipicos</h3>
+                <!-- Page 2: Desglose y Variación de Estructura de Pagos -->
+                <div class="report-page-sheet">
+                    <div class="report-header-section">
+                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 32px;" />
+                        <div style="font-size: 8pt; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">${reportTitle}</div>
+                    </div>
 
-                        <!-- Centros de costo y cargos -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                            <div>
-                                <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top Centros de Costo (Aumento de Gasto)</h4>
-                                <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
-                                    <thead>
-                                        <tr style="background: #f3f4f6; text-align: left;">
-                                            <th style="padding: 6px; font-weight: 600;">Centro de Costo</th>
-                                            <th style="padding: 6px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${insights.topCecoIncreases.length > 0 ? insights.topCecoIncreases.map(cc => `
-                                            <tr style="border-bottom: 1px solid #e5e7eb;">
-                                                <td style="padding: 6px; font-weight: 500; color: #374151;">${cc.cc}</td>
-                                                <td style="padding: 6px; text-align: right; font-weight: 600; color: #10b981;">+${currencyFormatter.format(cc.diff)}</td>
-                                            </tr>
-                                        `).join('') : '<tr><td colspan="2" style="padding:6px; color:#9ca3af; text-align:center;">Sin variaciones</td></tr>'}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div>
-                                <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top Cargos (Aumento de Devengo)</h4>
-                                <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
-                                    <thead>
-                                        <tr style="background: #f3f4f6; text-align: left;">
-                                            <th style="padding: 6px; font-weight: 600;">Cargo</th>
-                                            <th style="padding: 6px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${insights.topCargoIncreases.length > 0 ? insights.topCargoIncreases.map(cg => `
-                                            <tr style="border-bottom: 1px solid #e5e7eb;">
-                                                <td style="padding: 6px; font-weight: 500; color: #374151;">${cg.cg}</td>
-                                                <td style="padding: 6px; text-align: right; font-weight: 600; color: #10b981;">+${currencyFormatter.format(cg.diff)}</td>
-                                            </tr>
-                                        `).join('') : '<tr><td colspan="2" style="padding:6px; color:#9ca3af; text-align:center;">Sin variaciones</td></tr>'}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Colaboradores con mayor variacion (Casos Atipicos) -->
-                        <div style="margin-bottom: 25px;">
-                            <h4 style="font-size: 9.5pt; font-weight: 700; color: #1e1b4b; margin: 0 0 8px 0; text-transform: uppercase; border-left: 3px solid #6C00D3; padding-left: 8px;">Top 5 Desviaciones Atipicas de Salario Neto Individual</h4>
-                            <p style="font-size: 8.5pt; color: #6b7280; margin-bottom: 8px;">
-                                Colaboradores individuales cuya retribucion neta experimento las variaciones absolutas mas pronunciadas entre los dos periodos para los conceptos analizados.
+                    <div class="report-body-container" style="justify-content: flex-start; gap: 12px;">
+                        <div>
+                            <h3 style="font-size: 11pt; font-weight: 700; color: #1e1b4b; margin: 0 0 2px 0; border-bottom: 2px solid #1e1b4b; padding-bottom: 3px; display: inline-block;">2. Variación de Estructura de Pagos por Concepto</h3>
+                            <p style="font-size: 8pt; color: #64748b; margin: 2px 0 0 0; line-height: 1.35;">
+                                Comparativo sin agrupamientos artificiales. Se listan los principales conceptos de nómina liquidados y sus tendencias de variación.
                             </p>
-                            <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                        </div>
+
+                        <!-- Tabla de Conceptos Detallada (P1 vs P2) -->
+                        <div style="margin-top: 2px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
                                 <thead>
-                                    <tr style="background: #6c00d3; color: white; text-align: left;">
-                                        <th style="padding: 8px; font-weight: 600;">Colaborador</th>
-                                        <th style="padding: 8px; font-weight: 600;">Identificacion</th>
-                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Neto P1</th>
-                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Neto P2</th>
-                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Variacion ($)</th>
-                                        <th style="padding: 8px; text-align: right; font-weight: 600;">Variacion (%)</th>
+                                    <tr style="background: #1e1b4b; color: white; text-align: left;">
+                                        <th style="padding: 5px 8px; font-weight: 600;">Concepto</th>
+                                        <th style="padding: 5px 8px; font-weight: 600;">Naturaleza</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Valor P1</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Valor P2</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Variación ($)</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Variación (%)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${insights.topEmpImpacts.length > 0 ? insights.topEmpImpacts.map(emp => `
-                                        <tr style="border-bottom: 1px solid #e5e7eb;">
-                                            <td style="padding: 8px; font-weight: 500; color: #374151;">${emp.name}</td>
-                                            <td style="padding: 8px; color: #6b7280;">${emp.c}</td>
-                                            <td style="padding: 8px; text-align: right;">${currencyFormatter.format(emp.v1)}</td>
-                                            <td style="padding: 8px; text-align: right;">${currencyFormatter.format(emp.v2)}</td>
-                                            <td style="padding: 8px; text-align: right; font-weight: 600; color: ${emp.diff >= 0 ? '#10b981' : '#ef4444'};">${emp.diff >= 0 ? '+' : ''}${currencyFormatter.format(emp.diff)}</td>
-                                            <td style="padding: 8px; text-align: right; font-weight: 600; color: ${emp.diff >= 0 ? '#10b981' : '#ef4444'};">${emp.diff >= 0 ? '+' : ''}${emp.pct.toFixed(1)}%</td>
+                                    ${insights.conceptDetails.slice(0, 10).map((c, i) => `
+                                        <tr style="border-bottom: 1px solid #e2e8f0; background: ${i % 2 === 0 ? 'white' : '#f8fafc'};">
+                                            <td style="padding: 5px 8px; font-weight: 600; color: #1e293b;">${c.co}</td>
+                                            <td style="padding: 5px 8px; color: #64748b; text-transform: uppercase;">${c.na}</td>
+                                            <td style="padding: 5px 8px; text-align: right;">${currencyFormatter.format(c.v1)}</td>
+                                            <td style="padding: 5px 8px; text-align: right;">${currencyFormatter.format(c.v2)}</td>
+                                            <td style="padding: 5px 8px; text-align: right; font-weight: 700; color: ${c.diff >= 0 ? '#059669' : '#e11d48'};">
+                                                ${c.diff >= 0 ? '+' : ''}${currencyFormatter.format(c.diff)}
+                                            </td>
+                                            <td style="padding: 5px 8px; text-align: right;">
+                                                ${getTrendBadgeSimple(c.diff, c.pct)}
+                                            </td>
                                         </tr>
-                                    `).join('') : '<tr><td colspan="6" style="padding:10px; color:#9ca3af; text-align:center;">No se registraron variaciones individuales.</td></tr>'}
+                                    `).join('')}
                                 </tbody>
                             </table>
                         </div>
 
-                        <!-- Conclusiones y Plan de Action -->
-                        <div>
-                            <h4 style="font-size: 10pt; font-weight: 700; color: #1e1b4b; margin: 0 0 10px 0; text-transform: uppercase;">Conclusiones y Recomendaciones Gerenciales</h4>
-                            <ul style="margin: 0; padding-left: 20px; font-size: 9pt; color: #374151; line-height: 1.4;">
-                                <li>Se observa una variacion neta de la nomina del <strong>${formatPercentage(insights.totals.netPct)}</strong> en los conceptos consolidados. Se aconseja monitorear que esta variacion se alinee con los objetivos de presupuesto trimestral.</li>
-                                ${insights.topIncreases.length > 0 ? `<li>El incremento principal fue liderado por el concepto <strong>${insights.topIncreases[0].co}</strong>. Se recomienda auditar si este incremento se debe a factores estacionales, horas extras o ajustes programados.</li>` : ''}
-                                ${insights.topCecoIncreases.length > 0 ? `<li>El Centro de Costo <strong>${insights.topCecoIncreases[0].cc}</strong> presenta el mayor crecimiento de gasto. Es procedente revisar la eficiencia operativa en dicha unidad administrativa.</li>` : ''}
-                                <li>Los colaboradores con desviaciones superiores al 30% en su neto (como se lista en la tabla de Casos Atipicos) deben ser revisados individualmente por el equipo de recursos humanos para garantizar que no existan errores de captura en el sistema.</li>
-                            </ul>
-                        </div>
-                        
-                        <!-- Firmas -->
-                        <div style="margin-top: 30px; display: flex; justify-content: space-around; text-align: center; font-size: 8.5pt; color: #4b5563;">
-                            <div style="width: 200px; border-top: 1px solid #9ca3af; padding-top: 8px;">
-                                <strong>Elaborado por:</strong><br>
-                                Analista de Nomina - NomAI
-                            </div>
-                            <div style="width: 200px; border-top: 1px solid #9ca3af; padding-top: 8px;">
-                                <strong>Revisado y Aprobado por:</strong><br>
-                                Gerente de Finanzas / Recursos Humanos
-                            </div>
+                        <!-- Matriz de Cambios Estructurales -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+                            <strong style="color: #1e1b4b; display: block; margin-bottom: 6px; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.5px;">Cambios Estructurales en la Nómina (Nuevos vs Inactivos)</strong>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #cbd5e1; text-align: left; color: #475569;">
+                                        <th style="padding: 4px; font-weight: 600;">Concepto</th>
+                                        <th style="padding: 4px; font-weight: 600;">Definición / Significado de Pago</th>
+                                        <th style="padding: 4px; font-weight: 600; text-align: right;">Estado</th>
+                                        <th style="padding: 4px; font-weight: 600; text-align: right;">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${(() => {
+                                        const rows = [];
+                                        insights.newConcepts.slice(0, 2).forEach(nc => {
+                                            rows.push(`
+                                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                    <td style="padding: 4px; font-weight: 600; color: #334155;">${nc.co}</td>
+                                                    <td style="padding: 4px; color: #64748b;">${getConceptTranslation(nc.co)}</td>
+                                                    <td style="padding: 4px; text-align: right;">
+                                                        <span style="background: rgba(16, 185, 129, 0.08); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1px 6px; font-size: 6.5pt; font-weight: 700; text-transform: uppercase;">Nuevo Pago</span>
+                                                    </td>
+                                                    <td style="padding: 4px; text-align: right; font-weight: 600; color: #059669;">+${currencyFormatter.format(nc.v2)}</td>
+                                                </tr>
+                                            `);
+                                        });
+                                        insights.inactiveConcepts.slice(0, 2).forEach(ic => {
+                                            rows.push(`
+                                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                                    <td style="padding: 4px; font-weight: 600; color: #334155;">${ic.co}</td>
+                                                    <td style="padding: 4px; color: #64748b;">${getConceptTranslation(ic.co)}</td>
+                                                    <td style="padding: 4px; text-align: right;">
+                                                        <span style="background: rgba(244, 63, 94, 0.08); color: #e11d48; border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 12px; padding: 1px 6px; font-size: 6.5pt; font-weight: 700; text-transform: uppercase;">Inactivo / Retirado</span>
+                                                    </td>
+                                                    <td style="padding: 4px; text-align: right; font-weight: 600; color: #e11d48;">-${currencyFormatter.format(ic.v1)}</td>
+                                                </tr>
+                                            `);
+                                        });
+                                        return rows.length > 0 ? rows.join('') : '<tr><td colspan="4" style="padding: 6px; text-align: center; color: #94a3b8;">Sin cambios estructurales en los conceptos comparados.</td></tr>';
+                                    })()}
+                                </tbody>
+                            </table>
                         </div>
 
-                        <!-- Footer Pagina 4 -->
-                        <div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 30px; display: flex; justify-content: space-between; font-size: 8pt; color: #9ca3af; font-weight: 500;">
-                            <div>NomAI Dashboard - Sistema de Inteligencia de Nomina</div>
-                            <div>Confidencial - Pagina 4 de 4</div>
+                        <!-- Gráfico comparativo de distribución -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 2px;">
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; text-align: center;">
+                                <strong style="font-size: 7.5pt; font-weight: 700; color: #1e293b; text-transform: uppercase; display: block; margin-bottom: 6px;">Estructura Devengos vs Descuentos</strong>
+                                <canvas id="chart-macro-comparison" width="250" height="110" style="margin: 0 auto;"></canvas>
+                            </div>
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; text-align: center;">
+                                <strong style="font-size: 7.5pt; font-weight: 700; color: #1e293b; text-transform: uppercase; display: block; margin-bottom: 6px;">Composición Global del Gasto</strong>
+                                <canvas id="chart-macro-pie" width="220" height="110" style="margin: 0 auto;"></canvas>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="report-footer-section">
+                        <div>NomAI Dashboard - Inteligencia Financiera de Nómina</div>
+                        <div>Confidencial - Página 2 de 4</div>
+                    </div>
                 </div>
-            `;
-            
-            updateProgressStep('4-template', 'success', 'Maqueta del reporte construida.');
-            
-            // Paso 5: Dibujar graficos
-            updateProgressStep('5-charts', 'processing', 'Renderizando graficos de analisis...');
-            document.body.appendChild(previewOverlay);
-            
-            // Dibujar graficos de analisis
-            new Chart(previewOverlay.querySelector('#chart-macro-comparison'), {
-                type: 'bar',
-                data: {
-                    labels: ['Devengos', 'Descuentos'],
-                    datasets: [
-                        {
-                            label: 'P1: ' + getPeriodLabel(insights.p1),
-                            data: [insights.totals.devengosP1, insights.totals.descuentosP1],
-                            backgroundColor: '#c7d2fe',
-                            borderColor: '#818cf8',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'P2: ' + getPeriodLabel(insights.p2),
-                            data: [insights.totals.devengosP2, insights.totals.descuentosP2],
-                            backgroundColor: '#6C00D3',
-                            borderColor: '#4f46e5',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    animation: false,
-                    responsive: false,
-                    plugins: {
-                        legend: { display: true, labels: { boxWidth: 10, font: { size: 8 } } }
-                    },
-                    scales: {
-                        y: {
-                            ticks: {
-                                font: { size: 7 },
-                                callback: function(value) {
-                                    return '$' + (value / 1e3).toFixed(0) + 'k';
-                                }
-                            }
-                        },
-                        x: { ticks: { font: { size: 8 } } }
-                    }
-                }
-            });
 
-            new Chart(previewOverlay.querySelector('#chart-macro-pie'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Devengos', 'Descuentos'],
-                    datasets: [{
-                        data: [insights.totals.devengosP2, insights.totals.descuentosP2],
-                        backgroundColor: ['#10b981', '#ef4444'],
+                <!-- Page 3: Análisis de Variación Individual de Colaboradores / Cargos -->
+                <div class="report-page-sheet">
+                    <div class="report-header-section">
+                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 32px;" />
+                        <div style="font-size: 8pt; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">${reportTitle}</div>
+                    </div>
+
+                    <div class="report-body-container" style="justify-content: flex-start; gap: 12px;">
+                        <div>
+                            <h3 style="font-size: 11pt; font-weight: 700; color: #1e1b4b; margin: 0 0 2px 0; border-bottom: 2px solid #1e1b4b; padding-bottom: 3px; display: inline-block;">3. Análisis de Variación por Colaboradores / Cargos</h3>
+                            <p style="font-size: 8pt; color: #64748b; margin: 2px 0 0 0; line-height: 1.35;">
+                                Se identifican las principales desviaciones y la magnitud del cambio individual con respecto a la variación consolidada de la nómina.
+                            </p>
+                        </div>
+
+                        <!-- Top 8 Colaboradores/Entidades de Mayor Impacto -->
+                        <div style="margin-top: 2px;">
+                            <strong style="color: #1e1b4b; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Top Variaciones del Periodo comparado</strong>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                                <thead>
+                                    <tr style="background: #1e1b4b; color: white; text-align: left;">
+                                        <th style="padding: 5px 8px; font-weight: 600;">Entidad</th>
+                                        <th style="padding: 5px 8px; font-weight: 600;">Identificación / Categoría</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Valor P1</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Valor P2</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Variación ($)</th>
+                                        <th style="padding: 5px 8px; text-align: right; font-weight: 600;">Variación (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${(() => {
+                                        let items = [];
+                                        if (reportType === 'persona') items = insights.topEmpImpacts;
+                                        else if (reportType === 'concepto') items = insights.conceptDetails;
+                                        else if (reportType === 'ceco') items = insights.cecoDetails;
+                                        else if (reportType === 'cargo') items = insights.cargoDetails;
+                                        
+                                        return items.slice(0, 8).map((emp, i) => `
+                                            <tr style="border-bottom: 1px solid #e2e8f0; background: ${i % 2 === 0 ? 'white' : '#f8fafc'};">
+                                                <td style="padding: 5px 8px; font-weight: 600; color: #1e293b;">${emp.name || emp.co || emp.cc || emp.cg || '-'}</td>
+                                                <td style="padding: 5px 8px; color: #64748b;">${emp.c || emp.na || '-'}</td>
+                                                <td style="padding: 5px 8px; text-align: right;">${currencyFormatter.format(emp.v1)}</td>
+                                                <td style="padding: 5px 8px; text-align: right;">${currencyFormatter.format(emp.v2)}</td>
+                                                <td style="padding: 5px 8px; text-align: right; font-weight: 700; color: ${emp.diff >= 0 ? '#059669' : '#e11d48'};">
+                                                    ${emp.diff >= 0 ? '+' : ''}${currencyFormatter.format(emp.diff)}
+                                                </td>
+                                                <td style="padding: 5px 8px; text-align: right;">
+                                                    ${getTrendBadgeSimple(emp.diff, emp.pct)}
+                                                </td>
+                                            </tr>
+                                        `).join('');
+                                    })()}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Cuadrante de Desviaciones -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <!-- Incrementos (Verde por regla del usuario) -->
+                            <div style="background: rgba(16, 185, 129, 0.02); border: 1.5px solid #a7f3d0; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+                                <strong style="color: #059669; display: flex; align-items: center; gap: 4px; margin-bottom: 6px; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.2px;">
+                                    <span>▲</span> Mayores Variaciones Positivas
+                                </strong>
+                                ${(() => {
+                                    const topList = insights.empDetails.filter(e => e.diff > 0).slice(0, 3);
+                                    return topList.length > 0 ? topList.map(emp => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 7.8pt; margin-bottom: 4px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px;">
+                                            <span style="font-weight: 600; color: #1e293b; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 140px;">${emp.name}</span>
+                                            <span style="font-weight: 700; color: #059669;">+${currencyFormatter.format(emp.diff)}</span>
+                                        </div>
+                                    `).join('') : '<div style="color:#64748b; font-size: 7.5pt; text-align:center;">Sin variaciones positivas.</div>';
+                                })()}
+                            </div>
+
+                            <!-- Disminuciones (Rojo por regla del usuario) -->
+                            <div style="background: rgba(244, 63, 94, 0.02); border: 1.5px solid #fecaca; border-radius: 10px; padding: 10px 12px; box-sizing: border-box;">
+                                <strong style="color: #e11d48; display: flex; align-items: center; gap: 4px; margin-bottom: 6px; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.2px;">
+                                    <span>▼</span> Mayores Variaciones Negativas
+                                </strong>
+                                ${(() => {
+                                    const topList = insights.empDetails.filter(e => e.diff < 0).sort((a,b) => a.diff - b.diff).slice(0, 3);
+                                    return topList.length > 0 ? topList.map(emp => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 7.8pt; margin-bottom: 4px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px;">
+                                            <span style="font-weight: 600; color: #1e293b; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 140px;">${emp.name}</span>
+                                            <span style="font-weight: 700; color: #e11d48;">-${currencyFormatter.format(Math.abs(emp.diff))}</span>
+                                        </div>
+                                    `).join('') : '<div style="color:#64748b; font-size: 7.5pt; text-align:center;">Sin variaciones negativas.</div>';
+                                })()}
+                            </div>
+                        </div>
+
+                        <!-- Gráfico de barras horizontal -->
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; text-align: center;">
+                            <canvas id="chart-top-concept-variations" width="560" height="135" style="margin: 0 auto;"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="report-footer-section">
+                        <div>NomAI Dashboard - Inteligencia Financiera de Nómina</div>
+                        <div>Confidencial - Página 3 de 4</div>
+                    </div>
+                </div>
+
+                <!-- Page 4: Hallazgos Clave y Gobernanza Estratégica -->
+                <div class="report-page-sheet">
+                    <div class="report-header-section">
+                        <img src="${logoBase64}" alt="NomAI Logo" style="height: 32px;" />
+                        <div style="font-size: 8pt; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">${reportTitle}</div>
+                    </div>
+
+                    <div class="report-body-container" style="justify-content: flex-start; gap: 15px;">
+                        <div>
+                            <h3 style="font-size: 11pt; font-weight: 700; color: #1e1b4b; margin: 0 0 2px 0; border-bottom: 2px solid #1e1b4b; padding-bottom: 3px; display: inline-block;">4. Plan de Acción y Gobernanza Organizacional</h3>
+                            <p style="font-size: 8pt; color: #64748b; margin: 2px 0 0 0; line-height: 1.35;">
+                                Recomendaciones analíticas específicas diseñadas para orientar la toma de decisiones por área directiva.
+                            </p>
+                        </div>
+
+                        <!-- Tablas auxiliares (Slots) -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <h4 style="font-size: 8pt; font-weight: 700; color: #1e293b; margin: 0 0 6px 0; text-transform: uppercase; border-left: 3px solid #1e1b4b; padding-left: 8px; letter-spacing: 0.2px;">${reportType === 'concepto' ? 'Principales Ceco por Variación' : 'Principales Conceptos por Variación'}</h4>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
+                                    <thead>
+                                        <tr style="background: #f8fafc; text-align: left;">
+                                            <th style="padding: 5px 6px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${reportType === 'concepto' ? 'Centro de Costo' : 'Concepto de Nómina'}</th>
+                                            <th style="padding: 5px 6px; text-align: right; font-weight: 600; border-bottom: 1px solid #e2e8f0;">Variación ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${(() => {
+                                            const slot1Data = reportType === 'concepto'
+                                                ? insights.topCecoIncreases.slice(0, 3).map(cc => ({label: cc.cc, diff: cc.diff}))
+                                                : insights.conceptDetails.filter(c => c.diff > 0).slice(0, 3).map(c => ({label: c.co, diff: c.diff}));
+                                            return slot1Data.length > 0 ? slot1Data.map((item) => `
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding: 5px 6px; font-weight: 500; color: #334155;">${item.label}</td>
+                                                    <td style="padding: 5px 6px; text-align: right; font-weight: 700; color: ${item.diff >= 0 ? '#059669' : '#e11d48'};">
+                                                        ${item.diff >= 0 ? '+' : ''}${currencyFormatter.format(item.diff)}
+                                                    </td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="2" style="padding:6px; color:#94a3b8; text-align:center;">Sin variaciones</td></tr>';
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div>
+                                <h4 style="font-size: 8pt; font-weight: 700; color: #1e293b; margin: 0 0 6px 0; text-transform: uppercase; border-left: 3px solid #1e1b4b; padding-left: 8px; letter-spacing: 0.2px;">${reportType === 'ceco' ? 'Principales Cargos por Variación' : 'Principales Ceco por Variación'}</h4>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
+                                    <thead>
+                                        <tr style="background: #f8fafc; text-align: left;">
+                                            <th style="padding: 5px 6px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">${reportType === 'ceco' ? 'Cargo' : reportType === 'concepto' ? 'Cargo' : 'Centro de Costo'}</th>
+                                            <th style="padding: 5px 6px; text-align: right; font-weight: 600; border-bottom: 1px solid #e2e8f0;">Variación ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${(() => {
+                                            const slot2Data = reportType === 'ceco'
+                                                ? insights.topCargoIncreases.map(cg => ({label: cg.cg, diff: cg.diff}))
+                                                : reportType === 'concepto'
+                                                    ? insights.topCargoIncreases.map(cg => ({label: cg.cg, diff: cg.diff}))
+                                                    : reportType === 'cargo'
+                                                        ? insights.topCecoIncreases.slice(0, 3).map(cc => ({label: cc.cc, diff: cc.diff}))
+                                                        : insights.topCecoIncreases.slice(0, 3).map(cc => ({label: cc.cc, diff: cc.diff}));
+                                            return slot2Data.length > 0 ? slot2Data.slice(0, 3).map((item) => `
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding: 5px 6px; font-weight: 500; color: #334155;">${item.label}</td>
+                                                    <td style="padding: 5px 6px; text-align: right; font-weight: 700; color: ${item.diff >= 0 ? '#059669' : '#e11d48'};">
+                                                        ${item.diff >= 0 ? '+' : ''}${currencyFormatter.format(item.diff)}
+                                                    </td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="2" style="padding:6px; color:#94a3b8; text-align:center;">Sin variaciones</td></tr>';
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Alerta de Cumplimiento / Hallazgo Estratégico -->
+                        <div style="background: ${alertBg}; border: 1px solid ${alertBorder}; border-left: 4px solid ${alertBorder}; border-radius: 10px; padding: 12px 14px; box-sizing: border-box;">
+                            <strong style="color: ${alertText}; font-size: 8pt; display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
+                                <span>${alertIcon}</span> Hallazgo Estratégico de Nómina
+                            </strong>
+                            <p style="font-size: 7.5pt; color: #475569; margin: 0; line-height: 1.45;">${alert.message}</p>
+                        </div>
+
+                        <!-- Recomendaciones por Audiencia (3 columnas) -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <!-- CFO -->
+                            <div style="background: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px;">
+                                <strong style="color: #3730a3; font-size: 7.5pt; display: flex; align-items: center; gap: 4px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.2px;">
+                                    💼 Para el CFO
+                                </strong>
+                                <ul style="margin: 0; padding-left: 14px; font-size: 7pt; color: #374151; line-height: 1.55; list-style-type: disc;">
+                                    <li>Evaluar si la variación de ${formatPercentage(insights.totals.netPct)} en nómina neta es consistente con el presupuesto aprobado para el periodo.</li>
+                                    <li>Los conceptos con mayor incremento deben estar alineados con compromisos contractuales o actas sindicales.</li>
+                                    <li>Revisar el impacto financiero de los ${insights.altas.length} ingresos (+${currencyFormatter.format(insights.totalAltasAmt)}) contra las proyecciones de headcount.</li>
+                                </ul>
+                            </div>
+                            <!-- Gerencia General -->
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px;">
+                                <strong style="color: #166534; font-size: 7.5pt; display: flex; align-items: center; gap: 4px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.2px;">
+                                    🏢 Gerencia General
+                                </strong>
+                                <ul style="margin: 0; padding-left: 14px; font-size: 7pt; color: #374151; line-height: 1.55; list-style-type: disc;">
+                                    <li>El gasto de nómina pasó de ${currencyFormatter.format(insights.totals.netP1)} a ${currencyFormatter.format(insights.totals.netP2)}, representando una variación de ${currencyFormatter.format(insights.totals.netDiff)}.</li>
+                                    <li>${insights.bajas.length > 0 ? `Los ${insights.bajas.length} retiros generaron un ahorro estimado de ${currencyFormatter.format(insights.totalBajasAmt)}, reduciendo la masa salarial.` : 'No se registraron retiros en el periodo comparado.'}</li>
+                                    <li>El análisis de estructura revela un comportamiento ${Math.abs(insights.totals.netPct) > 10 ? 'con variación significativa que requiere seguimiento' : 'estable dentro de márgenes esperados'}.</li>
+                                </ul>
+                            </div>
+                            <!-- RRHH -->
+                            <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 10px;">
+                                <strong style="color: #9a3412; font-size: 7.5pt; display: flex; align-items: center; gap: 4px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.2px;">
+                                    👥 Dir. RRHH
+                                </strong>
+                                <ul style="margin: 0; padding-left: 14px; font-size: 7pt; color: #374151; line-height: 1.55; list-style-type: disc;">
+                                    <li>${atipicEmps.length > 0 ? `Auditar variaciones atípicas (>30%) en ${atipicEmps.length} colaborador(es): ${atipicEmps.slice(0,2).map(e => e.name).join(', ')}.` : 'No se detectaron variaciones atípicas superiores al 30% en salario neto individual.'}</li>
+                                    <li>Validar la correcta liquidación de devengos y descuentos en periodos con altas o retiros de personal.</li>
+                                    <li>Confirmar que los ${insights.altas.length} nuevos ingresos cuenten con estructura salarial formalizada.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Firmas -->
+                        <div style="margin-top: 10px; display: flex; justify-content: space-around; text-align: center; font-size: 7.5pt; color: #475569;">
+                            <div style="width: 160px; border-top: 1px solid #cbd5e1; padding-top: 6px;">
+                                <strong>Elaborado por:</strong><br>
+                                Analista de Nómina — NomAI
+                            </div>
+                            <div style="width: 160px; border-top: 1px solid #cbd5e1; padding-top: 6px;">
+                                <strong>Revisado por:</strong><br>
+                                Dirección de RRHH
+                            </div>
+                            <div style="width: 160px; border-top: 1px solid #cbd5e1; padding-top: 6px;">
+                                <strong>Aprobado por:</strong><br>
+                                Gerente de Finanzas (CFO)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Pagina 4 -->
+                    <div class="report-footer-section">
+                        <div>NomAI Dashboard - Inteligencia Financiera de Nómina</div>
+                        <div>Confidencial - Página 4 de 4</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        updateProgressStep('4-template', 'success', 'Maqueta del reporte construida.');
+        
+        // Paso 5: Dibujar graficos
+        updateProgressStep('5-charts', 'processing', 'Renderizando graficos de analisis...');
+        document.body.appendChild(previewOverlay);
+        
+        // Dibujar graficos de analisis
+        new Chart(previewOverlay.querySelector('#chart-macro-comparison'), {
+            type: 'bar',
+            data: {
+                labels: ['Devengos', 'Descuentos'],
+                datasets: [
+                    {
+                        label: 'P1: ' + getPeriodLabel(insights.p1),
+                        data: [insights.totals.devengosP1, insights.totals.descuentosP1],
+                        backgroundColor: '#c7d2fe',
+                        borderColor: '#818cf8',
                         borderWidth: 1
-                    }]
+                    },
+                    {
+                        label: 'P2: ' + getPeriodLabel(insights.p2),
+                        data: [insights.totals.devengosP2, insights.totals.descuentosP2],
+                        backgroundColor: '#4f46e5', // Indigo
+                        borderColor: '#4338ca',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                animation: false,
+                responsive: false,
+                plugins: {
+                    legend: { display: true, labels: { boxWidth: 10, font: { size: 8 } } }
                 },
-                options: {
-                    animation: false,
-                    responsive: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: { boxWidth: 10, font: { size: 8 } }
+                scales: {
+                    y: {
+                        ticks: {
+                            font: { size: 7 },
+                            callback: function(value) {
+                                return '$' + (value / 1e6).toFixed(1) + 'M';
+                            }
+                        }
+                    },
+                    x: { ticks: { font: { size: 8 } } }
+                }
+            }
+        });
+
+        new Chart(previewOverlay.querySelector('#chart-macro-pie'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Devengos', 'Descuentos'],
+                datasets: [
+                    {
+                        label: 'P2 (Ext)',
+                        data: [insights.totals.devengosP2, insights.totals.descuentosP2],
+                        backgroundColor: ['#4f46e5', '#f43f5e'], // Indigo para Devengos, Rose para Descuentos
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'P1 (Int)',
+                        data: [insights.totals.devengosP1, insights.totals.descuentosP1],
+                        backgroundColor: ['#a5b4fc', '#fecaca'], // Colores más claros para P1
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                animation: false,
+                responsive: false,
+                cutout: '60%', // Ajustado para dos anillos
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 8 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== undefined) {
+                                    label += currencyFormatter.format(context.parsed);
+                                }
+                                return label;
+                            }
                         }
                     }
                 }
-            });
+            }
+        });
 
-            const topConceptsForChart = insights.conceptDetails.slice(0, 7);
-            const chartLabels = topConceptsForChart.map(c => c.co.length > 18 ? c.co.substring(0, 16) + '...' : c.co);
-            const chartData = topConceptsForChart.map(c => c.diff);
-            const chartColors = topConceptsForChart.map(c => c.diff >= 0 ? 'rgba(16, 185, 129, 0.75)' : 'rgba(239, 68, 68, 0.75)');
-            const chartBorderColors = topConceptsForChart.map(c => c.diff >= 0 ? '#10b981' : '#ef4444');
+        // Selección dinámica de datos para el gráfico horizontal de variaciones
+        let chartSourceData = insights.conceptDetails;
+        let chartLabelKey = 'co';
+        if (reportType === 'persona') {
+            chartSourceData = insights.empDetails;
+            chartLabelKey = 'name';
+        } else if (reportType === 'ceco') {
+            chartSourceData = insights.cecoDetails;
+            chartLabelKey = 'cc';
+        } else if (reportType === 'cargo') {
+            chartSourceData = insights.cargoDetails;
+            chartLabelKey = 'cg';
+        }
+        const topConceptsForChart = chartSourceData.slice(0, 8);
+        const chartLabels = topConceptsForChart.map(c => {
+            const label = c[chartLabelKey] || '-';
+            return label.length > 25 ? label.substring(0, 22) + '...' : label;
+        });
 
-            new Chart(previewOverlay.querySelector('#chart-top-concept-variations'), {
-                type: 'bar',
-                data: {
-                    labels: chartLabels,
-                    datasets: [{
-                        label: 'Variacion Neta ($)',
+        const chartData = topConceptsForChart.map(c => c.diff);
+        const chartColors = topConceptsForChart.map(c => c.diff >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(244, 63, 94, 0.85)');
+        const chartBorderColors = topConceptsForChart.map(c => c.diff >= 0 ? '#10b981' : '#f43f5e');
+
+        new Chart(previewOverlay.querySelector('#chart-top-concept-variations'), {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [
+                    {
+                        label: 'Variación Neta ($)',
                         data: chartData,
                         backgroundColor: chartColors,
                         borderColor: chartBorderColors,
                         borderWidth: 1
-                    }]
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                animation: false,
+                responsive: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
                 },
-                options: {
-                    animation: false,
-                    responsive: false,
-                    plugins: {
-                        legend: { display: false }
+                scales: {
+                    x: {
+                        stacked: false,
+                        ticks: {
+                            font: { size: 7 },
+                            callback: function(value) {
+                                const absVal = Math.abs(value);
+                                const sign = value >= 0 ? '' : '-';
+                                if (absVal >= 1e6) return sign + '$' + (absVal / 1e6).toFixed(1) + 'M';
+                                if (absVal >= 1e3) return sign + '$' + (absVal / 1e3).toFixed(0) + 'k';
+                                return sign + '$' + absVal;
+                            }
+                        }
                     },
-                    scales: {
-                        y: {
-                            ticks: {
-                                font: { size: 7 },
-                                callback: function(value) {
-                                    const absVal = Math.abs(value);
-                                    const sign = value >= 0 ? '' : '-';
-                                    if (absVal >= 1e6) return sign + '$' + (absVal / 1e6).toFixed(1) + 'M';
-                                    if (absVal >= 1e3) return sign + '$' + (absVal / 1e3).toFixed(0) + 'k';
-                                    return sign + '$' + absVal;
-                                }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                font: { size: 7 },
-                                maxRotation: 20,
-                                minRotation: 10
-                            }
+                    y: {
+                        stacked: false,
+                        ticks: {
+                            font: { size: 7.5, weight: '500' }
                         }
                     }
                 }
-            });
-            updateProgressStep('5-charts', 'success', 'Graficos renderizados correctamente.');
-            
-            // Paso 6: Mostrar previsualizacion
-            updateProgressStep('6-show', 'processing', 'Abriendo previsualizacion en pantalla...');
-            
-            // Vincular boton cerrar
-            previewOverlay.querySelector('#btn-close-report-preview').addEventListener('click', () => {
-                previewOverlay.remove();
-            });
-            
-            if (window.lucide) {
-                window.lucide.createIcons();
             }
-            updateProgressStep('6-show', 'success', 'Previsualizacion iniciada exitosamente.');
+        });
+        
+        updateProgressStep('5-charts', 'success', 'Graficos renderizados correctamente.');
+        
+        // Paso 6: Mostrar previsualizacion
+        updateProgressStep('6-show', 'processing', 'Abriendo previsualizacion en pantalla...');
+        
+        // Vincular boton cerrar
+        previewOverlay.querySelector('#btn-close-report-preview').addEventListener('click', () => {
+            previewOverlay.remove();
+        });
+        
+        // Vincular boton descargar PDF
+        previewOverlay.querySelector('#btn-download-pdf').addEventListener('click', async () => {
+            const downloadBtn = previewOverlay.querySelector('#btn-download-pdf');
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = `<span class="spin-animation" style="border: 2px solid rgba(255,255,255,0.2); border-top: 2px solid white; border-radius: 50%; width: 12px; height: 12px; display: inline-block; margin-right: 5px;"></span> Generando PDF...`;
             
-            // Quitar overlay de progreso despues de una fraccion de segundo
-            setTimeout(() => {
-                progressOverlay.remove();
-            }, 600);
-            
-        } catch (err) {
-            console.error("Error al procesar el informe gerencial:", err);
-            // Identificar que paso fallo y marcarlo con error
-            const steps = ['1-validate', '2-insights', '3-logo', '4-template', '5-charts', '6-show'];
-            for (let s of steps) {
-                const row = document.getElementById('step-' + s);
-                if (row && row.innerHTML.includes('spin-animation')) {
-                    updateProgressStep(s, 'error', 'Error en este paso.', err.message + "\nStack: " + err.stack);
-                    break;
+            try {
+                const html2pdfLib = await loadHtml2Pdf();
+                
+                // Clonar las páginas del informe para generar el PDF de manera aislada
+                const tempContainer = document.createElement('div');
+                tempContainer.style.background = '#ffffff';
+                
+                const pages = previewOverlay.querySelectorAll('.report-page-sheet');
+                pages.forEach((page, idx) => {
+                    const pageClone = page.cloneNode(true);
+                    pageClone.style.boxShadow = 'none';
+                    pageClone.style.marginBottom = '0';
+                    pageClone.style.borderRadius = '0';
+                    pageClone.style.pageBreakAfter = idx < pages.length - 1 ? 'always' : 'auto';
+                    
+                    // Copiar imágenes generadas desde los canvas de Chart.js originales al clon
+                    const originalCanvases = page.querySelectorAll('canvas');
+                    const clonedCanvases = pageClone.querySelectorAll('canvas');
+                    
+                    originalCanvases.forEach((origCanvas, cIdx) => {
+                        const clonedCanvas = clonedCanvases[cIdx];
+                        if (clonedCanvas) {
+                            const img = document.createElement('img');
+                            img.src = origCanvas.toDataURL('image/png');
+                            img.style.width = origCanvas.style.width || (origCanvas.width + 'px');
+                            img.style.height = origCanvas.style.height || (origCanvas.height + 'px');
+                            img.style.display = 'block';
+                            img.style.margin = '0 auto';
+                            clonedCanvas.parentNode.replaceChild(img, clonedCanvas);
+                        }
+                    });
+                    
+                    tempContainer.appendChild(pageClone);
+                });
+                
+                const opt = {
+                    margin:       0,
+                    filename:     `Reporte_Gerencial_${reportType.charAt(0).toUpperCase() + reportType.slice(1)}_${getPeriodLabel(insights.p1).replace(/\s+/g, '_')}_vs_${getPeriodLabel(insights.p2).replace(/\s+/g, '_')}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { 
+                        scale: 2, 
+                        useCORS: true, 
+                        letterRendering: true,
+                        backgroundColor: '#ffffff'
+                    },
+                    jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+                };
+                
+                await html2pdfLib().set(opt).from(tempContainer).save();
+            } catch (pdfErr) {
+                console.error("Error al generar PDF:", pdfErr);
+                if (typeof window.showNomaiAlert === 'function') {
+                    await window.showNomaiAlert("Hubo un error al generar el archivo PDF: " + pdfErr.message);
+                } else {
+                    alert("Hubo un error al generar el archivo PDF: " + pdfErr.message);
                 }
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.innerHTML = originalText;
             }
-            // Si ninguno estaba en proceso, marcar el primero
-            updateProgressStep('1-validate', 'error', 'Fallo de ejecucion.', err.message + "\nStack: " + err.stack);
+        });
+        
+        if (window.lucide) {
+            window.lucide.createIcons();
         }
-    }, 400);
+        updateProgressStep('6-show', 'success', 'Previsualizacion iniciada exitosamente.');
+        
+        // Quitar overlay de progreso despues de una fraccion de segundo
+        setTimeout(() => {
+            progressOverlay.remove();
+        }, 600);
+        
+    } catch (err) {
+        console.error("Error al procesar el informe gerencial:", err);
+        const steps = ['1-validate', '2-insights', '3-logo', '4-template', '5-charts', '6-show'];
+        for (let s of steps) {
+            const row = document.getElementById('step-' + s);
+            if (row && row.innerHTML.includes('spin-animation')) {
+                updateProgressStep(s, 'error', 'Error en este paso.', err.message + "\nStack: " + err.stack);
+                break;
+            }
+        }
+        updateProgressStep('1-validate', 'error', 'Fallo de ejecución.', err.message + "\nStack: " + err.stack);
+    }
 }
 
 

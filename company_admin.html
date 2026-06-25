@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NomAI - Admin Empresa</title>
+    <!-- Estilo original y fuentes de Nomai -->
+    <link rel="stylesheet" href="style.css?v=20260618_12">
+    <style>
+        /* Ajustes específicos para el panel de Admin Empresa */
+        .admin-action-btn {
+            background: transparent;
+            border: 1px solid var(--primary-light);
+            color: var(--primary-light);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .admin-action-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .admin-action-btn-danger {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+        .admin-action-btn-danger:hover {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+        }
+        .status-pill.active {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .status-pill.inactive {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        /* Estilos personalizados de los inputs en el modal */
+        .admin-form-group {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+        }
+        .admin-form-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .admin-form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            outline: none;
+            background: #ffffff;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        .admin-form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(108, 0, 211, 0.15);
+        }
+        
+        /* Modal de Nomai con Glassmorphic overlay */
+        .nomai-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(26, 5, 51, 0.4);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .nomai-modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .nomai-modal-card {
+            background: #ffffff;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 480px;
+            padding: 24px;
+            box-shadow: var(--card-shadow-lg);
+            border: 1px solid rgba(108, 0, 211, 0.15);
+            transform: scale(0.95);
+            transition: transform 0.25s ease;
+        }
+        .nomai-modal-overlay.active .nomai-modal-card {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body style="background: var(--bg-main); font-family: 'Outfit', sans-serif;">
+    <div class="app-container">
+        <!-- Sidebar Corporativo de Nomai -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-container">
+                <div class="logo-expanded">
+                    <img src="logo-expanded.png?v=20260613_1" alt="NomAI" class="logo-img-expanded">
+                </div>
+                <div class="logo-collapsed">
+                    <img src="logo-collapsed.png?v=20260613_1" alt="NomAI" class="logo-img-collapsed">
+                </div>
+            </div>
+
+            <nav style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <ul class="nav-menu">
+                    <li class="nav-item active" id="tab-btn-analysts">
+                        <a class="nav-link" href="#">
+                            <i data-lucide="users"></i>
+                            <span>Usuarios Analistas</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-toggle-bottom" id="sidebar-toggle-bottom" style="cursor: pointer;">
+                <i data-lucide="chevron-left"></i>
+            </div>
+        </aside>
+
+        <!-- Panel Principal -->
+        <main class="main-panel">
+            <!-- Header superior idéntico a index.html / admin.html -->
+            <header class="header">
+                <div style="flex-grow: 1;"></div>
+                <div class="header-right-controls">
+                    <div class="header-profile" id="user-profile-menu" style="cursor: pointer; position: relative;" onclick="toggleProfileDropdown(event)" title="Opciones de perfil">
+                        <div class="profile-avatar">
+                            <span class="avatar-letter">AD</span>
+                        </div>
+                        <div class="profile-info">
+                            <span class="profile-name">Admin Empresa</span>
+                            <span class="profile-role">ADMIN</span>
+                        </div>
+                        
+                        <!-- Dropdown de Cierre de sesión -->
+                        <div id="profile-dropdown" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #ffffff; border: 1px solid rgba(108, 0, 211, 0.15); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(108,0,211,0.1); z-index: 1000; min-width: 180px; padding: 6px 0; text-align: left;">
+                            <a href="index.html" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #1e293b; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <i data-lucide="arrow-left" style="width: 14px; height: 14px; stroke: #6C00D3; stroke-width: 2.5px;"></i>
+                                <span>Volver al Dashboard</span>
+                            </a>
+                            <div style="border-top: 1px solid rgba(108, 0, 211, 0.08); margin: 6px 0;"></div>
+                            <a href="#" onclick="event.preventDefault(); event.stopPropagation(); triggerLogoutWithConfirm();" style="display: flex; align-items: center; gap: 8px; padding: 10px 16px; color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; border-radius: 4px;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+                                <i data-lucide="log-out" style="width: 14px; height: 14px; stroke: #ef4444; stroke-width: 2.5px;"></i>
+                                <span>Cerrar Sesión</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Zona de Contenido Principal -->
+            <div class="content-area" style="padding: 32px; max-width: 1200px; margin: 0 auto; width: 100%;">
+                
+                <!-- Título y Botón de Acción -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px;" id="page-title">Panel de Control de la Empresa</h1>
+                        <span style="font-size: 0.875rem; color: var(--text-secondary);" id="company-subtitle">Crea y gestiona los usuarios analistas autorizados para ver los datos de tu empresa.</span>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="openCreateAnalystModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-family: inherit;">
+                            <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+                            <span>Crear Analista</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="alert-box" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; font-weight: 500;"></div>
+
+                <!-- Sección de Analistas -->
+                <div class="table-card" style="margin-top: 0; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+                    <div class="table-header" style="border-bottom: 1px solid var(--border-color); padding: 18px 24px;">
+                        <h3 class="table-title" style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0;">Listado de Analistas Autorizados</h3>
+                    </div>
+                    <div class="table-wrapper" style="overflow-x: auto;">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre Completo</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Registro</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analysts-table-body">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-secondary);">Cargando analistas...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Crear/Editar Analista -->
+    <div class="nomai-modal-overlay" id="analyst-modal">
+        <div class="nomai-modal-card">
+            <h3 style="margin: 0 0 1.5rem 0; font-size: 1.2rem; font-weight: 700; color: var(--text-primary);" id="modal-title">Crear Usuario Analista</h3>
+            <form id="analyst-form" onsubmit="saveAnalyst(event)">
+                <input type="hidden" id="analyst-id">
+                
+                <div class="admin-form-group">
+                    <label for="analyst-name">Nombre Completo</label>
+                    <input type="text" id="analyst-name" class="admin-form-input" required placeholder="Ej. Juan Pérez">
+                </div>
+                
+                <div class="admin-form-group" id="analyst-email-group">
+                    <label for="analyst-email">Correo Electrónico</label>
+                    <input type="email" id="analyst-email" class="admin-form-input" required placeholder="analista@miempresa.com">
+                </div>
+                
+                <div class="admin-form-group" id="analyst-pass-group">
+                    <label for="analyst-password">Contraseña</label>
+                    <input type="password" id="analyst-password" class="admin-form-input" placeholder="Contraseña de acceso">
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="analyst-status">Estado</label>
+                    <select id="analyst-status" class="admin-form-input">
+                        <option value="true">Activo</option>
+                        <option value="false">Inactivo</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit;" onclick="closeModal('analyst-modal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #6C00D3 0%, #3B008A 100%); border: none; color: white; padding: 0.5rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit; box-shadow: 0 2px 4px rgba(108,0,211,0.3);">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Supabase SDK, Lucide, y lógica company admin -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="company_admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NomAI - Iniciar Sesión</title>
+    <!-- Mismo estilo base que style.css para coherencia estética -->
+    <link rel="stylesheet" href="style.css?v=20260618_12">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at 10% 20%, rgb(26, 5, 51) 0%, rgb(11, 2, 22) 90%);
+            font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .login-container {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+        }
+
+        /* Columna izquierda: Logo Grande Animado */
+        .login-left {
+            flex: 0 0 55%;
+            min-width: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(108, 0, 211, 0.15) 0%, rgba(26, 5, 51, 0.8) 100%), 
+                        radial-gradient(circle at 30% 30%, rgb(35, 10, 70) 0%, rgb(11, 2, 22) 100%);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 3rem;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .login-left::before {
+            content: '';
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(108, 0, 211, 0.25) 0%, rgba(0, 0, 0, 0) 70%);
+            top: 25%;
+            left: 25%;
+            filter: blur(60px);
+            pointer-events: none;
+        }
+
+        .logo-animation-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 1000px;
+            height: 550px;
+            z-index: 2;
+            transition: all 0.8s ease-in-out;
+        }
+
+        /* Fila del logo (icono + imagen de texto) */
+        .logo-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            width: 100%;
+            transition: all 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+            opacity: 1;
+        }
+
+        /* 1. Engranaje/Hexágono */
+        .anim-hexagon-wrapper {
+            width: 380px; /* Reducido un 3% adicional (de 392px a 380px) */
+            height: 380px; /* Reducido un 3% adicional (de 392px a 380px) */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: introHexagon 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: transform 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+        }
+
+        .logo-hexagon-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 15px 35px rgba(0, 240, 255, 0.45));
+        }
+
+        @keyframes introHexagon {
+            0% {
+                transform: scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(360deg);
+                opacity: 1;
+            }
+        }
+
+
+        /* 2. Nombre de la compañía en imagen */
+        .anim-text-image-wrapper {
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            transition: max-width 0.8s cubic-bezier(0.77, 0, 0.175, 1), 
+                        margin-left 0.8s cubic-bezier(0.77, 0, 0.175, 1),
+                        opacity 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+        }
+
+        .logo-animation-container.step-2 .anim-text-image-wrapper {
+            max-width: 420px; /* Ancho natural exacto de la imagen (280px * 1.5 ratio) para una transición de ancho lineal y fluida */
+            opacity: 1;
+            margin-left: -155px; /* Separación ajustada para dar un 5% más de espacio */
+            padding-left: 0;
+            transform: none;
+        }
+
+        .logo-text-img {
+            height: 280px; /* Proporcional al engranaje de 400px */
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 25px rgba(255, 255, 255, 0.1));
+        }
+
+        /* 3. Logo Completo Final */
+
+
+        /* Columna derecha: Formulario */
+        .login-right {
+            flex: 0 0 45%;
+            min-width: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2.5rem;
+            background: radial-gradient(circle at 70% 70%, rgb(20, 5, 40) 0%, rgb(11, 2, 22) 100%);
+            box-sizing: border-box;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(108, 0, 211, 0.15);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 420px;
+            padding: 3.5rem 2.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+            background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-subtitle {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 2.5rem;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 0.85rem 1.1rem;
+            font-size: 0.95rem;
+            color: #f8fafc;
+            outline: none;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: #6C00D3;
+            box-shadow: 0 0 0 3px rgba(108, 0, 211, 0.25);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, #6C00D3 0%, #3B008A 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            padding: 0.9rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(108, 0, 211, 0.3);
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 22px rgba(108, 0, 211, 0.45);
+            filter: brightness(1.15);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: #64748b;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            filter: none;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: left;
+        }
+
+        /* Spinner para estado de carga */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer-text {
+            margin-top: 2.5rem;
+            font-size: 0.75rem;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+
+        /* Media queries para escalar la animación del logo en pantallas medianas y evitar desbordes */
+        @media (max-width: 1550px) and (min-width: 901px) {
+            .logo-animation-container {
+                transform: scale(0.8);
+            }
+        }
+
+        @media (max-width: 1300px) and (min-width: 901px) {
+            .logo-animation-container {
+                transform: scale(0.65);
+            }
+        }
+
+        @media (max-width: 1100px) and (min-width: 901px) {
+            .logo-animation-container {
+                transform: scale(0.5);
+            }
+        }
+
+        /* Responsividad */
+        @media (max-width: 900px) {
+            .login-container {
+                flex-direction: column;
+            }
+            .login-left {
+                flex: none;
+                min-height: 45vh;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 2.5rem 1.5rem;
+            }
+            .logo-animation-container {
+                height: 300px;
+                transform: scale(0.55);
+            }
+            .login-right {
+                flex: 1;
+                padding: 2rem 1.5rem;
+            }
+            .login-card {
+                padding: 2.5rem 1.5rem;
+                box-shadow: none;
+                background: transparent;
+                border: none;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Parte Izquierda: Animación Reveladora -->
+        <div class="login-left">
+            <div class="logo-animation-container" id="logo-anim-container">
+                <!-- Fila del Logo: Engranaje y Nombre en Imagen -->
+                <div class="logo-row">
+                    <!-- 1. El engranaje / hexágono -->
+                    <div class="anim-hexagon-wrapper">
+                        <img src="logo-collapsed.png?v=20260613_1" alt="NomAI Icon" class="logo-hexagon-img">
+                    </div>
+
+                    <!-- 2. El nombre de la compañía (logo-text.png) -->
+                    <div class="anim-text-image-wrapper">
+                        <img src="logo-text.png?v=20260625_1" alt="NomAI Name" class="logo-text-img">
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+
+        <!-- Parte Derecha: Formulario -->
+        <div class="login-right">
+            <div class="login-card">
+                <h1 class="login-title">Iniciar Sesión</h1>
+
+                <div id="error-alert" class="alert-error"></div>
+
+                <form id="login-form" onsubmit="handleFormSubmit(event)">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Correo Electrónico</label>
+                        <input type="email" id="email" class="form-input" placeholder="tu@correo.com" required autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                    </div>
+
+                    <button type="submit" id="btn-submit" class="btn-submit">
+                        <span class="spinner" id="btn-spinner"></span>
+                        <span id="btn-text">Ingresar</span>
+                    </button>
+                </form>
+
+                <div class="footer-text">
+                    &copy; 2026 NomAI - Insights de Nomina<br>Todos los derechos reservados.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cargar SDK de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Cargar módulo de autenticación -->
+    <script src="auth.js"></script>
+    <script>
+        // Si ya hay sesión activa, redirigir al index
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Animación secuencial del logo
+            const animContainer = document.getElementById('logo-anim-container');
+            if (animContainer) {
+                setTimeout(() => {
+                    animContainer.classList.add('step-2');
+                }, 1800); // 1.8s: Desplazar engranaje y mostrar nombre NomAI
+            }
+
+            if (window.supabase) {
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const { data: { session } } = await client.auth.getSession();
+                if (session) {
+                    window.location.href = 'index.html';
+                }
+            }
+        });
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const errorAlert = document.getElementById('error-alert');
+            const submitBtn = document.getElementById('btn-submit');
+            const spinner = document.getElementById('btn-spinner');
+            const btnText = document.getElementById('btn-text');
+
+            // Reset UI
+            errorAlert.style.display = 'none';
+            errorAlert.textContent = '';
+            
+            // Loading state
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btnText.textContent = 'Autenticando...';
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            try {
+                const res = await window.nomaiLogin(email, password);
+                if (res.success) {
+                    // Redirigir según el rol o directamente al dashboard
+                    window.location.href = 'index.html';
+                } else {
+                    throw new Error(res.error || 'Error desconocido al autenticar.');
+                }
+            } catch (err) {
+                errorAlert.textContent = err.message;
+                errorAlert.style.display = 'block';
+                submitBtn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Ingresar';
+            }
+        }
+    </script>
+</body>
+</html>
