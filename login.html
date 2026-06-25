@@ -343,6 +343,10 @@
             .logo-animation-container {
                 height: 300px;
                 transform: scale(0.55);
+                transition: transform 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+            }
+            .login-container.animation-done .logo-animation-container {
+                transform: scale(0.35); /* Scale down an extra ~40-50% relative to original mobile size */
             }
             .login-right {
                 flex: 1;
