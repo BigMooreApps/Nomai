@@ -118,13 +118,13 @@ function switchTab(tab) {
         btn.style.display = 'flex';
         document.getElementById('page-title').textContent = 'Administración de Empresas';
         document.getElementById('page-subtitle').textContent = 'Crea, edita y suspende el acceso a empresas clientes.';
-        btn.innerHTML = '<i data-lucide="plus" style="width: 16px; height: 16px;"></i><span>Crear Empresa</span>';
+        btn.innerHTML = '<i data-lucide="plus" style="width: 14px; height: 14px;"></i><span>Crear Empresa</span>';
         btn.setAttribute('onclick', 'openCreateCompanyModal()');
     } else if (tab === 'users') {
         btn.style.display = 'flex';
         document.getElementById('page-title').textContent = 'Administración de Usuarios';
         document.getElementById('page-subtitle').textContent = 'Gestiona los administradores principales de cada empresa.';
-        btn.innerHTML = '<i data-lucide="plus" style="width: 16px; height: 16px;"></i><span>Crear Administrador</span>';
+        btn.innerHTML = '<i data-lucide="plus" style="width: 14px; height: 14px;"></i><span>Crear Administrador</span>';
         btn.setAttribute('onclick', 'openCreateUserModal()');
     } else if (tab === 'permissions') {
         btn.style.display = 'none';
@@ -211,18 +211,18 @@ function renderCompanies() {
                 <td style="text-align: center;">
                     <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: nowrap; align-items: center;">
                         <button class="admin-action-btn" onclick="openEditCompanyModal('${c.id}')" title="Editar">
-                            <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+                            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
                         </button>
                         ${c.status !== 'suspended' 
                             ? `<button class="admin-action-btn admin-action-btn-danger" onclick="toggleCompanySuspension('${c.id}', true)" title="Suspender">
-                                <i data-lucide="slash" style="width: 16px; height: 16px;"></i>
+                                <i data-lucide="slash" style="width: 14px; height: 14px;"></i>
                                </button>`
                             : `<button class="admin-action-btn" onclick="toggleCompanySuspension('${c.id}', false)" title="Reactivar">
-                                <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                                <i data-lucide="check" style="width: 14px; height: 14px;"></i>
                                </button>`
                         }
                         <button class="admin-action-btn admin-action-btn-danger" onclick="deleteCompany('${c.id}')" title="Eliminar">
-                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
                         </button>
                     </div>
                 </td>
@@ -257,19 +257,19 @@ function renderUsers() {
                 <td style="text-align: center;">
                     <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; align-items: center;">
                         <button class="admin-action-btn" onclick="openEditUserModal('${u.id}')" title="Editar">
-                            <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+                            <i data-lucide="edit-3" style="width: 14px; height: 14px;"></i>
                         </button>
                         <button class="admin-action-btn" onclick="openResetPasswordModal('${u.id}')" title="Cambiar Clave">
-                            <i data-lucide="key" style="width: 16px; height: 16px;"></i>
+                            <i data-lucide="key" style="width: 14px; height: 14px;"></i>
                         </button>
                         <button class="admin-action-btn ${u.is_active ? 'admin-action-btn-danger' : ''}" onclick="toggleUserStatus('${u.id}', ${!u.is_active})" title="${u.is_active ? 'Desactivar' : 'Activar'}">
                             ${u.is_active 
-                                ? '<i data-lucide="user-x" style="width: 16px; height: 16px;"></i>' 
-                                : '<i data-lucide="user-check" style="width: 16px; height: 16px;"></i>'
+                                ? '<i data-lucide="user-x" style="width: 14px; height: 14px;"></i>' 
+                                : '<i data-lucide="user-check" style="width: 14px; height: 14px;"></i>'
                             }
                         </button>
                         <button class="admin-action-btn admin-action-btn-danger" onclick="deleteUser('${u.id}')" title="Eliminar">
-                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
                         </button>
                     </div>
                 </td>
