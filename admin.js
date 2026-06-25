@@ -591,12 +591,12 @@ async function loadPermissionsMatrix() {
     
     // Crear el HTML para la matriz
     let html = `
-        <table class="custom-table">
+        <table class="custom-table" style="font-size: 0.85rem;">
             <thead>
                 <tr>
-                    <th style="width: 50%; text-align: left;">Funcionalidad / Permiso</th>
-                    <th style="width: 25%; text-align: center;">${roleNames['admin']}</th>
-                    <th style="width: 25%; text-align: center;">${roleNames['analyst']}</th>
+                    <th style="width: 50%; text-align: left; position: sticky; top: 0; background: #f8fafc; z-index: 10; font-size: 0.8rem; padding-top: 12px; padding-bottom: 12px;">Funcionalidad / Permiso</th>
+                    <th style="width: 25%; text-align: center; position: sticky; top: 0; background: #f8fafc; z-index: 10; font-size: 0.8rem; padding-top: 12px; padding-bottom: 12px;">${roleNames['admin']}</th>
+                    <th style="width: 25%; text-align: center; position: sticky; top: 0; background: #f8fafc; z-index: 10; font-size: 0.8rem; padding-top: 12px; padding-bottom: 12px;">${roleNames['analyst']}</th>
                 </tr>
             </thead>
             <tbody>
