@@ -9,13 +9,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
     <script>
-        // Guard de autenticación de carga inmediata
         window.NomaiAuthInitPromise = (async () => {
             try {
                 const profile = await requireAuth();
                 return profile;
             } catch (e) {
                 console.error("[NomaiAuth] Error durante requireAuth:", e);
+                window.location.href = 'login.html';
                 return null;
             }
         })();
@@ -52,8 +52,6 @@
                                 const parent = el.closest('.nav-item');
                                 if (parent) parent.style.display = 'none';
                             }
-                            const fabEl = document.getElementById('ai-chat-fab');
-                            if (fabEl) fabEl.style.display = 'none';
                         }
                         // 2. Importar datos
                         if (!window.NomaiAuth.hasPermission('import_data')) {
@@ -291,10 +289,7 @@
         <main class="main-panel">
             <!-- Header superior (Estilo de la imagen) -->
             <header class="header">
-                <!-- Botón de menú hamburguesa para móviles -->
-                <button class="hamburger-menu-btn" id="mobile-menu-btn" aria-label="Abrir Menú">
-                    <i data-lucide="menu"></i>
-                </button>
+                <!-- Botón de menú hamburguesa removido -->
                 <!-- Search bar removed -->
 
                 <div class="header-right-controls">

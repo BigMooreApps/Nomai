@@ -55,8 +55,11 @@ async function initNomaiAuth() {
         }
     });
 
-    // Verificar sesión actual
-    const { data: { session } } = await sb.auth.getSession();
+    const { data, error } = await sb.auth.getSession();
+    if (error) {
+        console.error('[NomaiAuth] Error getting session:', error);
+    }
+    const session = data ? data.session : null;
 
     if (!session) {
         return false; // Sin sesión activa

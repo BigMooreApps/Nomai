@@ -575,7 +575,7 @@ async function loadPermissionsMatrix() {
     
     // Crear el HTML para la matriz
     let html = `
-        <table class="permissions-table">
+        <table class="custom-table">
             <thead>
                 <tr>
                     <th style="width: 50%; text-align: left;">Funcionalidad / Permiso</th>
