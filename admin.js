@@ -347,6 +347,35 @@ async function toggleCompanySuspension(id, suspend) {
     }
 }
 
+async function deleteCompany(id) {
+    const company = companiesList.find(c => c.id === id);
+    if (!company) return;
+
+    const confirm1 = await window.showNomaiConfirm(`¿Estás seguro de eliminar permanentemente la empresa "${company.name}"?`);
+    if (!confirm1) return;
+
+    // Pedir confirmación escrita
+    const text = prompt(`Para confirmar, escribe la palabra: BORRAR`);
+    if (text !== 'BORRAR') {
+        window.showNomaiAlert('Operación cancelada. La palabra de seguridad no coincide.');
+        return;
+    }
+
+    const sb = window.NomaiAuth.supabase;
+    const { error } = await sb.from('companies').delete().eq('id', id);
+
+    if (error) {
+        if (error.message.includes('foreign key constraint') || error.message.includes('violates foreign key')) {
+            window.showNomaiAlert('No se puede eliminar la empresa porque tiene usuarios o datos asociados.');
+        } else {
+            window.showNomaiAlert('Error al eliminar empresa: ' + error.message);
+        }
+    } else {
+        window.showNomaiAlert('Empresa eliminada exitosamente.');
+        await refreshData();
+    }
+}
+
 // ─── User Operations ─────────────────────────────────────────────────────────
 function openCreateUserModal() {
     document.getElementById('user-modal-title').textContent = 'Crear Administrador de Empresa';
