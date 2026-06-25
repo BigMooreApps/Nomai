@@ -578,9 +578,9 @@ async function loadPermissionsMatrix() {
         <table class="permissions-table">
             <thead>
                 <tr>
-                    <th style="width: 250px;">Funcionalidad / Permiso</th>
-                    <th style="text-align: center;">${roleNames['admin']}</th>
-                    <th style="text-align: center;">${roleNames['analyst']}</th>
+                    <th style="width: 50%; text-align: left;">Funcionalidad / Permiso</th>
+                    <th style="width: 25%; text-align: center;">${roleNames['admin']}</th>
+                    <th style="width: 25%; text-align: center;">${roleNames['analyst']}</th>
                 </tr>
             </thead>
             <tbody>

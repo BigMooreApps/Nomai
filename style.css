@@ -2711,3 +2711,83 @@ table * {
     border-color: rgba(108, 0, 211, 0.2);
 }
 
+/* ──────────────────────────────
+   PERMISSIONS TABLE & SWITCH (NomAI STYLE)
+   ────────────────────────────── */
+.permissions-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-family: 'Outfit', sans-serif;
+}
+.permissions-table th {
+    padding: 16px;
+    font-weight: 700;
+    text-align: left;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+    background: #f8fafc;
+    font-size: 0.9rem;
+}
+.permissions-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+.permission-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    display: block;
+}
+.permission-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    display: block;
+    line-height: 1.4;
+}
+
+/* Switches */
+.nomai-switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+}
+.nomai-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.nomai-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .3s;
+    border-radius: 24px;
+}
+.nomai-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+input:checked + .nomai-slider {
+    background: linear-gradient(135deg, #6C00D3 0%, #3B008A 100%);
+}
+input:checked + .nomai-slider:before {
+    transform: translateX(22px);
+}
+input:disabled + .nomai-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
