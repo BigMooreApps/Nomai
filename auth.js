@@ -689,3 +689,45 @@ window.initNomaiAuth = initNomaiAuth;
 window.showNomaiConfirm = showNomaiConfirm;
 window.showNomaiAlert = showNomaiAlert;
 window.showNomaiPrompt = showNomaiPrompt;
+
+// ─── Auto-Logout por Inactividad ─────────────────────────────────────────────
+let inactivityTimer = null;
+const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 minutos
+
+function resetInactivityTimer() {
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+    }
+    // Solo activar el temporizador si el usuario está autenticado y no está en la página de login
+    if (window.NomaiAuth && window.NomaiAuth.user && !window.location.pathname.includes('login.html')) {
+        inactivityTimer = setTimeout(async () => {
+            console.log('Sesión cerrada por inactividad.');
+            
+            // Si existe la alerta de NomAI, mostrarla y luego cerrar sesión
+            if (typeof window.showNomaiAlert === 'function') {
+                await window.showNomaiAlert('Tu sesión ha sido cerrada automáticamente tras 2 minutos de inactividad por seguridad.');
+                nomaiLogout();
+            } else {
+                alert('Tu sesión ha expirado por inactividad.');
+                nomaiLogout();
+            }
+        }, INACTIVITY_LIMIT);
+    }
+}
+
+function setupInactivityTracking() {
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+        // Usar passive: true para mejor rendimiento en scroll/touch
+        document.addEventListener(event, resetInactivityTimer, { capture: true, passive: true });
+    });
+    // Iniciar el temporizador
+    resetInactivityTimer();
+}
+
+// Sobrescribir initNomaiAuth para inicializar el tracking después de cargar el usuario
+const originalInitNomaiAuth = window.initNomaiAuth;
+window.initNomaiAuth = async function() {
+    await originalInitNomaiAuth();
+    setupInactivityTracking();
+};
