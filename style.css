@@ -378,8 +378,8 @@ body {
     width: 15px; height: 15px;
 }
 
-.mobile-menu-btn {
-    display: none;
+#mobile-menu-btn {
+    display: none !important;
     margin-right: auto;
 }
 
@@ -1541,7 +1541,7 @@ table * {
    ────────────────────────────── */
 @media (max-width: 768px) {
     /* Contenedor principal */
-    .mobile-menu-btn { display: flex !important; margin-right: 15px; margin-left: 10px; }
+    #mobile-menu-btn { display: flex !important; margin-right: 15px; margin-left: 10px; }
     
     .app-container {
         width: 100%;
