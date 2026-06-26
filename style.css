@@ -1945,6 +1945,22 @@ table * {
     display: none !important;
 }
 
+/* Scrollable table container for comparison tabs, showing ~10 rows max */
+.comparison-table-wrapper {
+    max-height: 515px !important;
+    overflow-y: auto !important;
+    position: relative !important;
+}
+
+/* Sticky totals row for comparison tables */
+.comparison-table-wrapper .total-row td {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 2 !important;
+    background: #F9FAFB !important;
+    box-shadow: inset 0 1px 0 var(--border-color), inset 0 -1px 0 var(--border-color) !important;
+}
+
 /* Redesign the comparison grid controls to display in a single line */
 .comparison-filter-layout {
     display: flex !important;

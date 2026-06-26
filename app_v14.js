@@ -4556,7 +4556,7 @@ function renderPeriodComparison() {
         return sortDir === 'asc' ? valA - valB : valB - valA;
     });
 
-    peopleStatsList.slice(0, 10).forEach(personItem => {
+    peopleStatsList.forEach(personItem => {
         const cedula = personItem.cedula;
         const name = personItem.name;
         const netP1 = personItem.p1;
@@ -6515,7 +6515,7 @@ function renderConceptComparison() {
     }
     
     // 5. Renderizar en el DOM
-    conceptDataList.slice(0, 10).forEach(item => {
+    conceptDataList.forEach(item => {
         const coName = item.co;
         const conceptSafe = coName.replace(/[^a-zA-Z0-9]/g, '_');
         
@@ -6892,7 +6892,7 @@ function renderCecoComparison() {
         return sortDir === 'asc' ? valA - valB : valB - valA;
     });
 
-    cecoStatsList.slice(0, 10).forEach(cecoItem => {
+    cecoStatsList.forEach(cecoItem => {
         const cecoKey = cecoItem.name;
         const cecoNetP1 = cecoItem.p1;
         const cecoNetP2 = cecoItem.p2;
@@ -7359,7 +7359,7 @@ function renderCargoComparison() {
         return sortDir === 'asc' ? valA - valB : valB - valA;
     });
 
-    cargoStatsList.slice(0, 10).forEach(cargoItem => {
+    cargoStatsList.forEach(cargoItem => {
         const cargo = cargoItem.cargo;
         const cargoNetP1 = cargoItem.p1;
         const cargoNetP2 = cargoItem.p2;
