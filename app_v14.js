@@ -4556,7 +4556,7 @@ function renderPeriodComparison() {
         return sortDir === 'asc' ? valA - valB : valB - valA;
     });
 
-    peopleStatsList.forEach(personItem => {
+    peopleStatsList.slice(0, 10).forEach(personItem => {
         const cedula = personItem.cedula;
         const name = personItem.name;
         const netP1 = personItem.p1;
@@ -4675,6 +4675,31 @@ function renderPeriodComparison() {
             });
         });
     });
+
+    // Renderizar fila TOTAL en la parte inferior de la tabla
+    (function renderPeriodTableTotalsRow() {
+        let sumP1 = 0, sumP2 = 0;
+        peopleStatsList.forEach(p => { sumP1 += p.p1; sumP2 += p.p2; });
+        const sumDiff = sumP2 - sumP1;
+        const sumPct  = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'total-row';
+        totalRow.innerHTML = `
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cédula</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Concepto</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP1)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP2)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+        `;
+        tbody.appendChild(totalRow);
+    })();
     
     // Bind Analizar buttons — solo los de ojo (excluir btn-person-detail)
     document.querySelectorAll('.btn-analyze:not(.btn-person-detail)').forEach(btn => {
@@ -4698,33 +4723,7 @@ function renderPeriodComparison() {
     });
     
     // Renderizar fila TOTAL en el pie de la tabla
-    (function renderPeriodTableTotals() {
-        const footerBar = document.getElementById('period-compare-footer');
-        if (!footerBar) return;
-        if (peopleStatsList.length === 0) { footerBar.innerHTML = ''; return; }
 
-        let sumP1 = 0, sumP2 = 0;
-        peopleStatsList.forEach(p => { sumP1 += p.p1; sumP2 += p.p2; });
-        const sumDiff = sumP2 - sumP1;
-        const sumPct  = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
-
-        footerBar.innerHTML = `
-            <table>
-                <tbody>
-                    <tr style="font-weight: 700; color: #000000;">
-                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
-                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
-                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
-                        <td style="width: 140px;"></td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
-    })();
 
     // Actualizar Tarjetas Resumen (Colaboradores)
     (function updatePeriodSummaryCards() {
@@ -6516,7 +6515,7 @@ function renderConceptComparison() {
     }
     
     // 5. Renderizar en el DOM
-    conceptDataList.forEach(item => {
+    conceptDataList.slice(0, 10).forEach(item => {
         const coName = item.co;
         const conceptSafe = coName.replace(/[^a-zA-Z0-9]/g, '_');
         
@@ -6592,6 +6591,31 @@ function renderConceptComparison() {
             });
         });
     });
+
+    // Renderizar fila TOTAL en la parte inferior de la tabla
+    (function renderConceptTableTotalsRow() {
+        let sumV1 = 0, sumV2 = 0;
+        conceptDataList.forEach(c => { if (c.na === 'DEVENGO' || c.na === 'DESCUENTO') { sumV1 += c.v1; sumV2 += c.v2; } });
+        const sumDiff = sumV2 - sumV1;
+        const sumPct  = sumV1 !== 0 ? (sumDiff / Math.abs(sumV1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'total-row';
+        totalRow.innerHTML = `
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Colaborador</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cédula</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumV1)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumV2)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+        `;
+        tbody.appendChild(totalRow);
+    })();
     
     // Bind Analizar buttons (Concepts)
     document.querySelectorAll('.btn-analyze-concept').forEach(btn => {
@@ -6604,34 +6628,7 @@ function renderConceptComparison() {
     });
     
     // Renderizar fila TOTAL en el pie de la tabla
-    (function renderConceptTableTotals() {
-        const footerBar = document.getElementById('concept-compare-footer');
-        if (!footerBar) return;
-        if (conceptDataList.length === 0) { footerBar.innerHTML = ''; return; }
 
-        let sumV1 = 0, sumV2 = 0;
-        // Para el total de nómina usamos solo DEVENGO y DESCUENTO (igual que el neto)
-        conceptDataList.forEach(c => { if (c.na === 'DEVENGO' || c.na === 'DESCUENTO') { sumV1 += c.v1; sumV2 += c.v2; } });
-        const sumDiff = sumV2 - sumV1;
-        const sumPct  = sumV1 !== 0 ? (sumDiff / Math.abs(sumV1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
-
-        footerBar.innerHTML = `
-            <table>
-                <tbody>
-                    <tr style="font-weight: 700; color: #000000;">
-                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumV1)}</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumV2)}</strong></td>
-                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
-                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
-                        <td style="width: 140px;"></td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
-    })();
 
     // Actualizar Tarjetas Resumen (Conceptos)
     (function updateConceptSummaryCards() {
@@ -6895,7 +6892,7 @@ function renderCecoComparison() {
         return sortDir === 'asc' ? valA - valB : valB - valA;
     });
 
-    cecoStatsList.forEach(cecoItem => {
+    cecoStatsList.slice(0, 10).forEach(cecoItem => {
         const cecoKey = cecoItem.name;
         const cecoNetP1 = cecoItem.p1;
         const cecoNetP2 = cecoItem.p2;
@@ -7021,6 +7018,31 @@ function renderCecoComparison() {
             });
         });
     });
+
+    // Renderizar fila TOTAL en la parte inferior de la tabla
+    (function renderCecoTableTotalsRow() {
+        let sumP1 = 0, sumP2 = 0;
+        cecoStatsList.forEach(c => { sumP1 += c.p1; sumP2 += c.p2; });
+        const sumDiff = sumP2 - sumP1;
+        const sumPct = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'total-row';
+        totalRow.innerHTML = `
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Concepto</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">-</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP1)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP2)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+        `;
+        tbody.appendChild(totalRow);
+    })();
     
     // Bind Analizar buttons (CECO)
     document.querySelectorAll('.btn-analyze-ceco').forEach(btn => {
@@ -7135,41 +7157,7 @@ function renderCecoComparison() {
     })();
 
     // Renderizar Totales en la Barra de Pie de Tabla (Fuera de la Tabla)
-    (function renderTableTotals() {
-        const footerBar = document.getElementById('ceco-compare-footer');
-        if (!footerBar) return;
-        
-        if (cecoStatsList.length === 0) {
-            footerBar.innerHTML = '';
-            return;
-        }
-        
-        let sumP1 = 0;
-        let sumP2 = 0;
-        cecoStatsList.forEach(c => {
-            sumP1 += c.p1;
-            sumP2 += c.p2;
-        });
-        const sumDiff = sumP2 - sumP1;
-        const sumPct = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
 
-        footerBar.innerHTML = `
-            <table>
-                <tbody>
-                    <tr style="font-weight: 700; color: #000000;">
-                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
-                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
-                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
-                        <td style="width: 140px;"></td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
-    })();
 
     if (window.lucide) window.lucide.createIcons();
 
@@ -7371,7 +7359,7 @@ function renderCargoComparison() {
         return sortDir === 'asc' ? valA - valB : valB - valA;
     });
 
-    cargoStatsList.forEach(cargoItem => {
+    cargoStatsList.slice(0, 10).forEach(cargoItem => {
         const cargo = cargoItem.cargo;
         const cargoNetP1 = cargoItem.p1;
         const cargoNetP2 = cargoItem.p2;
@@ -7494,6 +7482,31 @@ function renderCargoComparison() {
             });
         });
     });
+
+    // Renderizar fila TOTAL en la parte inferior de la tabla
+    (function renderCargoTableTotalsRow() {
+        let sumP1 = 0, sumP2 = 0;
+        cargoStatsList.forEach(c => { sumP1 += c.p1; sumP2 += c.p2; });
+        const sumDiff = sumP2 - sumP1;
+        const sumPct  = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
+
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'total-row';
+        totalRow.innerHTML = `
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Concepto</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">-</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP1)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP2)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
+            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+        `;
+        tbody.appendChild(totalRow);
+    })();
     
     // Bind Analizar buttons (Cargo)
     document.querySelectorAll('.btn-analyze-cargo').forEach(btn => {
@@ -7505,33 +7518,7 @@ function renderCargoComparison() {
     });
     
     // Renderizar fila TOTAL en el pie de la tabla
-    (function renderCargoTableTotals() {
-        const footerBar = document.getElementById('cargo-compare-footer');
-        if (!footerBar) return;
-        if (cargoStatsList.length === 0) { footerBar.innerHTML = ''; return; }
 
-        let sumP1 = 0, sumP2 = 0;
-        cargoStatsList.forEach(c => { sumP1 += c.p1; sumP2 += c.p2; });
-        const sumDiff = sumP2 - sumP1;
-        const sumPct  = sumP1 !== 0 ? (sumDiff / Math.abs(sumP1)) * 100 : (sumDiff > 0 ? 100 : (sumDiff < 0 ? -100 : 0));
-
-        footerBar.innerHTML = `
-            <table>
-                <tbody>
-                    <tr style="font-weight: 700; color: #000000;">
-                        <td colspan="4"><strong style="color: #000000; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
-                        <td style="width: 80px; text-align: right; color: var(--text-muted); font-weight: normal;">-</td>
-                        <td style="width: 110px; text-align: right; color: #000000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
-                        <td style="width: 100px; text-align: right;"><strong>${formatVariationHTML(sumDiff)}</strong></td>
-                        <td style="width: 65px; text-align: right;"><strong>${formatVariationHTML(sumPct, true)}</strong></td>
-                        <td style="width: 140px;"></td>
-                    </tr>
-                </tbody>
-            </table>
-        `;
-    })();
 
     // Actualizar Tarjetas Resumen (Cargos)
     (function updateCargoSummaryCards() {
