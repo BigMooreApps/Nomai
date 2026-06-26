@@ -2870,3 +2870,40 @@ input:disabled + .nomai-slider {
     border-color: rgba(108, 0, 211, 0.25);
     border-left-color: var(--primary-light);
 }
+
+/* Individual Analysis Modal overlay (centered glass modal) */
+.individual-analysis-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 5, 51, 0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.individual-analysis-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.individual-analysis-modal {
+    width: 92%;
+    max-width: 1200px;
+    height: 90vh;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(108, 0, 211, 0.25);
+    border: 1px solid rgba(108, 0, 211, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.individual-analysis-overlay.visible .individual-analysis-modal {
+    transform: scale(1);
+}
