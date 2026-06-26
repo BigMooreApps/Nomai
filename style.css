@@ -1945,10 +1945,11 @@ table * {
     display: none !important;
 }
 
-/* Redesign the comparison grid controls to display in a 2x2 grid (2 columns) */
+/* Redesign the comparison grid controls to display in a single line */
 .comparison-filter-layout {
-    display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
     gap: 16px !important;
     padding: 14px 20px !important;
     align-items: center !important;
@@ -1959,7 +1960,8 @@ table * {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
 }
 
 .comparison-filter-label {
@@ -1987,10 +1989,14 @@ table * {
 
 @media (max-width: 768px) {
     .comparison-filter-layout {
+        display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 2px 14px !important;
         padding: 8px 14px !important;
         border-radius: 16px !important;
+    }
+    .comparison-filter-item {
+        width: 100% !important;
     }
     .comparison-filter-label {
         font-size: 0.82rem !important;
