@@ -2891,8 +2891,8 @@ input:disabled + .nomai-slider {
     pointer-events: auto;
 }
 .individual-analysis-modal {
-    width: 92%;
-    max-width: 1200px;
+    width: 96%;
+    max-width: 1440px;
     height: 90vh;
     background: #ffffff;
     border-radius: 16px;
