@@ -5417,7 +5417,7 @@ function showPersonDetailModal(cedula, name, period1, period2) {
                 </div>
 
                 <!-- Fila de Endeudamiento y Detalle de Transacciones -->
-                <div class="overview-charts" style="align-items: stretch; grid-template-columns: 1.1fr 0.9fr; display: grid; gap: 24px;">
+                <div class="overview-charts" style="align-items: stretch; grid-template-columns: 0.9fr 1.1fr; display: grid; gap: 24px;">
                     <!-- Gráfico de Endeudamiento -->
                     <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
                         <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
