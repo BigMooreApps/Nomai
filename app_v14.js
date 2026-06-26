@@ -2408,8 +2408,7 @@ function renderConceptView() {
     renderConceptCecoChart(conceptData);
     renderConceptCargoChart(conceptData);
     
-    // 3.8. Gráfico de Distribución Cruzada: Cargo vs Centro de Costo (Stacked Bar)
-    renderConceptCrossChart(conceptData);
+
     
     // 4. Tabla: Detalles del Concepto
     renderConceptTable(conceptData);
@@ -2851,136 +2850,7 @@ function renderConceptCargoChart(conceptData) {
     });
 }
 
-function renderConceptCrossChart(conceptData) {
-    const canvas = document.getElementById('concept-cross-chart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // 1. Agrupar por Centro de Costo (para identificar los Top 8 CECOs)
-    const cecosMap = {};
-    conceptData.forEach(d => {
-        if (!d.cc || !d.dcc) return;
-        const key = `${d.cc} - ${d.dcc}`;
-        if (!cecosMap[key]) cecosMap[key] = 0;
-        cecosMap[key] += Math.abs(d.v || 0);
-    });
-    
-    const topCecos = Object.entries(cecosMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
-        .map(item => item[0]);
-        
-    if (topCecos.length === 0) return;
-    
-    // 2. Para estos Top 8 CECOs, agrupar por Persona (Colaborador)
-    const topCecosSet = new Set(topCecos);
-    const uniquePeople = new Set();
-    const crossData = {}; // crossData[ceco][person] = value
-    
-    topCecos.forEach(ceco => {
-        crossData[ceco] = {};
-    });
-    
-    conceptData.forEach(d => {
-        if (!d.cc || !d.dcc || !d.n) return;
-        const cecoKey = `${d.cc} - ${d.dcc}`;
-        if (!topCecosSet.has(cecoKey)) return;
-        
-        const personName = d.n;
-        const val = Math.abs(d.v || 0);
-        if (val === 0) return;
-        
-        uniquePeople.add(personName);
-        
-        if (!crossData[cecoKey][personName]) crossData[cecoKey][personName] = 0;
-        crossData[cecoKey][personName] += val;
-    });
-    
-    const peopleArray = [...uniquePeople].sort();
-    
-    const COLOR_PALETTE = [
-        'rgba(108, 0, 211, 0.75)',
-        'rgba(16, 185, 129, 0.75)',
-        'rgba(249, 115, 22, 0.75)',
-        'rgba(239, 68, 68, 0.75)',
-        'rgba(59, 130, 246, 0.75)',
-        'rgba(236, 72, 153, 0.75)',
-        'rgba(245, 158, 11, 0.75)',
-        'rgba(6, 182, 212, 0.75)',
-        'rgba(139, 92, 246, 0.75)',
-        'rgba(14, 165, 233, 0.75)',
-        'rgba(168, 85, 247, 0.75)',
-        'rgba(34, 197, 94, 0.75)'
-    ];
-    
-    const datasets = peopleArray.map((person, idx) => {
-        const data = topCecos.map(ceco => crossData[ceco][person] || 0);
-        return {
-            label: person,
-            data: data,
-            backgroundColor: COLOR_PALETTE[idx % COLOR_PALETTE.length],
-            borderWidth: 0
-        };
-    });
-    
-    state.charts['conceptCross'] = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: topCecos,
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false // Oculta la leyenda para evitar saturación de nombres
-                },
-                tooltip: {
-                    backgroundColor: '#FFFFFF',
-                    titleColor: '#1A1D2E',
-                    bodyColor: '#6B7280',
-                    borderColor: 'rgba(0,0,0,0.08)',
-                    borderWidth: 1,
-                    padding: 10,
-                    callbacks: {
-                        label: function(context) {
-                            const personName = context.dataset.label;
-                            const value = context.raw;
-                            const cecoIndex = context.dataIndex;
-                            const chart = context.chart;
-                            
-                            // Calcular el total de esta columna (CECO)
-                            let cecoTotal = 0;
-                            chart.data.datasets.forEach(dataset => {
-                                cecoTotal += dataset.data[cecoIndex] || 0;
-                            });
-                            
-                            const pct = cecoTotal > 0 ? ((value / cecoTotal) * 100).toFixed(1) + '%' : '0%';
-                            return `  ${personName}: ${currencyFormatter.format(value)} (${pct})`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
-                    ticks: { color: '#9CA3AF', font: { family: 'Outfit', size: 10 } }
-                },
-                y: {
-                    stacked: true,
-                    grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
-                    ticks: {
-                        color: '#9CA3AF',
-                        font: { family: 'Outfit', size: 10 },
-                        callback: function(value) { return formatShortCurrency(value); }
-                    }
-                }
-            }
-        }
-    });
-}
+
 
 function renderConceptTable(conceptData) {
     const tbody = document.getElementById('concept-details-tbody');
