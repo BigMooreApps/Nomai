@@ -4686,17 +4686,17 @@ function renderPeriodComparison() {
         const totalRow = document.createElement('tr');
         totalRow.className = 'total-row';
         totalRow.innerHTML = `
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cédula</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Concepto</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP1)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP2)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+            <td style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
         `;
         tbody.appendChild(totalRow);
     })();
@@ -6602,17 +6602,17 @@ function renderConceptComparison() {
         const totalRow = document.createElement('tr');
         totalRow.className = 'total-row';
         totalRow.innerHTML = `
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Colaborador</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cédula</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumV1)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumV2)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+            <td style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumV1)}</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumV2)}</strong></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
         `;
         tbody.appendChild(totalRow);
     })();
@@ -7029,17 +7029,17 @@ function renderCecoComparison() {
         const totalRow = document.createElement('tr');
         totalRow.className = 'total-row';
         totalRow.innerHTML = `
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Concepto</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">-</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP1)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP2)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+            <td style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
         `;
         tbody.appendChild(totalRow);
     })();
@@ -7493,17 +7493,17 @@ function renderCargoComparison() {
         const totalRow = document.createElement('tr');
         totalRow.className = 'total-row';
         totalRow.innerHTML = `
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Naturaleza</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Concepto</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">-</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p1Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP1)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Cant ${p2Label}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;">${currencyFormatter.format(sumP2)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff)}</td>
-            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true)}</td>
-            <td style="font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">Análisis</td>
+            <td style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.6px; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: var(--text-primary);"><strong>TOTAL</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumP1)}</strong></td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); color: #000;"><strong>${currencyFormatter.format(sumP2)}</strong></td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumDiff).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="text-align: right; font-weight: 700; font-size: 0.75rem; background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">${formatVariationHTML(sumPct, true).replace('class="', 'style="font-weight: 700 !important;" class="')}</td>
+            <td style="background: #F9FAFB; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);"></td>
         `;
         tbody.appendChild(totalRow);
     })();
