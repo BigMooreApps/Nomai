@@ -4479,22 +4479,16 @@ function generatePeriodInsight(val1, val2, devVar, descVar, benVar, conceptChang
 // Genera el HTML de cabecera con botón de ordenación
 function getHeaderSortHTML(labelText, columnKey, activeSortColumn, activeSortDirection, isRightAligned = false) {
     const isSorted = activeSortColumn === columnKey;
-    let iconName = 'chevrons-up-down';
-    let iconColor = 'var(--text-muted, #94a3b8)';
-    if (isSorted) {
-        iconName = activeSortDirection === 'asc' ? 'chevron-up' : 'chevron-down';
-        iconColor = '#6c00d3'; // Morado elegante principal de la app
-    }
+    const arrowChar = isSorted ? (activeSortDirection === 'asc' ? '↑' : '↓') : '↕';
+    const arrowColor = isSorted ? '#6c00d3' : '#cbd5e1';
     const containerStyle = isRightAligned 
-        ? 'display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; width: 100%;'
-        : 'display: inline-flex; align-items: center; gap: 4px;';
+        ? 'display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; width: 100%; cursor: pointer; user-select: none;'
+        : 'display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;';
         
     return `
         <div style="${containerStyle}">
             <span>${labelText}</span>
-            <button class="small-sort-btn" data-col="${columnKey}" style="background: none; border: none; padding: 0; cursor: pointer; color: ${iconColor}; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; transition: all 0.2s;" title="Ordenar por ${labelText}">
-                <i data-lucide="${iconName}" style="width: 12px; height: 12px;"></i>
-            </button>
+            <span class="sort-arrow" style="color: ${arrowColor}; font-size: 0.75rem; margin-left: 4px;">${arrowChar}</span>
         </div>
     `;
 }
@@ -5463,10 +5457,10 @@ function showPersonDetailModal(cedula, name, period1, period2) {
                             <table class="custom-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 25%;">Periodo</th>
-                                        <th style="width: 35%;">Concepto</th>
-                                        <th style="text-align: right; width: 20%;">Ingresos</th>
-                                        <th style="text-align: right; width: 20%;">Descuentos</th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;width: 25%;">Periodo<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;width: 35%;">Concepto<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Ingresos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Descuentos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="modal-employee-details-tbody">
@@ -8623,11 +8617,11 @@ function showGeneralPeriodAnalysisModal(period1, period2) {
                 <table>
                     <thead>
                         <tr>
-                            <th>Colaborador</th>
-                            <th style="text-align: right;">${period1}</th>
-                            <th style="text-align: right;">${period2}</th>
-                            <th style="text-align: right;">Variación ($)</th>
-                            <th style="text-align: right;">Variación (%)</th>
+                            <th class="sortable-header" style="cursor:pointer;user-select:none;">Colaborador<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right;">${period1}<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right;">${period2}<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right;">Variación ($)<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right;">Variación (%)<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -10793,5 +10787,141 @@ async function generateManagerialReport(reportType = 'concepto') {
         updateProgressStep('1-validate', 'error', 'Fallo de ejecución.', err.message + "\nStack: " + err.stack);
     }
 }
+
+// ─── Ordenamiento Genérico de Tablas ──────────────────────────────────────────
+(function() {
+    document.addEventListener('click', function (e) {
+        const th = e.target.closest('th');
+        if (!th) return;
+        
+        // Solo ordenar si tiene la clase sortable-header o contiene .sort-arrow
+        if (!th.classList.contains('sortable-header') && !th.querySelector('.sort-arrow')) return;
+        
+        const table = th.closest('table');
+        if (!table) return;
+        
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+        
+        // Omitir la tabla principal de base de datos ya que tiene su propio ordenamiento virtual
+        if (table.id === 'db-main-table') return;
+        
+        const index = Array.from(th.parentNode.children).indexOf(th);
+        const order = th.getAttribute('data-order') === 'asc' ? 'desc' : 'asc';
+        
+        // Resetear otros encabezados en la misma fila
+        Array.from(th.parentNode.children).forEach(sibling => {
+            if (sibling !== th) {
+                sibling.removeAttribute('data-order');
+                const arrow = sibling.querySelector('.sort-arrow');
+                if (arrow) arrow.textContent = ' ↕';
+            }
+        });
+        
+        th.setAttribute('data-order', order);
+        const thArrow = th.querySelector('.sort-arrow');
+        if (thArrow) {
+            thArrow.textContent = order === 'asc' ? ' ↑' : ' ↓';
+        }
+        
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (rows.length === 0) return;
+        
+        // Función para buscar descendientes en estructuras jerárquicas
+        function getDescendants(parentRow) {
+            const parentKey = parentRow.getAttribute('data-cedula') || 
+                              parentRow.getAttribute('data-concept-safe') || 
+                              parentRow.getAttribute('data-row-key');
+            if (!parentKey) return [];
+            
+            const directChildren = rows.filter(r => r.classList.contains(`child-of-${parentKey}`));
+            let descendants = [];
+            directChildren.forEach(child => {
+                descendants.push(child);
+                descendants = descendants.concat(getDescendants(child));
+            });
+            return descendants;
+        }
+        
+        // Filtrar filas de nivel superior (aquellas que no tienen clase child-of-)
+        const topLevelRows = rows.filter(r => {
+            return !Array.from(r.classList).some(c => c.startsWith('child-of-'));
+        });
+        
+        if (topLevelRows.length === 0) return;
+        
+        // Ordenar filas de nivel superior
+        topLevelRows.sort((a, b) => {
+            const valA = getCellValue(a, index);
+            const valB = getCellValue(b, index);
+            return compareValues(valA, valB, order);
+        });
+        
+        // Re-apendizar filas al fragmento manteniendo jerarquía
+        const fragment = document.createDocumentFragment();
+        topLevelRows.forEach(parent => {
+            fragment.appendChild(parent);
+            getDescendants(parent).forEach(desc => {
+                fragment.appendChild(desc);
+            });
+        });
+        tbody.appendChild(fragment);
+    });
+
+    function getCellValue(row, index) {
+        const cell = row.children[index];
+        if (!cell) return '';
+        return cell.textContent || cell.innerText || '';
+    }
+
+    function compareValues(valA, valB, order) {
+        const cleanNum = (str) => {
+            if (!str) return 0;
+            let s = str.trim();
+            if (s === '-' || s === '—' || s === '' || s === '—') return 0;
+            
+            let isNegative = false;
+            if (s.includes('(') && s.includes(')')) {
+                isNegative = true;
+                s = s.replace(/[()]/g, '');
+            } else if (s.startsWith('-')) {
+                isNegative = true;
+                s = s.substring(1);
+            }
+            
+            s = s.replace(/[$\s%]/g, '');
+            
+            let hasComma = s.includes(',');
+            let hasDot = s.includes('.');
+            
+            if (hasComma && hasDot) {
+                s = s.replace(/\./g, '').replace(/,/g, '.');
+            } else if (hasComma && !hasDot) {
+                s = s.replace(/,/g, '.');
+            } else if (!hasComma && hasDot) {
+                const parts = s.split('.');
+                if (parts[parts.length - 1].length === 3) {
+                    s = s.replace(/\./g, '');
+                }
+            }
+            
+            let num = parseFloat(s);
+            if (isNaN(num)) return str.trim().toLowerCase();
+            return isNegative ? -num : num;
+        };
+        
+        const a = cleanNum(valA);
+        const b = cleanNum(valB);
+        
+        if (typeof a === 'number' && typeof b === 'number') {
+            return order === 'asc' ? a - b : b - a;
+        }
+        
+        return order === 'asc' 
+            ? String(a).localeCompare(String(b)) 
+            : String(b).localeCompare(String(a));
+    }
+})();
+
 
 

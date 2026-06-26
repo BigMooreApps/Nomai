@@ -462,10 +462,10 @@
                             <table class="custom-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 28%;">Mes / Año</th>
-                                        <th style="text-align: right; width: 24%;">Ingresos (Devengos)</th>
-                                        <th style="text-align: right; width: 24%;">Deducciones (Descuentos)</th>
-                                        <th style="text-align: right; width: 24%;">Neto Recibido</th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;width: 28%;">Mes / Año<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 24%;">Ingresos (Devengos)<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 24%;">Deducciones (Descuentos)<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 24%;">Neto Recibido<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="overview-monthly-tbody">
@@ -604,10 +604,10 @@
                                 <table class="custom-table">
                                     <thead>
                                         <tr>
-                                            <th style="width: 25%;">Periodo</th>
-                                            <th style="width: 35%;">Concepto</th>
-                                            <th style="text-align: right; width: 20%;">Ingresos</th>
-                                            <th style="text-align: right; width: 20%;">Descuentos</th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;width: 25%;">Periodo<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;width: 35%;">Concepto<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Ingresos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Descuentos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                                         </tr>
                                     </thead>
                                     <tbody id="employee-details-tbody">
@@ -741,9 +741,9 @@
                                 <thead>
                                     <tr>
                                         <th>Posición</th>
-                                        <th>Colaborador</th>
-                                        <th>Periodo</th>
-                                        <th style="text-align: right;">Monto Absoluto</th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;">Colaborador<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;">Periodo<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right;">Monto Absoluto<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="concept-details-tbody">
@@ -858,8 +858,8 @@
                             <table class="custom-table compare-table">
                                 <thead>
                                     <tr>
-                                        <th>Colaborador</th>
-                                        <th>Cédula</th>
+                                        <th id="period-header-name">Colaborador</th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;">Cédula<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                                         <th>Naturaleza</th>
                                         <th>Concepto</th>
                                         <th id="period-header-cant-p1" style="text-align: right; width: 80px;">Cant P1
@@ -868,8 +868,8 @@
                                         <th id="period-header-cant-p2" style="text-align: right; width: 80px;">Cant P2
                                         </th>
                                         <th id="period-header-p2" style="text-align: right; width: 110px;">Valor P2</th>
-                                        <th style="text-align: right; width: 100px;">Variación</th>
-                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th id="period-header-diff" style="text-align: right; width: 100px;">Variación</th>
+                                        <th id="period-header-pct" style="text-align: right; width: 65px;">%</th>
                                         <th style="width: 140px;">Análisis</th>
                                     </tr>
                                 </thead>
@@ -933,20 +933,16 @@
                             <table class="custom-table compare-table">
                                 <thead>
                                     <tr>
-                                        <th>Concepto</th>
-                                        <th>Naturaleza</th>
+                                        <th id="concept-header-name">Concepto</th>
+                                        <th class="sortable-header" style="cursor:pointer;user-select:none;">Naturaleza<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
                                         <th>Colaborador</th>
                                         <th>Cédula</th>
-                                        <th id="concept-period-header-cant-p1" style="text-align: right; width: 80px;">
-                                            Cant P1</th>
-                                        <th id="concept-period-header-p1" style="text-align: right; width: 110px;">Valor
-                                            P1</th>
-                                        <th id="concept-period-header-cant-p2" style="text-align: right; width: 80px;">
-                                            Cant P2</th>
-                                        <th id="concept-period-header-p2" style="text-align: right; width: 110px;">Valor
-                                            P2</th>
-                                        <th style="text-align: right; width: 100px;">Variación</th>
-                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th id="concept-period-header-cant-p1" style="text-align: right; width: 80px;">Cant P1</th>
+                                        <th id="concept-period-header-p1" style="text-align: right; width: 110px;">Valor P1</th>
+                                        <th id="concept-period-header-cant-p2" style="text-align: right; width: 80px;">Cant P2</th>
+                                        <th id="concept-period-header-p2" style="text-align: right; width: 110px;">Valor P2</th>
+                                        <th id="concept-header-diff" style="text-align: right; width: 100px;">Variación</th>
+                                        <th id="concept-header-pct" style="text-align: right; width: 65px;">%</th>
                                         <th style="width: 140px;">Análisis</th>
                                     </tr>
                                 </thead>
@@ -1003,20 +999,16 @@
                             <table class="custom-table compare-table">
                                 <thead>
                                     <tr>
-                                        <th>Centro de Costo</th>
+                                        <th id="ceco-compare-header-name">Centro de Costo</th>
                                         <th>Naturaleza</th>
                                         <th>Concepto</th>
                                         <th>-</th>
-                                        <th id="ceco-compare-header-cant-p1" style="text-align: right; width: 80px;">
-                                            Cant P1</th>
-                                        <th id="ceco-compare-header-p1" style="text-align: right; width: 110px;">Valor
-                                            P1</th>
-                                        <th id="ceco-compare-header-cant-p2" style="text-align: right; width: 80px;">
-                                            Cant P2</th>
-                                        <th id="ceco-compare-header-p2" style="text-align: right; width: 110px;">Valor
-                                            P2</th>
-                                        <th style="text-align: right; width: 100px;">Variación</th>
-                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th id="ceco-compare-header-cant-p1" style="text-align: right; width: 80px;">Cant P1</th>
+                                        <th id="ceco-compare-header-p1" style="text-align: right; width: 110px;">Valor P1</th>
+                                        <th id="ceco-compare-header-cant-p2" style="text-align: right; width: 80px;">Cant P2</th>
+                                        <th id="ceco-compare-header-p2" style="text-align: right; width: 110px;">Valor P2</th>
+                                        <th id="ceco-compare-header-diff" style="text-align: right; width: 100px;">Variación</th>
+                                        <th id="ceco-compare-header-pct" style="text-align: right; width: 65px;">%</th>
                                         <th style="width: 140px;">Análisis</th>
                                     </tr>
                                 </thead>
@@ -1074,20 +1066,16 @@
                             <table class="custom-table compare-table">
                                 <thead>
                                     <tr>
-                                        <th>Cargo</th>
+                                        <th id="cargo-compare-header-name">Cargo</th>
                                         <th>Naturaleza</th>
                                         <th>Concepto</th>
                                         <th>-</th>
-                                        <th id="cargo-compare-header-cant-p1" style="text-align: right; width: 80px;">
-                                            Cant P1</th>
-                                        <th id="cargo-compare-header-p1" style="text-align: right; width: 110px;">Valor
-                                            P1</th>
-                                        <th id="cargo-compare-header-cant-p2" style="text-align: right; width: 80px;">
-                                            Cant P2</th>
-                                        <th id="cargo-compare-header-p2" style="text-align: right; width: 110px;">Valor
-                                            P2</th>
-                                        <th style="text-align: right; width: 100px;">Variación</th>
-                                        <th style="text-align: right; width: 65px;">%</th>
+                                        <th id="cargo-compare-header-cant-p1" style="text-align: right; width: 80px;">Cant P1</th>
+                                        <th id="cargo-compare-header-p1" style="text-align: right; width: 110px;">Valor P1</th>
+                                        <th id="cargo-compare-header-cant-p2" style="text-align: right; width: 80px;">Cant P2</th>
+                                        <th id="cargo-compare-header-p2" style="text-align: right; width: 110px;">Valor P2</th>
+                                        <th id="cargo-compare-header-diff" style="text-align: right; width: 100px;">Variación</th>
+                                        <th id="cargo-compare-header-pct" style="text-align: right; width: 65px;">%</th>
                                         <th style="width: 140px;">Análisis</th>
                                     </tr>
                                 </thead>
