@@ -616,6 +616,8 @@ body {
 .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 5px 18px rgba(108,0,211,0.38); }
 .btn-secondary { background: #FFF; border-color: var(--border-color); color: var(--text-secondary); }
 .btn-secondary:hover { background: #F5F6FA; border-color: rgba(108,0,211,0.25); color: var(--primary); }
+.btn-danger { background: #dc2626; border-color: #dc2626; color: white; box-shadow: 0 3px 12px rgba(220,38,38,0.25); }
+.btn-danger:hover { background: #b91c1c; border-color: #b91c1c; box-shadow: 0 5px 18px rgba(220,38,38,0.35); }
 .btn-icon {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px;
@@ -2322,6 +2324,8 @@ table * {
 .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 5px 18px rgba(108,0,211,0.38); }
 .btn-secondary { background: #FFF; border-color: var(--border-color); color: var(--text-secondary); }
 .btn-secondary:hover { background: #F5F6FA; border-color: rgba(108,0,211,0.25); color: var(--primary); }
+.btn-danger { background: #dc2626; border-color: #dc2626; color: white; box-shadow: 0 3px 12px rgba(220,38,38,0.25); }
+.btn-danger:hover { background: #b91c1c; border-color: #b91c1c; box-shadow: 0 5px 18px rgba(220,38,38,0.35); }
 .btn-icon {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px;
