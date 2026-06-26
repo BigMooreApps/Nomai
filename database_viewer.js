@@ -89,29 +89,32 @@ function renderBatchesList() {
 
     const canDelete = window.NomaiAuth ? window.NomaiAuth.hasPermission('delete_data') : true;
 
-    el.innerHTML = batches.map((b, i) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;
-                    padding:0.75rem 1rem;background:#f8fafc;border:1px solid #e2e8f0;
-                    border-radius:0.5rem;">
+    el.innerHTML = batches.map((b, i) => {
+        const count = b.data ? b.data.length : (b.recordCount || 0);
+        return `
+        <div class="batch-item">
             <div>
-                <div style="font-weight:600;color:#1e293b;font-size:0.875rem;">
+                <div style="font-weight:600;color:var(--text-primary);font-size:0.875rem;display:flex;align-items:center;gap:0.35rem;">
+                    <i data-lucide="layers" style="width:14px;height:14px;color:var(--primary);"></i>
                     Lote ${i + 1}: ${b.name}
                 </div>
-                <div style="color:#64748b;font-size:0.75rem;">
-                    Cargado el: ${b.date} &bull; ${b.data.length.toLocaleString('es-CO')} registros
+                <div style="color:var(--text-secondary);font-size:0.75rem;margin-top:4px;padding-left:1.25rem;">
+                    Cargado el: ${b.date} &bull; ${count.toLocaleString('es-CO')} registros
                 </div>
             </div>
             ${canDelete ? `
             <button class="btn btn-outline"
-                    style="color:#ef4444;border-color:#ef4444;padding:0.25rem 0.5rem;font-size:0.75rem;"
+                    style="color:#ef4444;border-color:#ef4444;padding:0.25rem 0.5rem;font-size:0.75rem;display:flex;align-items:center;"
                     onclick="deleteBatch('${b.id}')">
-                <i data-lucide="trash-2" style="width:14px;height:14px;margin-right:4px;"></i> Eliminar
+                <i data-lucide="trash-2" style="width:14px;height:14px;margin-right:4px;"></i> Eliminar lote
             </button>
             ` : ''}
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
     if (window.lucide) window.lucide.createIcons();
 }
+window.renderBatchesList = renderBatchesList;
 
 window.deleteBatch = async function (batchId) {
     if (window.NomaiAuth && !window.NomaiAuth.hasPermission('delete_data')) {
@@ -132,6 +135,19 @@ window.deleteBatch = async function (batchId) {
     // Si hay sesión de Supabase, eliminar de la base de datos en la nube
     if (window.NomaiAuth && window.NomaiAuth.session) {
         const sb = window.NomaiAuth.supabase;
+
+        // Primero eliminar los registros asociados al lote
+        const { error: recordsError } = await sb
+            .from('payroll_records')
+            .delete()
+            .eq('batch_id', batchId);
+
+        if (recordsError) {
+            await window.showNomaiAlert("Error al eliminar los registros del lote: " + recordsError.message);
+            return;
+        }
+
+        // Luego eliminar el lote en sí
         const { error } = await sb
             .from('payroll_batches')
             .delete()
@@ -165,6 +181,9 @@ window.deleteBatch = async function (batchId) {
     });
     window.state.data = allData;
 
+    // Limpiar caché para que el próximo refresco use datos frescos
+    if (typeof window.clearNomaiCache === 'function') window.clearNomaiCache();
+
     renderBatchesList();
     refreshDatabaseTable();
 
@@ -172,6 +191,103 @@ window.deleteBatch = async function (batchId) {
     if (typeof window.updateAll === 'function') {
         window.state.filters = { years: [], months: [], types: [], cecos: [], quincenas: [] };
         window.updateAll();
+    }
+};
+
+// ─── Eliminar TODA la base de datos (doble confirmación) ──────────────────────
+window.deleteAllDatabase = async function() {
+    if (window.NomaiAuth && !window.NomaiAuth.hasPermission('delete_data')) {
+        await window.showNomaiAlert('No tienes permisos para eliminar la base de datos.');
+        return;
+    }
+
+    // Primera confirmación
+    const first = await window.showNomaiConfirm(
+        '⚠️ ¿Estás seguro de que deseas eliminar TODA la base de datos de nómina?\n\nEsta acción eliminará todos los lotes y registros cargados en Supabase.'
+    );
+    if (!first) return;
+
+    // Segunda confirmación — modal especial de doble confirmación
+    const confirmed = await new Promise(resolve => {
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;font-family:Outfit,sans-serif;';
+        modal.innerHTML = `
+            <div style="background:white;border-radius:1rem;padding:2rem;max-width:420px;width:90%;box-shadow:0 25px 50px rgba(0,0,0,0.25);">
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+                    <div style="background:#fee2e2;border-radius:0.5rem;padding:0.6rem;">
+                        <i data-lucide="alert-triangle" style="width:22px;height:22px;color:#dc2626;"></i>
+                    </div>
+                    <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:#1e293b;">Confirmar eliminación total</h3>
+                </div>
+                <p style="color:#475569;font-size:0.9rem;margin-bottom:0.5rem;">Esta es tu <strong>segunda y última confirmación</strong>. Al continuar:</p>
+                <ul style="color:#64748b;font-size:0.85rem;margin:0.5rem 0 1.5rem 1.2rem;line-height:1.8;">
+                    <li>Se eliminarán <strong>todos los lotes</strong> de tu empresa</li>
+                    <li>Se eliminarán <strong>todos los registros</strong> de nómina</li>
+                    <li>Se borrará el <strong>caché local</strong> del navegador</li>
+                    <li>Esta acción <strong>no se puede deshacer</strong></li>
+                </ul>
+                <p style="color:#64748b;font-size:0.85rem;margin-bottom:1.25rem;">Escribe <strong>ELIMINAR</strong> para confirmar:</p>
+                <input id="delete-confirm-input" type="text" placeholder="ELIMINAR" autocomplete="off"
+                    style="width:100%;padding:0.6rem 0.75rem;border:2px solid #e2e8f0;border-radius:0.5rem;font-size:0.9rem;box-sizing:border-box;margin-bottom:1rem;font-family:Outfit,sans-serif;">
+                <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+                    <button id="delete-cancel-btn" style="padding:0.5rem 1.25rem;border:1px solid #e2e8f0;background:white;border-radius:0.5rem;cursor:pointer;font-family:Outfit,sans-serif;">Cancelar</button>
+                    <button id="delete-confirm-btn" style="padding:0.5rem 1.25rem;background:#dc2626;color:white;border:none;border-radius:0.5rem;cursor:pointer;font-family:Outfit,sans-serif;font-weight:600;opacity:0.4;" disabled>Eliminar Todo</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        if (window.lucide) window.lucide.createIcons();
+
+        const input = modal.querySelector('#delete-confirm-input');
+        const confirmBtn = modal.querySelector('#delete-confirm-btn');
+        const cancelBtn = modal.querySelector('#delete-cancel-btn');
+
+        input.addEventListener('input', () => {
+            const valid = input.value.trim().toUpperCase() === 'ELIMINAR';
+            confirmBtn.disabled = !valid;
+            confirmBtn.style.opacity = valid ? '1' : '0.4';
+        });
+        cancelBtn.addEventListener('click', () => { modal.remove(); resolve(false); });
+        confirmBtn.addEventListener('click', () => { modal.remove(); resolve(true); });
+        modal.addEventListener('click', e => { if (e.target === modal) { modal.remove(); resolve(false); } });
+    });
+    if (!confirmed) return;
+
+    // Mostrar progreso
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1e1b4b;color:white;padding:1rem 1.5rem;border-radius:0.75rem;z-index:9999;box-shadow:0 10px 30px rgba(0,0,0,0.3);min-width:260px;font-family:Outfit,sans-serif;';
+    toast.innerHTML = '<div style="font-weight:600;margin-bottom:4px;">Eliminando base de datos...</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Por favor espera</div>';
+    document.body.appendChild(toast);
+
+    try {
+        if (window.NomaiAuth && window.NomaiAuth.session) {
+            const sb = window.NomaiAuth.supabase;
+
+            // Usar RPC server-side para evitar timeout de RLS en borrado masivo
+            const { error } = await sb.rpc('delete_my_payroll_data');
+            if (error) throw error;
+        }
+
+        // Limpiar estado local y caché
+        if (window.state) { window.state.data = []; window.state.batches = []; }
+        if (typeof window.clearNomaiCache === 'function') await window.clearNomaiCache();
+
+        // Re-renderizar todo
+        renderBatchesList();
+        refreshDatabaseTable();
+        if (typeof window.initUniqueValuesCache === 'function') window.initUniqueValuesCache();
+        if (typeof window.processData === 'function') window.processData();
+        if (typeof window.renderActiveTab === 'function') window.renderActiveTab();
+
+        toast.style.background = '#065f46';
+        toast.innerHTML = '<div style="font-weight:600;">✓ Base de datos eliminada</div><div style="font-size:0.8rem;color:rgba(255,255,255,0.7);">Todos los datos han sido borrados</div>';
+        setTimeout(() => toast.remove(), 3000);
+
+    } catch (e) {
+        console.error('[Nomai] Error eliminando base de datos:', e);
+        toast.style.background = '#7f1d1d';
+        toast.innerHTML = '<div style="font-weight:600;">Error al eliminar</div><div style="font-size:0.8rem;">' + (e.message || '') + '</div>';
+        setTimeout(() => toast.remove(), 4000);
     }
 };
 

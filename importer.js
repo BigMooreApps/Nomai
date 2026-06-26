@@ -423,14 +423,21 @@
     function updateLoadingProgress(percent) {
         const container = document.getElementById('loading-progress-container');
         const bar = document.getElementById('loading-progress-bar');
-        const percentText = document.getElementById('loading-percent');
+        const loadingText = document.getElementById('loading-text');
         
-        if (container && bar && percentText) {
+        if (container && bar) {
             container.classList.remove('hide');
-            percentText.classList.remove('hide');
             const p = Math.min(100, Math.max(0, percent));
             bar.style.width = p + '%';
-            percentText.innerText = Math.round(p) + '%';
+            
+            if (loadingText) {
+                let currentText = loadingText.innerText || "";
+                // Remover cualquier indicador de porcentaje previo para actualizarlo limpiamente
+                currentText = currentText.replace(/\s*\.\.\.\s*\d+%\s*$/, "");
+                currentText = currentText.replace(/\s*\d+%\s*$/, "");
+                const roundedPct = Math.round(p);
+                loadingText.innerText = `${currentText}... ${roundedPct}%`;
+            }
         }
     }
 
@@ -451,9 +458,7 @@
         setTimeout(() => {
             const container = document.getElementById('loading-progress-container');
             const bar = document.getElementById('loading-progress-bar');
-            const percentText = document.getElementById('loading-percent');
             if (container) container.classList.add('hide');
-            if (percentText) percentText.classList.add('hide');
             if (bar) bar.style.width = '0%';
         }, 300);
     }
@@ -1942,9 +1947,17 @@
                         if (typeof hideLoading === 'function') hideLoading();
                         return;
                     }
-                    showLoading("Guardando lote en la nube...");
+                    showLoading("Guardando lote en la nube");
+                    if (typeof updateLoadingProgress === 'function') {
+                        updateLoadingProgress(0);
+                    }
                     try {
-                        const cloudRes = await window.savePayrollBatchToSupabase(batchName, converted);
+                        const cloudRes = await window.savePayrollBatchToSupabase(batchName, converted, (pct) => {
+                            showLoading("Guardando lote en la nube");
+                            if (typeof updateLoadingProgress === 'function') {
+                                updateLoadingProgress(pct);
+                            }
+                        });
                         if (!cloudRes.success) {
                             throw new Error(cloudRes.error);
                         }
@@ -2873,7 +2886,7 @@
         
         let configs = [];
         try {
-            const saved = localStorage.getItem('nomai_saved_configs');
+            const saved = localStorage.getItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`);
             if (saved) configs = JSON.parse(saved);
         } catch (e) { console.error('Error loading configs:', e); }
         
@@ -3067,7 +3080,7 @@
         if (select && select.value !== '') {
             let configs = [];
             try {
-                const saved = localStorage.getItem('nomai_saved_configs');
+                const saved = localStorage.getItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`);
                 if (saved) configs = JSON.parse(saved);
                 const currentTpl = configs[select.value];
                 if (currentTpl) defaultName = currentTpl.name;
@@ -3102,7 +3115,7 @@
         
         let configs = [];
         try {
-            const saved = localStorage.getItem('nomai_saved_configs');
+            const saved = localStorage.getItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`);
             if (saved) configs = JSON.parse(saved);
         } catch (e) {}
         
@@ -3112,14 +3125,14 @@
             if (!overwrite) return;
             
             configs[existingIdx] = template;
-            localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+            localStorage.setItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`, JSON.stringify(configs));
             loadConfigTemplates();
             
             syncTemplateSelection(existingIdx.toString());
             showNomaiAlert('Plantilla actualizada con éxito.');
         } else {
             configs.push(template);
-            localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+            localStorage.setItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`, JSON.stringify(configs));
             loadConfigTemplates();
             
             const newIndex = configs.length - 1;
@@ -3138,7 +3151,7 @@
         const index = parseInt(select.value);
         let configs = [];
         try {
-            const saved = localStorage.getItem('nomai_saved_configs');
+            const saved = localStorage.getItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`);
             if (saved) configs = JSON.parse(saved);
         } catch (e) {}
         
@@ -3156,7 +3169,7 @@
         }
         
         template.name = newName.trim();
-        localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+        localStorage.setItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`, JSON.stringify(configs));
         
         showNomaiAlert('Plantilla renombrada con éxito.');
         loadConfigTemplates();
@@ -3173,7 +3186,7 @@
         const index = parseInt(select.value);
         let configs = [];
         try {
-            const saved = localStorage.getItem('nomai_saved_configs');
+            const saved = localStorage.getItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`);
             if (saved) configs = JSON.parse(saved);
         } catch (e) {}
         
@@ -3184,7 +3197,7 @@
         if (!proceed) return;
         
         configs.splice(index, 1);
-        localStorage.setItem('nomai_saved_configs', JSON.stringify(configs));
+        localStorage.setItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`, JSON.stringify(configs));
         
         showNomaiAlert('Plantilla eliminada con éxito.');
         
@@ -3201,7 +3214,7 @@
         
         let configs = [];
         try {
-            const saved = localStorage.getItem('nomai_saved_configs');
+            const saved = localStorage.getItem(`nomai_saved_configs_${window.NomaiAuth?.profile?.company_id || 'default'}`);
             if (saved) configs = JSON.parse(saved);
         } catch (e) {}
         

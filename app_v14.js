@@ -141,6 +141,141 @@ window.getUniqueMonths = getUniqueMonths;
 window.getUniqueQuincenas = getUniqueQuincenas;
 window.switchTab = switchTab;
 
+// ─── Actualizar datos desde Supabase sin recargar la página ───────────────────
+async function refreshDataFromSupabase() {
+    if (!window.NomaiAuth || !window.NomaiAuth.session) {
+        alert('No hay sesión activa. Por favor inicia sesión nuevamente.');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-refresh-data');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" style="width:16px;height:16px;animation:spin 1s linear infinite;"></i> Actualizando...';
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'refresh-overlay';
+    overlay.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1e1b4b;color:white;padding:1rem 1.5rem;border-radius:0.75rem;z-index:9999;display:flex;align-items:center;gap:1rem;box-shadow:0 10px 30px rgba(0,0,0,0.3);min-width:280px;';
+    overlay.innerHTML = `
+        <div style="flex:1;">
+            <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">Actualizando Base de Datos</div>
+            <div style="background:rgba(255,255,255,0.15);height:5px;border-radius:3px;overflow:hidden;">
+                <div id="refresh-progress-bar" style="width:5%;height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);transition:width 0.2s;"></div>
+            </div>
+            <div id="refresh-progress-text" style="font-size:0.75rem;color:rgba(255,255,255,0.6);margin-top:4px;">5%</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    if (window.lucide) window.lucide.createIcons();
+
+    try {
+        // Limpiar caché vieja antes de refrescar
+        await clearCachedData();
+        
+        state.data = await loadPayrollFromSupabase((pct) => {
+            const bar = document.getElementById('refresh-progress-bar');
+            const txt = document.getElementById('refresh-progress-text');
+            if (bar) bar.style.width = pct + '%';
+            if (txt) txt.innerText = pct + '%';
+        });
+
+        // Guardar nueva caché (incluyendo batches)
+        const companyId = window.NomaiAuth.profile && window.NomaiAuth.profile.company_id;
+        if (state.data.length > 0) {
+            const batchesToCache = (state.batches || []).map(b => ({
+                id: b.id, name: b.name, date: b.date, recordCount: b.data ? b.data.length : 0
+            }));
+            await setCachedData({ companyId, records: state.data, batches: batchesToCache, savedAt: Date.now() });
+        }
+
+        // Reconstruir caché de valores únicos y volver a renderizar
+        initUniqueValuesCache();
+        processData();
+        renderActiveTab();
+        
+        // Re-renderizar lista de lotes
+        if (typeof window.renderBatchesList === 'function') window.renderBatchesList();
+        if (typeof window.refreshDatabaseTable === 'function') window.refreshDatabaseTable();
+
+        // Actualizar timestamp en la tabla
+        const ts = document.getElementById('db-last-updated');
+        if (ts) ts.innerText = 'Actualizado: ' + new Date().toLocaleTimeString('es-CO');
+
+        overlay.style.background = '#065f46';
+        overlay.querySelector('div > div:first-child').innerText = `¡${state.data.length.toLocaleString('es-CO')} registros actualizados!`;
+        setTimeout(() => overlay.remove(), 2500);
+
+    } catch (e) {
+        console.error('[Nomai] Error al actualizar datos:', e);
+        overlay.style.background = '#7f1d1d';
+        overlay.querySelector('div > div:first-child').innerText = 'Error al actualizar';
+        setTimeout(() => overlay.remove(), 3000);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Actualizar Datos';
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
+}
+window.refreshDataFromSupabase = refreshDataFromSupabase;
+
+
+// ─── IndexedDB Cache ─────────────────────────────────────────────────────────
+const CACHE_DB_NAME = 'NomaiCache';
+const CACHE_STORE = 'payroll';
+const CACHE_KEY = 'data';
+
+function openCacheDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(CACHE_DB_NAME, 1);
+        req.onupgradeneeded = e => {
+            e.target.result.createObjectStore(CACHE_STORE);
+        };
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function getCachedData() {
+    try {
+        const db = await openCacheDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(CACHE_STORE, 'readonly');
+            const req = tx.objectStore(CACHE_STORE).get(CACHE_KEY);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch { return null; }
+}
+
+async function setCachedData(payload) {
+    try {
+        const db = await openCacheDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(CACHE_STORE, 'readwrite');
+            tx.objectStore(CACHE_STORE).put(payload, CACHE_KEY);
+            tx.oncomplete = resolve;
+            tx.onerror = resolve;
+        });
+    } catch {}
+}
+
+async function clearCachedData() {
+    try {
+        const db = await openCacheDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(CACHE_STORE, 'readwrite');
+            tx.objectStore(CACHE_STORE).delete(CACHE_KEY);
+            tx.oncomplete = resolve;
+            tx.onerror = resolve;
+        });
+    } catch {}
+}
+window.clearNomaiCache = clearCachedData;
+
 // Inicializacion de la Aplicacion al cargar el DOM
 document.addEventListener('DOMContentLoaded', async () => {
     // Esperar a que la autenticación e inicialización del contexto se completen
@@ -148,14 +283,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         await window.NomaiAuthInitPromise;
     }
 
-    // 1. Cargar datos iniciales (desde Supabase si hay sesión o fallback a data.js)
+    // 1. Cargar datos iniciales (desde caché o Supabase)
     if (window.NomaiAuth && window.NomaiAuth.session) {
         try {
-            console.log("[Nomai] Cargando datos desde base de datos Supabase...");
-            state.data = await loadPayrollFromSupabase();
+            // Intentar cargar desde caché local primero (instantáneo)
+            const cached = await getCachedData();
+            const companyId = window.NomaiAuth.profile && window.NomaiAuth.profile.company_id;
+            
+            if (cached && cached.companyId === companyId && cached.records && cached.records.length > 0) {
+                // ✅ Datos en caché: carga instantánea sin overlay
+                console.log(`[Nomai] Cargando ${cached.records.length} registros desde caché local...`);
+                state.data = cached.records;
+                
+                // Restaurar batches desde caché para que se muestren en "Lotes de Información Cargados"
+                if (cached.batches && cached.batches.length > 0) {
+                    state.batches = cached.batches;
+                }
+                
+                // Mostrar badge discreto
+                const badge = document.createElement('div');
+                badge.style.cssText = 'position:fixed;bottom:1rem;right:1rem;background:#065f46;color:white;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8rem;z-index:9999;display:flex;align-items:center;gap:0.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+                badge.innerHTML = `<i data-lucide="check-circle" style="width:14px;height:14px;"></i> ${cached.records.length.toLocaleString('es-CO')} registros cargados desde caché`;
+                document.body.appendChild(badge);
+                if (window.lucide) window.lucide.createIcons();
+                setTimeout(() => { badge.style.opacity = '0'; badge.style.transition = 'opacity 0.5s'; setTimeout(() => badge.remove(), 500); }, 3000);
+                
+            } else {
+                // 🔄 Sin caché: descargar desde Supabase con overlay
+                console.log("[Nomai] Sin caché local. Cargando desde Supabase...");
+                
+                const loadingOverlay = document.createElement('div');
+                loadingOverlay.id = 'nomai-initial-loading';
+                loadingOverlay.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1e1b4b;color:white;padding:1rem 1.5rem;border-radius:0.75rem;z-index:9999;display:flex;align-items:center;gap:1rem;box-shadow:0 10px 30px rgba(0,0,0,0.3);min-width:280px;font-family:Outfit,sans-serif;';
+                loadingOverlay.innerHTML = `
+                    <div style="flex:1;">
+                        <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">Cargando Base de Datos</div>
+                        <div style="background:rgba(255,255,255,0.15);height:5px;border-radius:3px;overflow:hidden;">
+                            <div id="nomai-initial-progress" style="width:5%;height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);transition:width 0.2s;"></div>
+                        </div>
+                        <div id="nomai-initial-text" style="font-size:0.75rem;color:rgba(255,255,255,0.6);margin-top:4px;">5%</div>
+                    </div>
+                `;
+                document.body.appendChild(loadingOverlay);
+                if (window.lucide) window.lucide.createIcons();
+                
+                state.data = await loadPayrollFromSupabase((pct) => {
+                    const pb = document.getElementById('nomai-initial-progress');
+                    const pt = document.getElementById('nomai-initial-text');
+                    if(pb) pb.style.width = pct + '%';
+                    if(pt) pt.innerText = pct + '%';
+                });
+                
+                // Guardar en caché para futuras cargas (incluyendo batches)
+                if (state.data.length > 0) {
+                    const batchesToCache = (state.batches || []).map(b => ({
+                        id: b.id, name: b.name, date: b.date, recordCount: b.data ? b.data.length : 0
+                    }));
+                    await setCachedData({ companyId, records: state.data, batches: batchesToCache, savedAt: Date.now() });
+                    console.log(`[Nomai] ${state.data.length} registros y ${batchesToCache.length} lotes guardados en caché local.`);
+                }
+                
+                loadingOverlay.style.background = '#065f46';
+                loadingOverlay.querySelector('div > div:first-child').innerText = `¡${state.data.length.toLocaleString('es-CO')} registros cargados!`;
+                setTimeout(() => {
+                    loadingOverlay.style.opacity = '0';
+                    loadingOverlay.style.transition = 'opacity 0.3s';
+                    setTimeout(() => loadingOverlay.remove(), 300);
+                }, 2500);
+            }
+            
         } catch (e) {
             console.error("[Nomai] Error cargando datos de Supabase:", e);
             state.data = [];
+            const el = document.getElementById('nomai-initial-loading');
+            if (el) {
+                el.style.background = '#7f1d1d';
+                el.querySelector('div > div:first-child').innerText = 'Error al cargar';
+                setTimeout(() => el.remove(), 3000);
+            }
         }
     } else if (window.PAYROLL_DATA && window.PAYROLL_DATA.length > 0) {
         state.data = window.PAYROLL_DATA.filter(d => d.na !== 'BENEFICIO');
@@ -661,6 +866,8 @@ function renderActiveTab() {
     if (state.data.length === 0 && state.activeTab !== 'importer' && state.activeTab !== 'database' && state.activeTab !== 'assistant') {
         showEmptyStateMessage();
         return;
+    } else {
+        hideEmptyStateMessage();
     }
     
     switch (state.activeTab) {
@@ -717,18 +924,42 @@ function showEmptyStateMessage() {
     contents.forEach(c => {
         if (c.id === 'tab-importer') return;
         if (c.id === 'tab-database') return; // No borrar la pestaña de Base de Datos
-        c.innerHTML = `
-            <div class="chart-card" style="align-items: center; justify-content: center; padding: 60px; text-align: center;">
+        
+        // Remove existing empty state if any
+        let existing = c.querySelector('.empty-state-overlay');
+        if (!existing) {
+            // Hide normal content
+            Array.from(c.children).forEach(child => {
+                child.style.display = 'none';
+            });
+            
+            existing = document.createElement('div');
+            existing.className = 'empty-state-overlay chart-card';
+            existing.style.cssText = 'align-items: center; justify-content: center; padding: 60px; text-align: center; margin-top: 2rem; border: 2px dashed var(--border-color); background: transparent; box-shadow: none;';
+            existing.innerHTML = `
                 <i data-lucide="database" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
                 <h3 style="margin-bottom: 8px;">No hay datos disponibles</h3>
                 <p style="color: var(--text-secondary); max-width: 400px; margin-bottom: 0;">No hay información de pagos cargada en el dashboard.</p>
-            </div>
-        `;
+            `;
+            c.appendChild(existing);
+        }
     });
     if (window.lucide) {
         window.lucide.createIcons();
     }
 }
+
+function hideEmptyStateMessage() {
+    const overlays = document.querySelectorAll('.empty-state-overlay');
+    overlays.forEach(o => {
+        const parent = o.parentElement;
+        o.remove();
+        Array.from(parent.children).forEach(child => {
+            child.style.display = '';
+        });
+    });
+}
+
 
 // ==========================================
 // RENDERIZADO: RESUMEN GENERAL (OVERVIEW)

@@ -2798,3 +2798,71 @@ input:disabled + .nomai-slider {
     cursor: not-allowed;
 }
 
+/* Card global para NomAI (Base de Datos, Lotes, etc.) */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    box-shadow: var(--card-shadow);
+    padding: 24px;
+    transition: box-shadow var(--t-fast);
+}
+
+/* Custom scrollbars for DB Explorer Table and Batches List */
+#db-scroll-container::-webkit-scrollbar,
+#nomai-batch-list::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+#db-scroll-container::-webkit-scrollbar-track,
+#nomai-batch-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 99px;
+}
+#db-scroll-container::-webkit-scrollbar-thumb,
+#nomai-batch-list::-webkit-scrollbar-thumb {
+    background: rgba(108, 0, 211, 0.22);
+    border-radius: 99px;
+    border: 2px solid #f1f5f9;
+}
+#db-scroll-container::-webkit-scrollbar-thumb:hover,
+#nomai-batch-list::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+#db-scroll-container::-webkit-scrollbar-corner,
+#nomai-batch-list::-webkit-scrollbar-corner {
+    background: #f1f5f9;
+}
+
+/* Database virtual table styling */
+.db-row {
+    border-bottom: 1px solid var(--border-color);
+    background: #ffffff;
+    transition: background-color var(--t-fast);
+}
+.db-row:hover {
+    background-color: rgba(108, 0, 211, 0.02) !important;
+}
+.db-row td {
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* Batch item premium styling */
+.batch-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary);
+    border-radius: 0.5rem;
+    transition: all var(--t-fast);
+}
+.batch-item:hover {
+    transform: translateX(3px);
+    box-shadow: 0 4px 12px rgba(108, 0, 211, 0.06);
+    border-color: rgba(108, 0, 211, 0.25);
+    border-left-color: var(--primary-light);
+}

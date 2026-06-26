@@ -235,8 +235,8 @@ async function requireAuth(allowedRoles = null) {
 }
 
 // ─── Cargar datos de nómina desde Supabase ────────────────────────────────────
-// Convierte registros SQL al formato abreviado JS que usa app_v14.js
-async function loadPayrollFromSupabase() {
+// Cargar todos los registros desde Supabase para el usuario actual
+async function loadPayrollFromSupabase(onProgress) {
     const sb = window.NomaiAuth.supabase;
 
     // 1. Cargar lotes (batches)
@@ -249,21 +249,54 @@ async function loadPayrollFromSupabase() {
         console.error('[NomaiAuth] Error cargando lotes:', batchesErr);
     }
 
-    // 2. Cargar registros
-    const { data, error } = await sb
-        .from('payroll_records')
-        .select('*');
-
-    if (error) {
-        console.error('[NomaiAuth] Error cargando nómina:', error);
-        return [];
+    // 2. Cargar TODOS los registros via RPC function (server-side, una sola llamada sin RLS overhead por fila)
+    let allRecords = [];
+    const pageSize = 1000; // Límite de PostgREST por petición
+    let page = 0;
+    let hasMore = true;
+    
+    if (typeof onProgress === 'function') onProgress(5);
+    
+    while (hasMore) {
+        try {
+            const { data: chunk, error } = await sb
+                .rpc('get_my_payroll_records')
+                .range(page * pageSize, (page + 1) * pageSize - 1);
+            
+            if (error) throw error;
+            
+            if (chunk && chunk.length > 0) {
+                allRecords = allRecords.concat(chunk);
+                page++;
+                if (chunk.length < pageSize) {
+                    hasMore = false;
+                }
+            } else {
+                hasMore = false;
+            }
+            
+            // Progreso visual basado en registros cargados vs total conocido del batch
+            if (typeof onProgress === 'function') {
+                const estimatedTotal = batchesData && batchesData.length > 0 ? 150000 : 10000;
+                const pct = Math.min(99, Math.round((allRecords.length / estimatedTotal) * 99));
+                onProgress(pct);
+            }
+        } catch (e) {
+            console.error('[NomaiAuth] Error en RPC get_my_payroll_records:', e);
+            return [];
+        }
     }
+    
+    if (typeof onProgress === 'function') onProgress(100);
+    
+    const data = allRecords;
 
     // Mapear formato SQL → formato abreviado JS (el que usa toda la app)
     const mapped = data.map(r => ({
         c:    r.identificacion,
         n:    r.nombre_completo,
         fa:   r.fecha_acumulado,
+        a:    r.fecha_acumulado ? parseInt(r.fecha_acumulado.slice(-4)) : null,  // Extraer año de DD/MM/YYYY
         coc:  r.codigo_concepto,
         co:   r.nombre_concepto,
         cant: r.cantidad ? parseFloat(r.cantidad) : 0,
@@ -295,7 +328,7 @@ async function loadPayrollFromSupabase() {
 }
 
 // ─── Guardar lote de nómina en Supabase ──────────────────────────────────────
-async function savePayrollBatchToSupabase(batchName, records) {
+async function savePayrollBatchToSupabase(batchName, records, onProgress) {
     const sb = window.NomaiAuth.supabase;
     const profile = window.NomaiAuth.profile;
 
@@ -317,6 +350,8 @@ async function savePayrollBatchToSupabase(batchName, records) {
             .single();
 
         if (batchError) throw batchError;
+
+        if (typeof onProgress === 'function') onProgress(5); // Progreso inicial después de crear el lote
 
         // 2. Mapear registros JS abreviados → formato SQL
         const sqlRecords = records.map(r => ({
@@ -349,6 +384,11 @@ async function savePayrollBatchToSupabase(batchName, records) {
                 .insert(chunk);
 
             if (insertError) throw insertError;
+            
+            if (typeof onProgress === 'function') {
+                const percent = 5 + Math.round(((i + chunk.length) / sqlRecords.length) * 95);
+                onProgress(Math.min(100, percent));
+            }
         }
 
         return { success: true, batchId: batch.id, count: records.length };
@@ -357,6 +397,7 @@ async function savePayrollBatchToSupabase(batchName, records) {
         return { success: false, error: e.message };
     }
 }
+
 
 // ─── Modal de Confirmación Estilo Nomai ──────────────────────────────────────
 function showNomaiConfirm(message) {
@@ -692,27 +733,132 @@ window.showNomaiPrompt = showNomaiPrompt;
 
 // ─── Auto-Logout por Inactividad ─────────────────────────────────────────────
 let inactivityTimer = null;
+let inactivityWarningTimer = null;
+let inactivityCountdownInterval = null;
+let isWarningModalOpen = false;
 const INACTIVITY_LIMIT = 2 * 60 * 1000; // 2 minutos
 
 function resetInactivityTimer() {
+    if (isWarningModalOpen) return; // No resetear si ya está la advertencia en pantalla
+    
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
     }
     // Solo activar el temporizador si el usuario está autenticado y no está en la página de login
     if (window.NomaiAuth && window.NomaiAuth.user && !window.location.pathname.includes('login.html')) {
-        inactivityTimer = setTimeout(async () => {
-            console.log('Sesión cerrada por inactividad.');
-            
-            // Si existe la alerta de NomAI, mostrarla y luego cerrar sesión
-            if (typeof window.showNomaiAlert === 'function') {
-                await window.showNomaiAlert('Tu sesión ha sido cerrada automáticamente tras 2 minutos de inactividad por seguridad.');
-                nomaiLogout();
-            } else {
-                alert('Tu sesión ha expirado por inactividad.');
-                nomaiLogout();
-            }
+        inactivityTimer = setTimeout(() => {
+            console.log('Inactividad de 2 minutos detectada. Mostrando advertencia...');
+            showInactivityWarningModal();
         }, INACTIVITY_LIMIT);
     }
+}
+
+function showInactivityWarningModal() {
+    isWarningModalOpen = true;
+    
+    // Crear el modal de advertencia si no existe
+    let modal = document.getElementById('nomai-inactivity-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'nomai-inactivity-modal';
+        modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(26, 5, 51, 0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        `;
+        modal.innerHTML = `
+            <div class="modal-content" style="background: #FFFFFF; border-radius: 16px; width: 90%; max-width: 440px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(108, 0, 211, 0.25); border: 1px solid rgba(108, 0, 211, 0.15); font-family: 'Outfit', sans-serif; text-align: center;">
+                <div style="width: 56px; height: 56px; background: rgba(108, 0, 211, 0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                    <i data-lucide="clock" style="width: 28px; height: 28px; color: #6C00D3;"></i>
+                </div>
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 700; color: #1e293b;">¿Sigues ahí?</h3>
+                <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.25rem; line-height: 1.5;">
+                    Tu sesión está a punto de cerrarse por inactividad por motivos de seguridad.
+                </p>
+                <div id="nomai-inactivity-countdown" style="font-size: 1.75rem; font-weight: 800; color: #D946EF; margin-bottom: 1.5rem; letter-spacing: -0.5px;">
+                    03:00
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button id="nomai-inactivity-keep" class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #6C00D3 0%, #3B008A 100%); border: none; color: white; padding: 0.75rem; border-radius: 10px; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(108,0,211,0.2);">
+                        Mantener sesión abierta
+                    </button>
+                    <button id="nomai-inactivity-logout" style="width: 100%; background: transparent; border: 1px solid #e2e8f0; color: #64748b; padding: 0.65rem; border-radius: 10px; font-weight: 500; cursor: pointer; font-family: inherit; font-size: 0.9rem; transition: background 0.2s;">
+                        Cerrar sesión ahora
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        if (window.lucide) window.lucide.createIcons();
+        
+        // Agregar eventos de hover para el botón de logout
+        const btnLogout = document.getElementById('nomai-inactivity-logout');
+        btnLogout.addEventListener('mouseenter', () => btnLogout.style.background = '#f8fafc');
+        btnLogout.addEventListener('mouseleave', () => btnLogout.style.background = 'transparent');
+    }
+    
+    const countdownEl = document.getElementById('nomai-inactivity-countdown');
+    const btnKeep = document.getElementById('nomai-inactivity-keep');
+    const btnLogout = document.getElementById('nomai-inactivity-logout');
+    
+    // Mostrar modal
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    
+    let secondsLeft = 180; // 3 minutos = 180 segundos (para llegar a 5 minutos en total)
+    
+    const updateCountdownText = () => {
+        const mins = Math.floor(secondsLeft / 60);
+        const secs = secondsLeft % 60;
+        countdownEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+    
+    updateCountdownText();
+    
+    const cleanup = () => {
+        isWarningModalOpen = false;
+        if (inactivityCountdownInterval) clearInterval(inactivityCountdownInterval);
+        if (inactivityWarningTimer) clearTimeout(inactivityWarningTimer);
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+    };
+    
+    // Timer definitivo de logout (3 minutos / 180 segundos)
+    inactivityWarningTimer = setTimeout(() => {
+        cleanup();
+        console.log('Sesión cerrada definitivamente por inactividad tras 5 minutos.');
+        nomaiLogout();
+    }, 180 * 1000);
+    
+    // Intervalo de countdown para actualizar el texto
+    inactivityCountdownInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft <= 0) {
+            clearInterval(inactivityCountdownInterval);
+        } else {
+            updateCountdownText();
+        }
+    }, 1000);
+    
+    // Eventos de botones
+    btnKeep.onclick = () => {
+        cleanup();
+        resetInactivityTimer(); // Reiniciar el temporizador principal
+    };
+    
+    btnLogout.onclick = () => {
+        cleanup();
+        nomaiLogout();
+    };
 }
 
 function setupInactivityTracking() {

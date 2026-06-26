@@ -1108,14 +1108,19 @@
                             <h2 style="font-size: 1.875rem; font-weight: 700; color: #111827; letter-spacing: -0.025em; margin: 0;">Base de Datos</h2>
                             <p style="color: #6b7280; margin-top: 0.5rem;">Explora todos los registros cargados con filtros y ordenamiento por columna.</p>
                         </div>
+                        <button id="btn-refresh-data" onclick="refreshDataFromSupabase()" class="btn btn-primary" style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 1.25rem;">
+                            <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i>
+                            Actualizar Datos
+                        </button>
                     </div>
 
                     <!-- Explorador de Datos (Virtual Scroll) -->
-                    <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 280px);min-height:500px;padding:0;overflow:hidden;margin-bottom:1.5rem;">
+                    <div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 380px);min-height:400px;padding:0;overflow:hidden;margin-bottom:1.5rem;">
                         <div style="padding:1rem;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;background:#f9fafb;flex-shrink:0;">
                             <h2 style="font-size:1.125rem;font-weight:700;color:#1f2937;margin:0;">Explorador de Datos</h2>
                             <div style="display:flex;align-items:center;gap:1rem;">
                                 <div style="font-size:0.875rem;color:#6b7280;" id="db-table-info">0 registros en total</div>
+                                <div id="db-last-updated" style="font-size:0.75rem;color:#9ca3af;"></div>
                                 <button id="btn-export-database" class="btn btn-outline" style="padding:0.35rem 0.75rem;font-size:0.75rem;display:flex;align-items:center;gap:0.35rem;border-color:#10b981;color:#10b981;background:white;" onclick="exportDbToExcel()">
                                     <i data-lucide="download" style="width:14px;height:14px;"></i> Exportar a Excel
                                 </button>
@@ -1146,14 +1151,22 @@
 
                     <!-- Gestor de Lotes (al fondo) -->
                     <div class="card">
-                        <h2 style="font-size:1.125rem;font-weight:700;color:#1f2937;margin-bottom:1rem;margin-top:0;display:flex;align-items:center;gap:0.5rem;">
-                            <i data-lucide="layers" style="width:18px;height:18px;color:#6366f1;"></i>
-                            Lotes de Información Cargados
-                        </h2>
-                        <div id="nomai-batch-list" style="display:flex;flex-direction:column;gap:0.75rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                            <h2 style="font-size:1.125rem;font-weight:700;color:#1f2937;margin:0;display:flex;align-items:center;gap:0.5rem;">
+                                <i data-lucide="layers" style="width:18px;height:18px;color:#6C00D3;"></i>
+                                Lotes de Información Cargados
+                            </h2>
+                            <button onclick="window.deleteAllDatabase()" class="btn btn-outline"
+                                style="color:#dc2626;border-color:#dc2626;padding:0.35rem 0.9rem;font-size:0.8rem;display:flex;align-items:center;gap:0.4rem;">
+                                <i data-lucide="trash-2" style="width:15px;height:15px;"></i>
+                                Eliminar toda la base
+                            </button>
+                        </div>
+                        <div id="nomai-batch-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:280px;overflow-y:auto;padding-right:4px;">
                             <div style="color:#9ca3af;font-size:0.875rem;font-style:italic;">No hay lotes cargados actualmente.</div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- PESTAÑA: IMPORTAR EXCEL -->
@@ -1197,8 +1210,8 @@
                                             <h2>Cargar Archivo de Nómina</h2>
                                             <p>Arrastra o selecciona el archivo descargado desde tu ERP (Excel o CSV). Nosotros nos encargamos del resto.</p>
                                         </div>
-                                        <div class="mapping-stats" style="margin-top: 1rem;">
-                                            <button class="btn btn-outline" id="view-history-btn" style="display: flex; align-items: center; gap: 0.5rem; border-color: #e2e8f0; color: #475569;">
+                                        <div class="mapping-stats" style="display: none;">
+                                            <button class="btn btn-outline" id="view-history-btn">
                                                 <i data-lucide="history" style="width: 18px; height: 18px;"></i> Historial de Cargas
                                             </button>
                                         </div>
@@ -1428,6 +1441,7 @@
                                                         <th>Mes Acumulado</th>
                                                         <th>Quincena</th>
                                                         <th>Naturaleza</th>
+                                                        <th>Tipo de Concepto</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="preview-table-body">
@@ -1496,7 +1510,6 @@
                                     <div class="progress-container hide" id="loading-progress-container" style="width: 100%; height: 10px; background: #cbd5e1; border-radius: 5px; margin: 1rem auto 0; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">
                                         <div id="loading-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #4338ca 0%, #6366f1 100%); transition: width 0.3s ease-out; border-radius: 5px;"></div>
                                     </div>
-                                    <p id="loading-percent" class="hide" style="font-size: 0.95rem; font-weight: 700; color: #0f172a; margin-top: 0.5rem;">0%</p>
                                 </div>
                             </div>
                         </div>
