@@ -824,6 +824,50 @@
                         </div>
                     </div>
 
+                    <!-- KPI Cards for Collaborators Comparison -->
+                    <div class="kpi-cards-row" style="margin-top: 16px;">
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Colaboradores</span>
+                                <span class="kpi-card-value" id="period-stat-total">-</span>
+                                <span class="kpi-card-sub" id="period-stat-total-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="users"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp green">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Incremento (Alerta)</span>
+                                <span class="kpi-card-value" id="period-stat-highest-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="period-stat-highest-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-up"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp red">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Ahorro (Oportunidad)</span>
+                                <span class="kpi-card-value" id="period-stat-savings-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="period-stat-savings-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-down"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Nómina Comparada</span>
+                                <span class="kpi-card-value payroll-value" id="period-stat-total-payroll">-</span>
+                                <span class="kpi-card-sub" id="period-stat-total-payroll-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="dollar-sign"></i>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tabla de Comparación Jerárquica -->
                     <div class="table-card">
                         <div class="table-header"
@@ -890,6 +934,50 @@
                         <div class="comparison-filter-item">
                             <div class="comparison-filter-label clickable-filter-label" id="concept-compare-tipo-label"
                                 title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Cards for Concepts Comparison -->
+                    <div class="kpi-cards-row" style="margin-top: 16px;">
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Conceptos</span>
+                                <span class="kpi-card-value" id="concept-stat-total">-</span>
+                                <span class="kpi-card-sub" id="concept-stat-total-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="briefcase"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp green">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Incremento (Alerta)</span>
+                                <span class="kpi-card-value" id="concept-stat-highest-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="concept-stat-highest-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-up"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp red">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Ahorro (Oportunidad)</span>
+                                <span class="kpi-card-value" id="concept-stat-savings-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="concept-stat-savings-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-down"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Nómina Comparada</span>
+                                <span class="kpi-card-value payroll-value" id="concept-stat-total-payroll">-</span>
+                                <span class="kpi-card-sub" id="concept-stat-total-payroll-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="dollar-sign"></i>
+                            </div>
                         </div>
                     </div>
 
@@ -965,6 +1053,50 @@
                         </div>
                     </div>
 
+                    <!-- KPI Cards for CECOs Comparison -->
+                    <div class="kpi-cards-row" style="margin-top: 16px;">
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Centros de Costo</span>
+                                <span class="kpi-card-value" id="ceco-stat-total">-</span>
+                                <span class="kpi-card-sub" id="ceco-stat-total-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="building-2"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp green">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Incremento (Alerta)</span>
+                                <span class="kpi-card-value" id="ceco-stat-highest-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="ceco-stat-highest-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-up"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp red">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Ahorro (Oportunidad)</span>
+                                <span class="kpi-card-value" id="ceco-stat-savings-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="ceco-stat-savings-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-down"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Nómina Comparada</span>
+                                <span class="kpi-card-value payroll-value" id="ceco-stat-total-payroll">-</span>
+                                <span class="kpi-card-sub" id="ceco-stat-total-payroll-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="dollar-sign"></i>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tabla de Comparación Jerárquica de Centros de Costo -->
                     <div class="table-card">
                         <div class="table-header"
@@ -1028,6 +1160,50 @@
                         <div class="comparison-filter-item">
                             <div class="comparison-filter-label clickable-filter-label" id="cargo-compare-tipo-label"
                                 title="Filtrar Tipo de Nómina"><i data-lucide="tag"></i> Tipo: Todos</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Cards for Cargos Comparison -->
+                    <div class="kpi-cards-row" style="margin-top: 16px;">
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Cargos</span>
+                                <span class="kpi-card-value" id="cargo-stat-total">-</span>
+                                <span class="kpi-card-sub" id="cargo-stat-total-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="award"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp green">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Incremento (Alerta)</span>
+                                <span class="kpi-card-value" id="cargo-stat-highest-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="cargo-stat-highest-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-up"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp red">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Mayor Ahorro (Oportunidad)</span>
+                                <span class="kpi-card-value" id="cargo-stat-savings-name" style="font-size: 0.95rem; font-weight: 700;">-</span>
+                                <span class="kpi-card-sub" id="cargo-stat-savings-val">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="trending-down"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-card-comp purple">
+                            <div class="kpi-card-content">
+                                <span class="kpi-card-label">Nómina Comparada</span>
+                                <span class="kpi-card-value payroll-value" id="cargo-stat-total-payroll">-</span>
+                                <span class="kpi-card-sub" id="cargo-stat-total-payroll-sub">-</span>
+                            </div>
+                            <div class="kpi-card-icon-wrapper">
+                                <i data-lucide="dollar-sign"></i>
+                            </div>
                         </div>
                     </div>
 
