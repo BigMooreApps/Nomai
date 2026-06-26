@@ -221,7 +221,7 @@ body {
     transition: max-height var(--t-normal) ease;
 }
 .dropdown.open .dropdown-menu-list {
-    max-height: 120px; /* Suficiente para las subcategorías */
+    max-height: 200px; /* Suficiente para las subcategorías */
 }
 .sidebar.collapsed .dropdown-menu-list {
     max-height: 0 !important;
