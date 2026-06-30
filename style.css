@@ -1947,7 +1947,7 @@ table * {
 
 /* Scrollable table container for comparison tabs, showing ~10 rows max */
 .comparison-table-wrapper {
-    max-height: 515px !important;
+    max-height: 440px !important;
     overflow-y: auto !important;
     position: relative !important;
 }
@@ -2834,29 +2834,34 @@ input:disabled + .nomai-slider {
     transition: box-shadow var(--t-fast);
 }
 
-/* Custom scrollbars for DB Explorer Table and Batches List */
+/* Custom scrollbars for DB Explorer Table, Batches List, and Massive Analysis Comparison Tables */
 #db-scroll-container::-webkit-scrollbar,
-#nomai-batch-list::-webkit-scrollbar {
+#nomai-batch-list::-webkit-scrollbar,
+.comparison-table-wrapper::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 #db-scroll-container::-webkit-scrollbar-track,
-#nomai-batch-list::-webkit-scrollbar-track {
+#nomai-batch-list::-webkit-scrollbar-track,
+.comparison-table-wrapper::-webkit-scrollbar-track {
     background: #f1f5f9;
     border-radius: 99px;
 }
 #db-scroll-container::-webkit-scrollbar-thumb,
-#nomai-batch-list::-webkit-scrollbar-thumb {
+#nomai-batch-list::-webkit-scrollbar-thumb,
+.comparison-table-wrapper::-webkit-scrollbar-thumb {
     background: rgba(108, 0, 211, 0.22);
     border-radius: 99px;
     border: 2px solid #f1f5f9;
 }
 #db-scroll-container::-webkit-scrollbar-thumb:hover,
-#nomai-batch-list::-webkit-scrollbar-thumb:hover {
+#nomai-batch-list::-webkit-scrollbar-thumb:hover,
+.comparison-table-wrapper::-webkit-scrollbar-thumb:hover {
     background: var(--primary);
 }
 #db-scroll-container::-webkit-scrollbar-corner,
-#nomai-batch-list::-webkit-scrollbar-corner {
+#nomai-batch-list::-webkit-scrollbar-corner,
+.comparison-table-wrapper::-webkit-scrollbar-corner {
     background: #f1f5f9;
 }
 
