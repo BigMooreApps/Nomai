@@ -920,9 +920,7 @@ function renderActiveTab() {
             // La base de datos se renderiza mediante database_viewer.js
             break;
         case 'assistant':
-            if (typeof window.initAssistantChatIfNeeded === 'function') {
-                window.initAssistantChatIfNeeded();
-            }
+            // La inicialización del asistente se implementará posteriormente
             break;
     }
 }
