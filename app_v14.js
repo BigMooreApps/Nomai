@@ -62,6 +62,8 @@ const state = {
     selectedTipoNomina: [],    // Array de tipos de nómina seleccionados (vacío = todos)
     activeTab: 'overview', // Pestaña activa
     charts: {},            // Instancias de graficos de Chart.js
+    dataVersion: 0,        // Versión actual de los datos filtrados para cacheo
+    renderedTabs: {},      // Registro de pestañas ya renderizadas para la versión actual
     
     // Vista Empleado
     selectedEmployeeCedula: '',
@@ -849,12 +851,28 @@ function processData() {
     
     updatePeriodSelectorLabels();
     updateSearchSelectorLabels();
+    
+    // Al procesar nuevos datos o cambiar filtros, incrementamos la version y limpiamos el caché de pestañas
+    state.dataVersion++;
+    state.renderedTabs = {};
 }
 
 // Renderiza la pestaña seleccionada
 function renderActiveTab() {
-    // Destruir todos los graficos previos para evitar fallos de canvas
-    destroyCharts();
+    let currentTabKey = state.dataVersion.toString();
+    
+    // Añadimos variables locales al key de cache para pestañas especificas
+    if (state.activeTab === 'employee') currentTabKey += '|' + state.selectedEmployeeCedula;
+    if (state.activeTab === 'concept') currentTabKey += '|' + state.selectedConceptName;
+    if (state.activeTab === 'comparison') currentTabKey += '|' + state.compareEmployees.join(',');
+    
+    // Verificamos si la pestaña actual ya está renderizada para los datos/filtros actuales
+    if (state.renderedTabs[state.activeTab] === currentTabKey) {
+        return; // Retorno temprano: ya está renderizada y cacheada
+    }
+    
+    // Guardamos que esta pestaña acaba de ser renderizada
+    state.renderedTabs[state.activeTab] = currentTabKey;
     
     // Inicializar iconos de Lucide
     setTimeout(() => {
@@ -907,6 +925,13 @@ function renderActiveTab() {
             }
             break;
     }
+}
+
+function clearChart(key) {
+    if (state.charts[key] && typeof state.charts[key].destroy === 'function') {
+        state.charts[key].destroy();
+    }
+    delete state.charts[key];
 }
 
 function destroyCharts() {
@@ -1044,6 +1069,8 @@ function renderOverviewTrendChart(data) {
     const devVals = sortedMonths.map(m => monthlyData[m].devengos);
     const descVals = sortedMonths.map(m => monthlyData[m].descuentos);
     
+    clearChart('overviewTrend');
+    
     state.charts['overviewTrend'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -1137,6 +1164,8 @@ function renderOverviewNatureChart(dev, desc) {
     const redGrad = ctx.createLinearGradient(0, 0, 0, 200);
     redGrad.addColorStop(0, 'rgba(239, 68, 68, 0.85)');
     redGrad.addColorStop(1, 'rgba(239, 68, 68, 0.35)');
+    
+    clearChart('overviewNature');
     
     state.charts['overviewNature'] = new Chart(canvas, {
         type: 'doughnut',
@@ -1235,6 +1264,8 @@ function renderOverviewHeadcountChart(data) {
     if (totalEl) totalEl.innerText = totalPool;
     if (peakEl) peakEl.innerText = `${peakVal} (${peakMonth})`;
     if (minEl) minEl.innerText = `${minVal} (${minMonth})`;
+    
+    clearChart('overviewHeadcount');
     
     state.charts['overviewHeadcount'] = new Chart(ctx, {
         type: 'bar',
@@ -1350,6 +1381,8 @@ function renderTopCecosChart(data) {
     gradient.addColorStop(0, 'rgba(108, 0, 211, 0.80)');
     gradient.addColorStop(1, 'rgba(139, 47, 239, 0.65)');
 
+    clearChart('cecoChart');
+
     state.charts.cecoChart = new Chart(canvas, {
         type: 'bar',
         data: {
@@ -1436,6 +1469,8 @@ function renderTopCargosChart(data) {
     const gradient = ctx.createLinearGradient(0, 0, 400, 0);
     gradient.addColorStop(0, 'rgba(249, 115, 22, 0.80)');
     gradient.addColorStop(1, 'rgba(251, 191, 36, 0.55)');
+
+    clearChart('cargoChart');
 
     state.charts.cargoChart = new Chart(canvas, {
         type: 'bar',
@@ -1795,6 +1830,8 @@ function renderEmployeeHistoryChart(currentYearData, allYearsData) {
     const devVals = sortedKeys.map(k => monthlyNet[k].dev);
     const descVals = sortedKeys.map(k => monthlyNet[k].desc);
     
+    clearChart('empHistory');
+    
     state.charts['empHistory'] = new Chart(ctx, {
         type: 'line',
         data: {
@@ -2011,6 +2048,8 @@ function renderEmployeeDebtChart(currentYearData, allYearsData) {
         return orangeGradHover;
     });
     
+    clearChart('empDebt');
+    
     state.charts['empDebt'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -2174,6 +2213,8 @@ function renderEmployeeDistributionChart(employeeData) {
 
     const bgColors = topConcepts.map((_, i) => PASTEL_PALETTE[i % PASTEL_PALETTE.length]);
     const borderColors = topConcepts.map(() => '#FFFFFF');
+    
+    clearChart('empDistribution');
     
     state.charts['empDistribution'] = new Chart(ctx, {
         type: 'doughnut',
@@ -2501,6 +2542,8 @@ function renderConceptTopPeopleChart(conceptData) {
     const natureColor = (conceptData[0] || {}).na === 'DESCUENTO' ? 'rgba(239,68,68,0.70)' : 'rgba(108,0,211,0.70)';
     const borderColor = (conceptData[0] || {}).na === 'DESCUENTO' ? '#ef4444' : '#6C00D3';
     
+    clearChart('conceptTopPeople');
+    
     state.charts['conceptTopPeople'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -2569,6 +2612,8 @@ function renderConceptTrendChart(conceptData) {
     const vals = sortedMonths.map(m => monthlySum[m]);
     
     const color = (conceptData[0] || {}).na === 'DESCUENTO' ? '#ef4444' : '#6C00D3';
+    
+    clearChart('conceptTrend');
     
     state.charts['conceptTrend'] = new Chart(ctx, {
         type: 'line',
@@ -2659,6 +2704,8 @@ function renderConceptCecoChart(conceptData) {
     
     const bgColors = sortedCecos.map((_, i) => PASTEL_PALETTE[i % PASTEL_PALETTE.length]);
     const borderColors = sortedCecos.map(() => '#FFFFFF');
+    
+    clearChart('conceptCeco');
     
     state.charts['conceptCeco'] = new Chart(canvas, {
         type: 'pie',
@@ -2774,6 +2821,8 @@ function renderConceptCargoChart(conceptData) {
     
     const bgColors = sortedCargos.map((_, i) => PASTEL_PALETTE[i % PASTEL_PALETTE.length]);
     const borderColors = sortedCargos.map(() => '#FFFFFF');
+    
+    clearChart('conceptCargo');
     
     state.charts['conceptCargo'] = new Chart(canvas, {
         type: 'pie',
@@ -3661,6 +3710,8 @@ function renderCompareChart() {
     if (state.charts['compareChart']) {
         state.charts['compareChart'].destroy();
     }
+    
+    clearChart('compareChart');
     
     state.charts['compareChart'] = new Chart(ctx, {
         type: 'line',
@@ -10787,6 +10838,7 @@ async function generateManagerialReport(reportType = 'concepto') {
             : String(b).localeCompare(String(a));
     }
 })();
+
 
 
 
