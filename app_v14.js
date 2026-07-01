@@ -1820,6 +1820,7 @@ function renderEmployeeHistoryChart(currentYearData, allYearsData) {
                     borderWidth: 1.5,
                     borderDash: [5, 4],
                     fill: false,
+                    tension: 0.35,
                     pointRadius: 0,
                     order: 1
                 },
@@ -1830,6 +1831,7 @@ function renderEmployeeHistoryChart(currentYearData, allYearsData) {
                     borderWidth: 1.5,
                     borderDash: [5, 4],
                     fill: false,
+                    tension: 0.35,
                     pointRadius: 0,
                     order: 2
                 }
