@@ -2153,47 +2153,80 @@ function renderEmployeeDistributionChart(employeeData) {
     const ctx = document.getElementById('employee-distribution-chart');
     if (!ctx) return;
     
-    // Consolidar conceptos recibidos por el empleado
+    // Obtener periodos únicos y ordenarlos cronológicamente
+    const isFiltered = state.selectedYears && state.selectedYears.length === 1;
+    const periodsMap = {};
+    employeeData.forEach(d => {
+        const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
+        if (!periodsMap[labelKey]) {
+            periodsMap[labelKey] = {
+                sortVal: isFiltered ? (MONTH_ORDER[d.m] || 0) : (d.a * 100) + (MONTH_ORDER[d.m] || 0),
+                key: labelKey
+            };
+        }
+    });
+    const sortedPeriods = Object.values(periodsMap)
+        .sort((a, b) => a.sortVal - b.sortVal)
+        .map(p => p.key);
+    
+    // Consolidar conceptos globalmente para el empleado para tomar el top 7
     const concepts = {};
     employeeData.forEach(d => {
         if (!concepts[d.co]) {
             concepts[d.co] = { val: 0, na: d.na };
         }
-        concepts[d.co].val += Math.abs(d.v); // guardar valor absoluto para graficar
+        concepts[d.co].val += Math.abs(d.v);
     });
     
-    // Separar en Devengos y Descuentos y tomar los top
     const list = Object.keys(concepts).map(name => ({
         name: name,
         val: concepts[name].val,
         na: concepts[name].na
     })).sort((a,b) => b.val - a.val);
     
-    // Tomamos los top 7 conceptos mas representativos
     const topConcepts = list.slice(0, 7);
+    const topConceptNames = topConcepts.map(c => c.name);
+    const topConceptSet = new Set(topConceptNames);
     
-    // Si quedan mas, los agrupamos en "Otros"
-    if (list.length > 7) {
-        const remaining = list.slice(7);
-        let remDev = 0;
-        let remDesc = 0;
-        remaining.forEach(item => {
-            if (item.na === 'DEVENGO' || item.na === 'BENEFICIO') remDev += item.val;
-            else remDesc += item.val;
-        });
+    const remaining = list.slice(7);
+    let hasOthersDev = false;
+    let hasOthersDesc = false;
+    remaining.forEach(item => {
+        if (item.na === 'DEVENGO' || item.na === 'BENEFICIO') hasOthersDev = true;
+        else hasOthersDesc = true;
+    });
+    
+    const datasetKeys = [...topConceptNames];
+    if (hasOthersDev) datasetKeys.push('Otros Ingresos/Beneficios');
+    if (hasOthersDesc) datasetKeys.push('Otros Descuentos');
+    
+    // Inicializar valores por periodo
+    const datasetValues = {};
+    datasetKeys.forEach(k => {
+        datasetValues[k] = new Array(sortedPeriods.length).fill(0);
+    });
+    
+    // Rellenar valores por periodo
+    employeeData.forEach(d => {
+        const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
+        const periodIndex = sortedPeriods.indexOf(labelKey);
+        if (periodIndex === -1) return;
         
-        if (remDev > 0) {
-            topConcepts.push({ name: 'Otros Ingresos/Beneficios', val: remDev, na: 'DEVENGO' });
+        if (topConceptSet.has(d.co)) {
+            datasetValues[d.co][periodIndex] += Math.abs(d.v);
+        } else {
+            if (d.na === 'DEVENGO' || d.na === 'BENEFICIO') {
+                if (datasetValues['Otros Ingresos/Beneficios']) {
+                    datasetValues['Otros Ingresos/Beneficios'][periodIndex] += Math.abs(d.v);
+                }
+            } else {
+                if (datasetValues['Otros Descuentos']) {
+                    datasetValues['Otros Descuentos'][periodIndex] += Math.abs(d.v);
+                }
+            }
         }
-        if (remDesc > 0) {
-            topConcepts.push({ name: 'Otros Descuentos', val: remDesc, na: 'DESCUENTO' });
-        }
-    }
+    });
     
-    const labels = topConcepts.map(c => c.name);
-    const vals = topConcepts.map(c => c.val);
-    
-    // Paleta pastel alineada con los colores NomAI
     const PASTEL_PALETTE = [
         'rgba(167, 139, 250, 0.80)', // Lavender
         'rgba(244, 114, 182, 0.80)', // Rose
@@ -2208,27 +2241,42 @@ function renderEmployeeDistributionChart(employeeData) {
         'rgba(249, 168, 212, 0.80)', // Petal Pink
         'rgba(165, 243, 252, 0.80)', // Cyan
     ];
-
-    const bgColors = topConcepts.map((_, i) => PASTEL_PALETTE[i % PASTEL_PALETTE.length]);
-    const borderColors = topConcepts.map(() => '#FFFFFF');
+    
+    const datasets = datasetKeys.map((key, i) => ({
+        label: key,
+        data: datasetValues[key],
+        backgroundColor: PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+        borderColor: '#FFFFFF',
+        borderWidth: 1.5
+    }));
     
     clearChart('empDistribution');
     
     state.charts['empDistribution'] = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
-            labels: labels,
-            datasets: [{
-                data: vals,
-                backgroundColor: bgColors,
-                borderColor: borderColors,
-                borderWidth: 3
-            }]
+            labels: sortedPeriods,
+            datasets: datasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+                    ticks: { color: '#9CA3AF', font: { family: 'Outfit', size: 10 } }
+                },
+                y: {
+                    stacked: true,
+                    grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                    ticks: {
+                        color: '#9CA3AF',
+                        font: { family: 'Outfit', size: 10 },
+                        callback: function(value) { return formatShortCurrency(value); }
+                    }
+                }
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -2249,7 +2297,7 @@ function renderEmployeeDistributionChart(employeeData) {
                     padding: 10,
                     callbacks: {
                         label: function(context) {
-                            return `  ${context.label}: ${currencyFormatter.format(context.raw)}`;
+                            return `  ${context.dataset.label}: ${currencyFormatter.format(context.raw)}`;
                         }
                     }
                 }
@@ -5890,6 +5938,23 @@ function showPersonDetailModal(cedula, name, period1, period2) {
             modalCharts['empDistribution'].destroy();
         }
         
+        // Obtener periodos únicos y ordenarlos cronológicamente
+        const isFiltered = state.selectedYears && state.selectedYears.length === 1;
+        const periodsMap = {};
+        employeeData.forEach(d => {
+            const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
+            if (!periodsMap[labelKey]) {
+                periodsMap[labelKey] = {
+                    sortVal: isFiltered ? (MONTH_ORDER[d.m] || 0) : (d.a * 100) + (MONTH_ORDER[d.m] || 0),
+                    key: labelKey
+                };
+            }
+        });
+        const sortedPeriods = Object.values(periodsMap)
+            .sort((a, b) => a.sortVal - b.sortVal)
+            .map(p => p.key);
+        
+        // Consolidar conceptos globalmente para el empleado para tomar el top 7
         const concepts = {};
         employeeData.forEach(d => {
             if (!concepts[d.co]) {
@@ -5905,60 +5970,96 @@ function showPersonDetailModal(cedula, name, period1, period2) {
         })).sort((a,b) => b.val - a.val);
         
         const topConcepts = list.slice(0, 7);
+        const topConceptNames = topConcepts.map(c => c.name);
+        const topConceptSet = new Set(topConceptNames);
         
-        if (list.length > 7) {
-            const remaining = list.slice(7);
-            let remDev = 0;
-            let remDesc = 0;
-            remaining.forEach(item => {
-                if (item.na === 'DEVENGO' || item.na === 'BENEFICIO') remDev += item.val;
-                else remDesc += item.val;
-            });
+        const remaining = list.slice(7);
+        let hasOthersDev = false;
+        let hasOthersDesc = false;
+        remaining.forEach(item => {
+            if (item.na === 'DEVENGO' || item.na === 'BENEFICIO') hasOthersDev = true;
+            else hasOthersDesc = true;
+        });
+        
+        const datasetKeys = [...topConceptNames];
+        if (hasOthersDev) datasetKeys.push('Otros Ingresos/Beneficios');
+        if (hasOthersDesc) datasetKeys.push('Otros Descuentos');
+        
+        // Inicializar valores por periodo
+        const datasetValues = {};
+        datasetKeys.forEach(k => {
+            datasetValues[k] = new Array(sortedPeriods.length).fill(0);
+        });
+        
+        // Rellenar valores por periodo
+        employeeData.forEach(d => {
+            const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
+            const periodIndex = sortedPeriods.indexOf(labelKey);
+            if (periodIndex === -1) return;
             
-            if (remDev > 0) {
-                topConcepts.push({ name: 'Otros Ingresos/Beneficios', val: remDev, na: 'DEVENGO' });
+            if (topConceptSet.has(d.co)) {
+                datasetValues[d.co][periodIndex] += Math.abs(d.v);
+            } else {
+                if (d.na === 'DEVENGO' || d.na === 'BENEFICIO') {
+                    if (datasetValues['Otros Ingresos/Beneficios']) {
+                        datasetValues['Otros Ingresos/Beneficios'][periodIndex] += Math.abs(d.v);
+                    }
+                } else {
+                    if (datasetValues['Otros Descuentos']) {
+                        datasetValues['Otros Descuentos'][periodIndex] += Math.abs(d.v);
+                    }
+                }
             }
-            if (remDesc > 0) {
-                topConcepts.push({ name: 'Otros Descuentos', val: remDesc, na: 'DESCUENTO' });
-            }
-        }
-        
-        const labels = topConcepts.map(c => c.name);
-        const vals = topConcepts.map(c => c.val);
+        });
         
         const PASTEL_PALETTE = [
-            'rgba(167, 139, 250, 0.80)',
-            'rgba(244, 114, 182, 0.80)',
-            'rgba(129, 140, 248, 0.80)',
-            'rgba(196, 181, 253, 0.80)',
-            'rgba(251, 191, 36,  0.80)',
-            'rgba(110, 231, 183, 0.80)',
-            'rgba(147, 197, 253, 0.80)',
-            'rgba(253, 164, 175, 0.80)',
-            'rgba(216, 180, 254, 0.80)',
-            'rgba(134, 239, 172, 0.80)',
-            'rgba(249, 168, 212, 0.80)',
-            'rgba(165, 243, 252, 0.80)'
+            'rgba(167, 139, 250, 0.80)', // Lavender
+            'rgba(244, 114, 182, 0.80)', // Rose
+            'rgba(129, 140, 248, 0.80)', // Indigo
+            'rgba(196, 181, 253, 0.80)', // Light Violet
+            'rgba(251, 191, 36,  0.80)', // Amber
+            'rgba(110, 231, 183, 0.80)', // Mint Green
+            'rgba(147, 197, 253, 0.80)', // Sky Blue
+            'rgba(253, 164, 175, 0.80)', // Coral
+            'rgba(216, 180, 254, 0.80)', // Soft Purple
+            'rgba(134, 239, 172, 0.80)', // Emerald Light
+            'rgba(249, 168, 212, 0.80)', // Petal Pink
+            'rgba(165, 243, 252, 0.80)', // Cyan
         ];
-
-        const bgColors = topConcepts.map((_, i) => PASTEL_PALETTE[i % PASTEL_PALETTE.length]);
-        const borderColors = topConcepts.map(() => '#FFFFFF');
+        
+        const datasets = datasetKeys.map((key, i) => ({
+            label: key,
+            data: datasetValues[key],
+            backgroundColor: PASTEL_PALETTE[i % PASTEL_PALETTE.length],
+            borderColor: '#FFFFFF',
+            borderWidth: 1.5
+        }));
         
         modalCharts['empDistribution'] = new Chart(ctx, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{
-                    data: vals,
-                    backgroundColor: bgColors,
-                    borderColor: borderColors,
-                    borderWidth: 3
-                }]
+                labels: sortedPeriods,
+                datasets: datasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '60%',
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+                        ticks: { color: '#9CA3AF', font: { family: 'Outfit', size: 10 } }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: {
+                            color: '#9CA3AF',
+                            font: { family: 'Outfit', size: 10 },
+                            callback: function(value) { return formatShortCurrency(value); }
+                        }
+                    }
+                },
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -5979,7 +6080,7 @@ function showPersonDetailModal(cedula, name, period1, period2) {
                         padding: 10,
                         callbacks: {
                             label: function(context) {
-                                return `  ${context.label}: ${currencyFormatter.format(context.raw)}`;
+                                return `  ${context.dataset.label}: ${currencyFormatter.format(context.raw)}`;
                             }
                         }
                     }
