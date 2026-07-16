@@ -3133,26 +3133,21 @@ input:disabled + .nomai-slider {
     color: #4F46E5;
 }
 
-/* Layout de Dos Columnas para Dashboard de Empleados */
-.employee-dashboard-layout {
+/* Layout de Tres Columnas para Dashboard de Empleados */
+.employee-dashboard-3col-layout {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr 1.15fr 0.85fr;
     gap: 24px;
     margin-top: 24px;
-    align-items: stretch;
+    align-items: start;
 }
-.employee-main-col {
+.employee-col {
     display: flex;
     flex-direction: column;
     gap: 24px;
 }
-.employee-sidebar-col {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-@media (max-width: 1300px) {
-    .employee-dashboard-layout {
+@media (max-width: 1280px) {
+    .employee-dashboard-3col-layout {
         grid-template-columns: 1fr;
     }
 }
