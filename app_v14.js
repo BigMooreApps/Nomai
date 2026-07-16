@@ -5246,24 +5246,12 @@ function showPersonDetailModal(cedula, name, period1, period2) {
     const existing = document.getElementById('person-detail-modal-overlay');
     if (existing) existing.remove();
 
-    // 1. Get raw data for the employee (unfiltered by global filters for the modal's self-contained 6-month history)
+    // 1. Get raw data for the employee (unfiltered by global filters)
     const allEmployeeDataAcrossYears = state.data.filter(d => d.c === cedula);
 
-    // 2. Identify the last 6 months present in the employee's history
-    const employeeMonthYears = Array.from(new Set(allEmployeeDataAcrossYears.map(d => `${d.a} - ${d.m}`)))
-        .sort((a, b) => {
-            const [yA, mA] = a.split(' - ');
-            const [yB, mB] = b.split(' - ');
-            const yearDiff = parseInt(yA) - parseInt(yB);
-            if (yearDiff !== 0) return yearDiff;
-            return (MONTH_ORDER[mA] || 0) - (MONTH_ORDER[mB] || 0);
-        });
-    const last6MonthYearsList = employeeMonthYears.slice(-6);
-    const last6MonthYearsSet = new Set(last6MonthYearsList);
-
-    // 3. Restrict all data inside this modal strictly to the last 6 months
-    const rawEmployeeData = allEmployeeDataAcrossYears.filter(d => last6MonthYearsSet.has(`${d.a} - ${d.m}`));
-    const rawAllEmployeeDataAcrossYears = rawEmployeeData;
+    // 2. Use the full history for the modal
+    const rawEmployeeData = allEmployeeDataAcrossYears;
+    const rawAllEmployeeDataAcrossYears = allEmployeeDataAcrossYears;
 
     // Build overlay
     const overlay = document.createElement('div');
@@ -5277,7 +5265,7 @@ function showPersonDetailModal(cedula, name, period1, period2) {
                 <div>
                     <h3 class="analysis-modal-title" style="color: #fff; font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 8px;">
                         <i data-lucide="user" style="width: 20px; height: 20px; color: #a78bfa;"></i>
-                        Análisis Individual del Colaborador <span style="font-size: 0.72rem; font-weight: normal; background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 20px; margin-left: 10px; color: #e9d5ff;">Últimos 6 meses</span>
+                        Análisis Individual del Colaborador
                     </h3>
                     <div style="display: flex; gap: 12px; margin-top: 4px; align-items: center;">
                         <strong id="modal-employee-title-name" style="font-size: 1rem; color: #f1f5f9;">${name}</strong>
@@ -5443,6 +5431,42 @@ function showPersonDetailModal(cedula, name, period1, period2) {
                                     <!-- Dinámico por JS -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila de Hallazgos y Comparación Mes a Mes -->
+                <div class="overview-charts" style="margin-top: 24px; align-items: stretch; grid-template-columns: 1fr 1fr; display: grid; gap: 24px;">
+                    <!-- Tarjeta de Hallazgos Estratégicos -->
+                    <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%; padding: 24px;">
+                        <div class="chart-card-header" style="margin-bottom: 20px;">
+                            <h3 class="chart-card-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <span>💡</span> Hallazgos y Análisis Estratégico
+                            </h3>
+                        </div>
+                        <div id="modal-employee-findings-container" style="display: flex; flex-direction: column; gap: 16px; flex-grow: 1;">
+                            <!-- Cargado dinámicamente por JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta de Comparación Mes a Mes -->
+                    <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%; padding: 24px;">
+                        <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                            <h3 class="chart-card-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <span>🔄</span> Comparación Mes a Mes
+                            </h3>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <div class="select-wrapper" style="width: 145px;">
+                                    <select id="modal-employee-compare-period-a" class="custom-select" style="font-size: 0.8rem !important; height: 32px !important; padding: 4px 24px 4px 8px !important; border-radius: 6px !important;"></select>
+                                </div>
+                                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">vs</span>
+                                <div class="select-wrapper" style="width: 145px;">
+                                    <select id="modal-employee-compare-period-b" class="custom-select" style="font-size: 0.8rem !important; height: 32px !important; padding: 4px 24px 4px 8px !important; border-radius: 6px !important;"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="modal-employee-comparison-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6;">
+                            <!-- Cargado dinámicamente por JS -->
                         </div>
                     </div>
                 </div>
@@ -5760,6 +5784,344 @@ function showPersonDetailModal(cedula, name, period1, period2) {
         
         // Render details table
         renderModalEmployeeDetailsTable(filteredEmpData);
+
+        // Render findings (Nuevo)
+        renderModalEmployeeFindings(filteredEmpData, rawAllEmployeeDataAcrossYears);
+        
+        // Initialize comparison (Nuevo)
+        initModalEmployeeMonthComparison(rawAllEmployeeDataAcrossYears);
+    }
+
+    function renderModalEmployeeFindings(employeeData, allEmployeeData) {
+        const container = document.getElementById('modal-employee-findings-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const empName = name || 'Trabajador';
+        const historyData = allEmployeeData || [];
+
+        // 1. Hallazgo: Salario Base (Verde)
+        let salaryFindingHTML = '';
+        const basicHistory = {};
+        historyData.forEach(d => {
+            if (d.co && (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO' || d.co.toUpperCase().includes('SALARIO INTEGRAL'))) {
+                const key = `${d.a}-${d.m}`;
+                basicHistory[key] = { sortVal: (d.a * 100) + (MONTH_ORDER[d.m] || 0), val: d.v, period: `${d.m}, ${d.a}` };
+            }
+        });
+
+        const sortedSalaries = Object.values(basicHistory).sort((a, b) => a.sortVal - b.sortVal);
+        let salaryIncreased = false;
+        let oldSalary = 0;
+        let newSalary = 0;
+        let effectivePeriod = '';
+
+        for (let i = 1; i < sortedSalaries.length; i++) {
+            if (sortedSalaries[i].val > sortedSalaries[i-1].val) {
+                salaryIncreased = true;
+                oldSalary = sortedSalaries[i-1].val;
+                newSalary = sortedSalaries[i].val;
+                effectivePeriod = sortedSalaries[i].period;
+                break;
+            }
+        }
+
+        if (salaryIncreased) {
+            const pct = ((newSalary - oldSalary) / oldSalary * 100).toFixed(1);
+            const oldDaily = oldSalary / 30;
+            const newDaily = newSalary / 30;
+            salaryFindingHTML = `
+                <div class="finding-card green">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="trending-up"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Incremento de Salario Base (+${pct}%)</div>
+                        <div class="finding-desc">El salario de <strong>${empName}</strong> aumentó de <strong>${currencyFormatter.format(oldSalary)} COP</strong> a <strong>${currencyFormatter.format(newSalary)} COP</strong> mensuales a partir de ${effectivePeriod}. La tasa diaria subió de ${formatShortCurrency(oldDaily)} a ${formatShortCurrency(newDaily)} COP.</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const currentSalary = sortedSalaries.length > 0 ? sortedSalaries[sortedSalaries.length - 1].val : 0;
+            salaryFindingHTML = `
+                <div class="finding-card green">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="shield-check"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Estabilidad de Salario Básico</div>
+                        <div class="finding-desc">El salario básico de <strong>${empName}</strong> se ha mantenido constante y estable en <strong>${currencyFormatter.format(currentSalary)} COP</strong> mensuales a lo largo de los periodos evaluados.</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Hallazgo: Efecto Vacaciones / Pagos Atípicos (Morado)
+        let vacationFindingHTML = '';
+        const monthlyVacations = {};
+        const monthlyNet = {};
+        historyData.forEach(d => {
+            const key = `${d.a}-${d.m}`;
+            if (!monthlyNet[key]) {
+                monthlyNet[key] = { sortVal: (d.a * 100) + (MONTH_ORDER[d.m] || 0), net: 0, period: `${d.m}, ${d.a}` };
+            }
+            monthlyNet[key].net += d.v;
+
+            const isVacation = d.co && (d.co.toUpperCase().includes('VACACIONES') || d.co.toUpperCase().includes('DISFRUTE') || d.na === 'VACACIONES');
+            if (isVacation) {
+                if (!monthlyVacations[key]) {
+                    monthlyVacations[key] = { val: 0, period: `${d.m}, ${d.a}` };
+                }
+                monthlyVacations[key].val += Math.abs(d.v);
+            }
+        });
+
+        const sortedVacations = Object.values(monthlyVacations).sort((a,b) => b.val - a.val);
+        if (sortedVacations.length > 0 && sortedVacations[0].val > 0) {
+            const topVac = sortedVacations[0];
+            const vacPeriodKey = Object.keys(monthlyVacations).find(k => monthlyVacations[k].period === topVac.period);
+            const netInMonth = monthlyNet[vacPeriodKey] ? monthlyNet[vacPeriodKey].net : 1;
+            let sumOtherNet = 0;
+            let countOtherNet = 0;
+            Object.keys(monthlyNet).forEach(k => {
+                if (k !== vacPeriodKey) {
+                    sumOtherNet += monthlyNet[k].net;
+                    countOtherNet++;
+                }
+            });
+            const avgOtherNet = countOtherNet > 0 ? (sumOtherNet / countOtherNet) : netInMonth;
+            let pctImpact = 0;
+            if (avgOtherNet !== 0) {
+                pctImpact = (((netInMonth - avgOtherNet) / avgOtherNet) * 100);
+            }
+            const pctImpactStr = isNaN(pctImpact) || !isFinite(pctImpact) ? '0' : pctImpact.toFixed(0);
+            const impactText = parseInt(pctImpactStr) > 0 ? `disparó el ingreso neto del mes en +${pctImpactStr}%` : `impactó el ingreso del mes`;
+
+            vacationFindingHTML = `
+                <div class="finding-card purple">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="plane"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Efecto Vacaciones en ${topVac.period}</div>
+                        <div class="finding-desc">Se registró un pago por concepto de vacaciones de <strong>${currencyFormatter.format(topVac.val)} COP</strong> en ${topVac.period}. Esto ${impactText} debido al adelanto y liquidación de periodos de descanso.</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            vacationFindingHTML = `
+                <div class="finding-card purple">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="calendar"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Ingresos Mensuales Consistentes</div>
+                        <div class="finding-desc"><strong>${empName}</strong> no registra transacciones por vacaciones, primas extralegales ni licencias pagadas, manteniendo una regularidad constante en sus ingresos.</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 3. Hallazgo: Carga Tributaria (ReteFuente) (Rojo)
+        let taxFindingHTML = '';
+        let totalTaxes = 0;
+        let totalGross = 0;
+        historyData.forEach(d => {
+            if (d.na === 'DEVENGO' || d.na === 'BENEFICIO') {
+                totalGross += Math.abs(d.v);
+            }
+            const isTax = d.co && (d.co.toUpperCase().includes('RETENCION EN LA FUENTE') || d.co.toUpperCase().includes('RETEFUENTE') || d.co.toUpperCase() === 'RETENCION');
+            if (isTax) {
+                totalTaxes += Math.abs(d.v);
+            }
+        });
+
+        if (totalTaxes > 0 && totalGross > 0) {
+            const taxPct = ((totalTaxes / totalGross) * 100);
+            const taxPctStr = isNaN(taxPct) || !isFinite(taxPct) ? '0.0' : taxPct.toFixed(1);
+            taxFindingHTML = `
+                <div class="finding-card red">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="building"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Carga Tributaria (ReteFuente)</div>
+                        <div class="finding-desc">La retención en la fuente absorbe el <strong>${taxPctStr}%</strong> del ingreso bruto del empleado, acumulando un total de <strong>${currencyFormatter.format(totalTaxes)} COP</strong> deducidos en los periodos analizados.</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            taxFindingHTML = `
+                <div class="finding-card red">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="percent"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Sin Retención en la Fuente</div>
+                        <div class="finding-desc">La base gravable de <strong>${empName}</strong> no supera el umbral de retención en la fuente en los meses analizados, optimizando la liquidez neta del trabajador.</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 4. Hallazgo: Aportes de Ley (Indigo)
+        let lawFindingHTML = '';
+        let hasSolidarity = false;
+        historyData.forEach(d => {
+            if (d.co && (d.co.toUpperCase().includes('SOLIDARIDAD') || d.co.toUpperCase().includes('FSP'))) {
+                hasSolidarity = true;
+            }
+        });
+
+        const solidarityText = hasSolidarity ? ' y Fondo de Solidaridad Pensional (1%+)' : '';
+        lawFindingHTML = `
+            <div class="finding-card indigo">
+                <div class="finding-icon-wrapper">
+                    <i data-lucide="scale"></i>
+                </div>
+                <div class="finding-content">
+                    <div class="finding-title">Aportes de Ley y Deducciones</div>
+                    <div class="finding-desc">Los aportes de Salud (4%) y Pensión (4%)${solidarityText} se aplican de manera uniforme sobre la base legal reglamentaria del empleado, respetando los topes oficiales y la normatividad laboral vigente.</div>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = salaryFindingHTML + vacationFindingHTML + taxFindingHTML + lawFindingHTML;
+        
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    }
+
+    let modalCompareListenersInitialized = false;
+
+    function initModalEmployeeMonthComparison(allEmployeeData) {
+        const selectA = document.getElementById('modal-employee-compare-period-a');
+        const selectB = document.getElementById('modal-employee-compare-period-b');
+        if (!selectA || !selectB) return;
+
+        // Obtener periodos únicos ordenados
+        const periodsMap = {};
+        allEmployeeData.forEach(d => {
+            const labelKey = `${d.a} - ${d.m}`;
+            if (!periodsMap[labelKey]) {
+                periodsMap[labelKey] = {
+                    sortVal: (d.a * 100) + (MONTH_ORDER[d.m] || 0),
+                    key: labelKey
+                };
+            }
+        });
+        
+        const sortedPeriods = Object.values(periodsMap)
+            .sort((a, b) => a.sortVal - b.sortVal)
+            .map(p => p.key);
+
+        const prevValA = selectA.value;
+        const prevValB = selectB.value;
+
+        selectA.innerHTML = '';
+        selectB.innerHTML = '';
+
+        sortedPeriods.forEach(p => {
+            selectA.innerHTML += `<option value="${p}">${p}</option>`;
+            selectB.innerHTML += `<option value="${p}">${p}</option>`;
+        });
+
+        // Valores por defecto
+        if (sortedPeriods.length >= 2) {
+            selectA.value = sortedPeriods.includes(prevValA) ? prevValA : sortedPeriods[sortedPeriods.length - 2];
+            selectB.value = sortedPeriods.includes(prevValB) ? prevValB : sortedPeriods[sortedPeriods.length - 1];
+        } else if (sortedPeriods.length === 1) {
+            selectA.value = sortedPeriods[0];
+            selectB.value = sortedPeriods[0];
+        }
+
+        if (!modalCompareListenersInitialized) {
+            selectA.addEventListener('change', () => updateModalEmployeeMonthComparison(allEmployeeData));
+            selectB.addEventListener('change', () => updateModalEmployeeMonthComparison(allEmployeeData));
+            modalCompareListenersInitialized = true;
+        }
+
+        updateModalEmployeeMonthComparison(allEmployeeData);
+    }
+
+    function updateModalEmployeeMonthComparison(allEmployeeData) {
+        const container = document.getElementById('modal-employee-comparison-container');
+        const selectA = document.getElementById('modal-employee-compare-period-a');
+        const selectB = document.getElementById('modal-employee-compare-period-b');
+        if (!container || !selectA || !selectB) return;
+
+        const periodA = selectA.value;
+        const periodB = selectB.value;
+
+        if (!periodA || !periodB) {
+            container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No hay suficientes periodos para comparar.</div>';
+            return;
+        }
+
+        const dataA = allEmployeeData.filter(d => `${d.a} - ${d.m}` === periodA);
+        const dataB = allEmployeeData.filter(d => `${d.a} - ${d.m}` === periodB);
+
+        // Calcular KPIs
+        const calcKPIs = (data) => {
+            let dev = 0;
+            let desc = 0;
+            data.forEach(d => {
+                if (d.na === 'DEVENGO' || d.na === 'BENEFICIO') dev += Math.abs(d.v);
+                else if (d.na === 'DESCUENTO') desc += Math.abs(d.v);
+            });
+            return { dev, desc, net: dev - desc };
+        };
+
+        const kpiA = calcKPIs(dataA);
+        const kpiB = calcKPIs(dataB);
+
+        const netDiff = kpiB.net - kpiA.net;
+        let netDiffPct = 0;
+        if (kpiA.net > 0) {
+            netDiffPct = ((netDiff / kpiA.net) * 100).toFixed(1);
+        }
+
+        let comparisonText = '';
+        const pctSign = netDiff >= 0 ? `+${netDiffPct}%` : `${netDiffPct}%`;
+        const actionText = netDiff >= 0 ? 'aumentó' : 'disminuyó';
+        const classColor = netDiff >= 0 ? '#10B981' : '#EF4444';
+
+        comparisonText += `El ingreso neto del trabajador <strong>${actionText} un <span style="color: ${classColor}; font-weight: 700;">${pctSign}</span></strong> entre el periodo <strong>${periodA}</strong> y el periodo <strong>${periodB}</strong>, pasando de <strong>${currencyFormatter.format(kpiA.net)}</strong> a <strong>${currencyFormatter.format(kpiB.net)}</strong>.<br><br>`;
+
+        const conceptsA = {};
+        const conceptsB = {};
+        
+        dataA.forEach(d => { conceptsA[d.co] = (conceptsA[d.co] || 0) + Math.abs(d.v); });
+        dataB.forEach(d => { conceptsB[d.co] = (conceptsB[d.co] || 0) + Math.abs(d.v); });
+
+        const allConcepts = new Set([...Object.keys(conceptsA), ...Object.keys(conceptsB)]);
+        const variations = [];
+
+        allConcepts.forEach(c => {
+            const valA = conceptsA[c] || 0;
+            const valB = conceptsB[c] || 0;
+            const diff = valB - valA;
+            if (diff !== 0) {
+                variations.push({ name: c, valA, valB, diff, absDiff: Math.abs(diff) });
+            }
+        });
+
+        variations.sort((a, b) => b.absDiff - a.absDiff);
+
+        if (variations.length > 0) {
+            comparisonText += `Esta variación se debe principalmente a los siguientes cambios en sus conceptos:<br><ul style="padding-left: 20px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">`;
+            variations.slice(0, 3).forEach(v => {
+                const direction = v.diff > 0 ? 'aumento' : 'disminución';
+                const diffFormatted = currencyFormatter.format(Math.abs(v.diff));
+                comparisonText += `<li><strong>${v.name}</strong>: Se observa una ${direction} de <strong>${diffFormatted}</strong> (pasó de ${currencyFormatter.format(v.valA)} a ${currencyFormatter.format(v.valB)}).</li>`;
+            });
+            comparisonText += `</ul>`;
+        } else {
+            comparisonText += `No se registran cambios en los conceptos ni montos liquidados entre estos dos periodos; los valores liquidados son exactamente iguales.`;
+        }
+
+        container.innerHTML = comparisonText;
     }
 
     function updateTableFilters(filteredEmpData) {
@@ -5945,7 +6307,7 @@ function showPersonDetailModal(cedula, name, period1, period2) {
         }
         
         // Obtener periodos únicos y ordenarlos cronológicamente
-        const isFiltered = state.selectedYears && state.selectedYears.length === 1;
+        const isFiltered = selectedYear !== 'ALL';
         const periodsMap = {};
         employeeData.forEach(d => {
             const labelKey = isFiltered ? d.m : `${d.a} - ${d.m}`;
