@@ -3133,3 +3133,27 @@ input:disabled + .nomai-slider {
     color: #4F46E5;
 }
 
+/* Layout de Dos Columnas para Dashboard de Empleados */
+.employee-dashboard-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+    align-items: start;
+}
+.employee-main-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.employee-sidebar-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+@media (max-width: 1300px) {
+    .employee-dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
