@@ -10817,16 +10817,16 @@ function renderEmployeeFindings(employeeData, allEmployeeData) {
 
     // Encontrar nombre del empleado
     const empName = (employeeData[0] || allEmployeeData[0] || {}).n || 'Trabajador';
-
-    // 1. Hallazgo: Salario Base (Verde)
-    let salaryFindingHTML = '';
     const isFiltered = state.selectedYears && state.selectedYears.length === 1;
     const historyData = isFiltered ? employeeData : allEmployeeData;
-    
-    // Agrupar salario básico por mes-año
+
+    const candidates = [];
+
+    // --- 1. Aumento Salarial (Sueldo Básico) ---
     const basicHistory = {};
     historyData.forEach(d => {
-        if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO' || d.co.toUpperCase().includes('SALARIO INTEGRAL')) {
+        const isBasic = d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO' || d.co.toUpperCase().includes('SALARIO INTEGRAL');
+        if (isBasic) {
             const key = `${d.a}-${d.m}`;
             basicHistory[key] = { sortVal: (d.a * 100) + (MONTH_ORDER[d.m] || 0), val: d.v, period: `${d.m}, ${d.a}` };
         }
@@ -10852,96 +10852,97 @@ function renderEmployeeFindings(employeeData, allEmployeeData) {
         const pct = ((newSalary - oldSalary) / oldSalary * 100).toFixed(1);
         const oldDaily = oldSalary / 30;
         const newDaily = newSalary / 30;
-        salaryFindingHTML = `
-            <div class="finding-card green">
-                <div class="finding-icon-wrapper">
-                    <i data-lucide="trending-up"></i>
+        candidates.push({
+            score: 100,
+            html: `
+                <div class="finding-card green">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="trending-up"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Incremento de Salario Base (+${pct}%)</div>
+                        <div class="finding-desc">El salario de <strong>${empName}</strong> aumentó de <strong>${currencyFormatter.format(oldSalary)} COP</strong> a <strong>${currencyFormatter.format(newSalary)} COP</strong> mensuales a partir de ${effectivePeriod}. La tasa diaria subió de ${formatShortCurrency(oldDaily)} a ${formatShortCurrency(newDaily)} COP.</div>
+                    </div>
                 </div>
-                <div class="finding-content">
-                    <div class="finding-title">Incremento de Salario Base (+${pct}%)</div>
-                    <div class="finding-desc">El salario de <strong>${empName}</strong> aumentó de <strong>${currencyFormatter.format(oldSalary)} COP</strong> a <strong>${currencyFormatter.format(newSalary)} COP</strong> mensuales a partir de ${effectivePeriod}. La tasa diaria subió de ${formatShortCurrency(oldDaily)} a ${formatShortCurrency(newDaily)} COP.</div>
+            `
+        });
+    } else if (sortedSalaries.length > 0) {
+        const currentSalary = sortedSalaries[sortedSalaries.length - 1].val;
+        candidates.push({
+            score: 40,
+            html: `
+                <div class="finding-card green">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="shield-check"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Estabilidad de Salario Básico</div>
+                        <div class="finding-desc">El salario básico de <strong>${empName}</strong> se ha mantenido constante en <strong>${currencyFormatter.format(currentSalary)} COP</strong> mensuales durante el periodo de análisis.</div>
+                    </div>
                 </div>
-            </div>
-        `;
-    } else {
-        const currentSalary = sortedSalaries.length > 0 ? sortedSalaries[sortedSalaries.length - 1].val : 0;
-        salaryFindingHTML = `
-            <div class="finding-card green">
-                <div class="finding-icon-wrapper">
-                    <i data-lucide="shield-check"></i>
-                </div>
-                <div class="finding-content">
-                    <div class="finding-title">Estabilidad de Salario Básico</div>
-                    <div class="finding-desc">El salario básico de <strong>${empName}</strong> se ha mantenido constante y estable en <strong>${currencyFormatter.format(currentSalary)} COP</strong> mensuales a lo largo de los periodos evaluados.</div>
-                </div>
-            </div>
-        `;
+            `
+        });
     }
 
-    // 2. Hallazgo: Efecto Vacaciones / Pagos Atípicos (Morado)
-    let vacationFindingHTML = '';
-    const monthlyVacations = {};
-    const monthlyNet = {};
+    // --- 2. Vacaciones ---
+    let totalVac = 0;
+    const vacMonths = new Set();
     historyData.forEach(d => {
-        const key = `${d.a}-${d.m}`;
-        if (!monthlyNet[key]) {
-            monthlyNet[key] = { sortVal: (d.a * 100) + (MONTH_ORDER[d.m] || 0), net: 0, period: `${d.m}, ${d.a}` };
-        }
-        monthlyNet[key].net += d.v;
-
-        const isVacation = d.co.toUpperCase().includes('VACACIONES') || d.co.toUpperCase().includes('DISFRUTE') || d.na === 'VACACIONES';
-        if (isVacation) {
-            if (!monthlyVacations[key]) {
-                monthlyVacations[key] = { val: 0, period: `${d.m}, ${d.a}` };
-            }
-            monthlyVacations[key].val += Math.abs(d.v);
+        const isVac = d.co.toUpperCase().includes('VACACIONES') || d.co.toUpperCase().includes('DISFRUTE') || d.na === 'VACACIONES';
+        if (isVac) {
+            totalVac += Math.abs(d.v);
+            vacMonths.add(`${d.m}, ${d.a}`);
         }
     });
 
-    const sortedVacations = Object.values(monthlyVacations).sort((a,b) => b.val - a.val);
-    if (sortedVacations.length > 0 && sortedVacations[0].val > 0) {
-        const topVac = sortedVacations[0];
-        const vacPeriodKey = Object.keys(monthlyVacations).find(k => monthlyVacations[k].period === topVac.period);
-        const netInMonth = monthlyNet[vacPeriodKey] ? monthlyNet[vacPeriodKey].net : 1;
-        let sumOtherNet = 0;
-        let countOtherNet = 0;
-        Object.keys(monthlyNet).forEach(k => {
-            if (k !== vacPeriodKey) {
-                sumOtherNet += monthlyNet[k].net;
-                countOtherNet++;
-            }
+    if (totalVac > 0) {
+        const monthsList = Array.from(vacMonths).join(', ');
+        candidates.push({
+            score: 88,
+            html: `
+                <div class="finding-card purple">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="plane"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Efecto Vacaciones / Descansos</div>
+                        <div class="finding-desc">Se registran liquidaciones o adelantos de vacaciones que suman <strong>${currencyFormatter.format(totalVac)} COP</strong> en total, presentándose principalmente en ${monthsList}.</div>
+                    </div>
+                </div>
+            `
         });
-        const avgOtherNet = countOtherNet > 0 ? (sumOtherNet / countOtherNet) : netInMonth;
-        const pctImpact = (((netInMonth - avgOtherNet) / avgOtherNet) * 100).toFixed(0);
-        const impactText = pctImpact > 0 ? `disparó el ingreso neto del mes en +${pctImpact}%` : `impactó el ingreso del mes`;
-
-        vacationFindingHTML = `
-            <div class="finding-card purple">
-                <div class="finding-icon-wrapper">
-                    <i data-lucide="plane"></i>
-                </div>
-                <div class="finding-content">
-                    <div class="finding-title">Efecto Vacaciones en ${topVac.period}</div>
-                    <div class="finding-desc">Se registró un pago por concepto de vacaciones de <strong>${currencyFormatter.format(topVac.val)} COP</strong> en ${topVac.period}. Esto ${impactText} debido al adelanto y liquidación de periodos de descanso.</div>
-                </div>
-            </div>
-        `;
-    } else {
-        vacationFindingHTML = `
-            <div class="finding-card purple">
-                <div class="finding-icon-wrapper">
-                    <i data-lucide="calendar"></i>
-                </div>
-                <div class="finding-content">
-                    <div class="finding-title">Ingresos Mensuales Consistentes</div>
-                    <div class="finding-desc"><strong>${empName}</strong> no registra transacciones por vacaciones, primas extralegales ni licencias pagadas, manteniendo una regularidad constante en sus ingresos.</div>
-                </div>
-            </div>
-        `;
     }
 
-    // 3. Hallazgo: Carga Tributaria (ReteFuente) (Rojo)
-    let taxFindingHTML = '';
+    // --- 3. Licencias / Incapacidades ---
+    let totalLic = 0;
+    const licConcepts = new Set();
+    historyData.forEach(d => {
+        const isLic = d.co.toUpperCase().includes('LICENCIA') || d.co.toUpperCase().includes('INCAPACIDAD');
+        if (isLic) {
+            totalLic += Math.abs(d.v);
+            licConcepts.add(d.co);
+        }
+    });
+
+    if (totalLic > 0) {
+        const listConcepts = Array.from(licConcepts).slice(0, 2).map(c => `"${c.toLowerCase()}"`).join(' y ');
+        candidates.push({
+            score: 92,
+            html: `
+                <div class="finding-card purple">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="activity"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Licencias o Incapacidades</div>
+                        <div class="finding-desc">El trabajador reporta deducciones o ausencias pagadas por conceptos de ${listConcepts} sumando un total de <strong>${currencyFormatter.format(totalLic)} COP</strong>.</div>
+                    </div>
+                </div>
+            `
+        });
+    }
+
+    // --- 4. Retención en la Fuente ---
     let totalTaxes = 0;
     let totalGross = 0;
     historyData.forEach(d => {
@@ -10955,56 +10956,186 @@ function renderEmployeeFindings(employeeData, allEmployeeData) {
     });
 
     if (totalTaxes > 0) {
-        const taxPct = ((totalTaxes / totalGross) * 100).toFixed(1);
-        taxFindingHTML = `
-            <div class="finding-card red">
-                <div class="finding-icon-wrapper">
-                    <i data-lucide="building"></i>
+        const taxPct = totalGross > 0 ? ((totalTaxes / totalGross) * 100).toFixed(1) : '0';
+        candidates.push({
+            score: 85,
+            html: `
+                <div class="finding-card red">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="building"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Carga Tributaria (ReteFuente)</div>
+                        <div class="finding-desc">La retención en la fuente absorbe el <strong>${taxPct}%</strong> del ingreso bruto de <strong>${empName}</strong>, totalizando <strong>${currencyFormatter.format(totalTaxes)} COP</strong> deducidos.</div>
+                    </div>
                 </div>
-                <div class="finding-content">
-                    <div class="finding-title">Carga Tributaria (ReteFuente)</div>
-                    <div class="finding-desc">La retención en la fuente absorbe el <strong>${taxPct}%</strong> del ingreso bruto del empleado, acumulando un total de <strong>${currencyFormatter.format(totalTaxes)} COP</strong> deducidos en los periodos analizados.</div>
-                </div>
-            </div>
-        `;
-    } else {
-        taxFindingHTML = `
-            <div class="finding-card red">
-                <div class="finding-icon-wrapper">
-                    <i data-lucide="percent"></i>
-                </div>
-                <div class="finding-content">
-                    <div class="finding-title">Sin Retención en la Fuente</div>
-                    <div class="finding-desc">La base gravable de <strong>${empName}</strong> no supera el umbral de retención en la fuente en los meses analizados, optimizando la liquidez neta del trabajador.</div>
-                </div>
-            </div>
-        `;
+            `
+        });
     }
 
-    // 4. Hallazgo: Aportes de Ley (Indigo)
-    let lawFindingHTML = '';
+    // --- 5. Préstamos y Deudas (Deducciones financieras) ---
+    let totalLoans = 0;
+    let totalDiscounts = 0;
+    const loanConcepts = new Set();
+    historyData.forEach(d => {
+        if (d.na === 'DESCUENTO') {
+            totalDiscounts += Math.abs(d.v);
+            const isLoan = d.co.toUpperCase().includes('PRESTAMO') || d.co.toUpperCase().includes('PRÉSTAMO') || d.co.toUpperCase().includes('LIBRANZA') || d.co.toUpperCase().includes('EMBARGO') || d.co.toUpperCase().includes('COOPERATIVA') || d.co.toUpperCase().includes('FINCOMERCIO');
+            if (isLoan) {
+                totalLoans += Math.abs(d.v);
+                let name = d.co.replace(/PRESTAMO|PRÉSTAMO/g, '').trim();
+                loanConcepts.add(name);
+            }
+        }
+    });
+
+    if (totalLoans > 0) {
+        const pctLoans = totalDiscounts > 0 ? ((totalLoans / totalDiscounts) * 100).toFixed(0) : '0';
+        const conceptsList = Array.from(loanConcepts).slice(0, 2).join(', ');
+        candidates.push({
+            score: 89,
+            html: `
+                <div class="finding-card red">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="wallet"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Deducciones por Préstamos / Deudas</div>
+                        <div class="finding-desc">Los descuentos financieros (amortizaciones, libranzas o embargos) representan el <strong>${pctLoans}%</strong> de sus descuentos totales, sumando <strong>${currencyFormatter.format(totalLoans)} COP</strong> (${conceptsList}).</div>
+                    </div>
+                </div>
+            `
+        });
+    }
+
+    // --- 6. Ingresos Variables y Recargos (Horas Extras, etc.) ---
+    let totalVariables = 0;
+    let totalDevengos = 0;
+    historyData.forEach(d => {
+        if (d.na === 'DEVENGO' || d.na === 'BENEFICIO') {
+            totalDevengos += Math.abs(d.v);
+            const isVar = d.co.toUpperCase().includes('EXTRAS') || d.co.toUpperCase().includes('EXT. ') || d.co.toUpperCase().includes('RECARGO') || d.co.toUpperCase().includes('COMISION') || d.co.toUpperCase().includes('COMISIÓN') || d.co.toUpperCase().includes('INCENTIVO') || d.co.toUpperCase().includes('BONIFICACION') || d.co.toUpperCase().includes('BONIFICACIÓN');
+            if (isVar) {
+                totalVariables += Math.abs(d.v);
+            }
+        }
+    });
+
+    if (totalVariables > 0) {
+        const pctVar = totalDevengos > 0 ? ((totalVariables / totalDevengos) * 100).toFixed(1) : '0';
+        candidates.push({
+            score: 80,
+            html: `
+                <div class="finding-card green">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="zap"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Ingresos Variables y Recargos</div>
+                        <div class="finding-desc">Los ingresos variables (horas extras, recargos y comisiones) representan el <strong>${pctVar}%</strong> de sus devengos totales, sumando <strong>${currencyFormatter.format(totalVariables)} COP</strong>.</div>
+                    </div>
+                </div>
+            `
+        });
+    }
+
+    // --- 7. Variación Atípica en un Concepto Específico (Mes a Mes) ---
+    const monthlyConceptMap = {};
+    historyData.forEach(d => {
+        if (d.co.toUpperCase().includes('SUELDO BASICO') || d.co.toUpperCase() === 'SUELDO BÁSICO' || d.co.toUpperCase().includes('SALARIO INTEGRAL')) return;
+        const key = d.co;
+        if (!monthlyConceptMap[key]) {
+            monthlyConceptMap[key] = {};
+        }
+        const periodKey = `${d.a}-${d.m}`;
+        monthlyConceptMap[key][periodKey] = (monthlyConceptMap[key][periodKey] || 0) + Math.abs(d.v);
+    });
+
+    const periodKeys = Array.from(new Set(historyData.map(d => `${d.a}-${d.m}`))).sort((a, b) => {
+        const [aYear, aMonth] = a.split('-');
+        const [bYear, bMonth] = b.split('-');
+        const yearDiff = parseInt(aYear) - parseInt(bYear);
+        if (yearDiff !== 0) return yearDiff;
+        return (MONTH_ORDER[aMonth] || 0) - (MONTH_ORDER[bMonth] || 0);
+    });
+
+    let maxChange = 0;
+    let maxChangeConcept = '';
+    let maxChangePeriod = '';
+    let maxChangeValA = 0;
+    let maxChangeValB = 0;
+    let changePct = 0;
+    let changeNature = 'DEVENGO';
+
+    Object.keys(monthlyConceptMap).forEach(concept => {
+        for (let i = 1; i < periodKeys.length; i++) {
+            const valA = monthlyConceptMap[concept][periodKeys[i-1]] || 0;
+            const valB = monthlyConceptMap[concept][periodKeys[i]] || 0;
+            const diff = Math.abs(valB - valA);
+            if (diff > maxChange) {
+                maxChange = diff;
+                maxChangeConcept = concept;
+                maxChangePeriod = periodKeys[i].split('-')[1];
+                maxChangeValA = valA;
+                maxChangeValB = valB;
+                changePct = valA > 0 ? ((diff / valA) * 100).toFixed(0) : 100;
+                const match = historyData.find(d => d.co === concept);
+                changeNature = match ? match.na : 'DEVENGO';
+            }
+        }
+    });
+
+    if (maxChange > 200000) {
+        const sign = maxChangeValB > maxChangeValA ? '+' : '-';
+        const colorClass = changeNature === 'DESCUENTO' ? (maxChangeValB > maxChangeValA ? 'red' : 'green') : (maxChangeValB > maxChangeValA ? 'green' : 'red');
+        const iconName = changeNature === 'DESCUENTO' ? (maxChangeValB > maxChangeValA ? 'arrow-up-right' : 'arrow-down-right') : (maxChangeValB > maxChangeValA ? 'arrow-up-right' : 'arrow-down-right');
+        candidates.push({
+            score: 75,
+            html: `
+                <div class="finding-card ${colorClass}">
+                    <div class="finding-icon-wrapper">
+                        <i data-lucide="${iconName}"></i>
+                    </div>
+                    <div class="finding-content">
+                        <div class="finding-title">Fluctuación en ${maxChangeConcept} (${sign}${changePct}%)</div>
+                        <div class="finding-desc">El concepto registró una variación de <strong>${currencyFormatter.format(maxChange)} COP</strong> en el mes de ${maxChangePeriod}, pasando de ${currencyFormatter.format(maxChangeValA)} a ${currencyFormatter.format(maxChangeValB)}.</div>
+                    </div>
+                </div>
+            `
+        });
+    }
+
+    // --- 8. Aportes de Ley (Deducciones Generales) ---
     let hasSolidarity = false;
     historyData.forEach(d => {
         if (d.co.toUpperCase().includes('SOLIDARIDAD') || d.co.toUpperCase().includes('FSP')) {
             hasSolidarity = true;
         }
     });
-
     const solidarityText = hasSolidarity ? ' y Fondo de Solidaridad Pensional (1%+)' : '';
-    lawFindingHTML = `
-        <div class="finding-card indigo">
-            <div class="finding-icon-wrapper">
-                <i data-lucide="scale"></i>
+    candidates.push({
+        score: 50,
+        html: `
+            <div class="finding-card indigo">
+                <div class="finding-icon-wrapper">
+                    <i data-lucide="scale"></i>
+                </div>
+                <div class="finding-content">
+                    <div class="finding-title">Aportes de Ley y Seguridad Social</div>
+                    <div class="finding-desc">Los aportes a EPS (4%) y Pensión (4%)${solidarityText} se calculan de manera consistente sobre la base salarial del trabajador, respetando la normatividad colombiana.</div>
+                </div>
             </div>
-            <div class="finding-content">
-                <div class="finding-title">Aportes de Ley y Deducciones</div>
-                <div class="finding-desc">Los aportes de Salud (4%) y Pensión (4%)${solidarityText} se aplican de manera uniforme sobre la base legal reglamentaria del empleado, respetando los topes oficiales y la normatividad laboral vigente.</div>
-            </div>
-        </div>
-    `;
+        `
+    });
 
-    container.innerHTML = salaryFindingHTML + vacationFindingHTML + taxFindingHTML + lawFindingHTML;
-    
+    // Ordenar por puntuación descendente y tomar los top 4 hallazgos más representativos
+    candidates.sort((a, b) => b.score - a.score);
+    const top4 = candidates.slice(0, 4);
+
+    top4.forEach(c => {
+        container.innerHTML += c.html;
+    });
+
     // Crear íconos de Lucide
     if (window.lucide) {
         window.lucide.createIcons();
