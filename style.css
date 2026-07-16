@@ -3060,3 +3060,76 @@ input:disabled + .nomai-slider {
     text-overflow: clip;
 }
 
+/* Estilos para Hallazgos Estratégicos */
+.finding-card {
+    display: flex;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    align-items: flex-start;
+    transition: transform var(--t-fast);
+}
+.finding-card:hover {
+    transform: translateY(-2px);
+}
+.finding-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    background: #FFFFFF;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+.finding-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.finding-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1A1D2E;
+}
+.finding-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Colores de Tarjetas de Hallazgos */
+.finding-card.green {
+    background-color: #ECFDF5;
+    border-left: 4px solid #10B981;
+}
+.finding-card.green .finding-icon-wrapper {
+    color: #10B981;
+}
+
+.finding-card.purple {
+    background-color: #F5F3FF;
+    border-left: 4px solid #8B5CF6;
+}
+.finding-card.purple .finding-icon-wrapper {
+    color: #8B5CF6;
+}
+
+.finding-card.red {
+    background-color: #FEF2F2;
+    border-left: 4px solid #EF4444;
+}
+.finding-card.red .finding-icon-wrapper {
+    color: #EF4444;
+}
+
+.finding-card.indigo {
+    background-color: #EEF2FF;
+    border-left: 4px solid #4F46E5;
+}
+.finding-card.indigo .finding-icon-wrapper {
+    color: #4F46E5;
+}
+
