@@ -3139,7 +3139,7 @@ input:disabled + .nomai-slider {
     grid-template-columns: 2fr 1fr;
     gap: 24px;
     margin-top: 24px;
-    align-items: start;
+    align-items: stretch;
 }
 .employee-main-col {
     display: flex;
