@@ -1034,9 +1034,10 @@ function renderOverview() {
     // 4. Tabla: Resumen Mensual
     renderOverviewMonthlyTable(data);
     
-    // 5. Gráficos: Top 10 Centros de Costo y Top 10 Cargos
+    // 5. Gráficos: Top 10 Centros de Costo, Top 10 Cargos y Top 10 Conceptos
     renderTopCecosChart(data);
     renderTopCargosChart(data);
+    renderTopConceptsChart(data);
 }
 
 function renderOverviewTrendChart(data) {
@@ -1528,6 +1529,124 @@ function renderTopCargosChart(data) {
             }
         }
     });
+}
+
+function renderTopConceptsChart(data) {
+    const canvas = document.getElementById('conceptChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Agrupar por Concepto
+    const conceptsMap = {};
+    const natureMap = {};
+    data.forEach(d => {
+        if (!d.co || d.na === 'BENEFICIO') return; // Excluir beneficios no constitutivos de neto
+        const key = d.co;
+        if (!conceptsMap[key]) {
+            conceptsMap[key] = 0;
+            natureMap[key] = d.na;
+        }
+        conceptsMap[key] += Math.abs(d.v || 0);
+    });
+
+    // Ordenar y tomar Top 10
+    const sortedConcepts = Object.entries(conceptsMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+    const labels = sortedConcepts.map(item => item[0]);
+    const values = sortedConcepts.map(item => item[1]);
+
+    // Crear gradiente NomAI Celeste/Azul
+    const gradient = ctx.createLinearGradient(0, 0, 400, 0);
+    gradient.addColorStop(0, 'rgba(14, 165, 233, 0.80)'); // Sky blue
+    gradient.addColorStop(1, 'rgba(56, 189, 248, 0.65)'); // Light sky blue
+
+    clearChart('conceptChart');
+
+    state.charts.conceptChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Liquidado',
+                data: values,
+                backgroundColor: gradient,
+                borderColor: '#FFFFFF',
+                borderWidth: 2,
+                borderRadius: 6,
+                barThickness: 'flex',
+                maxBarThickness: 24
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Barra horizontal
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#FFFFFF',
+                    titleColor: '#1A1D2E',
+                    bodyColor: '#6B7280',
+                    borderColor: 'rgba(0,0,0,0.08)',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: function(context) {
+                            return `  Total: ${currencyFormatter.format(context.raw)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(0,0,0,0.03)', drawBorder: false },
+                    ticks: {
+                        color: '#9CA3AF',
+                        font: { family: 'Outfit', size: 10 },
+                        callback: function(value) { return formatShortCurrency(value); }
+                    }
+                },
+                y: {
+                    grid: { display: false, drawBorder: false },
+                    ticks: {
+                        color: '#4B5563',
+                        font: { family: 'Outfit', size: 10, weight: '500' },
+                        callback: function(value, index) {
+                            const label = this.getLabelForValue(value);
+                            return label.length > 22 ? label.substring(0, 22) + '...' : label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Renderizar la tabla de detalle
+    const tbody = document.getElementById('overview-concepts-tbody');
+    if (tbody) {
+        tbody.innerHTML = '';
+        sortedConcepts.forEach((item, index) => {
+            const conceptName = item[0];
+            const totalValue = item[1];
+            const nature = natureMap[conceptName] || 'DEVENGO';
+            
+            const badgeClass = nature === 'DEVENGO' ? 'badge-devengo' : 'badge-descuento';
+            const badgeText = nature === 'DEVENGO' ? 'Ingreso' : 'Deducción';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-muted); text-align: center;">${index + 1}</td>
+                    <td style="font-weight: 600; color: var(--text-primary);">${conceptName}</td>
+                    <td style="text-align: center;">
+                        <span class="badge ${badgeClass}">${badgeText}</span>
+                    </td>
+                    <td style="text-align: right; font-weight: 700; color: var(--text-primary);">${currencyFormatter.format(totalValue)}</td>
+                </tr>
+            `;
+        });
+    }
 }
 
 function renderOverviewMonthlyTable(data) {

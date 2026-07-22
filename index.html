@@ -452,6 +452,42 @@
                         </div>
                     </div>
 
+                    <!-- TERCERA FILA: CONCEPTOS MÁS COSTOSOS -->
+                    <div class="overview-charts" style="margin-top: 24px;">
+                        <!-- Gráfico Top 10 Conceptos -->
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Top 10 · Conceptos más Costosos</h3>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Por Costo Total Acumulado</span>
+                            </div>
+                            <div class="chart-container" style="min-height: 380px;">
+                                <canvas id="conceptChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Tabla Detalle de Conceptos más Costosos -->
+                        <div class="table-card" style="margin: 0;">
+                            <div class="table-header">
+                                <h3 class="table-title">Detalle de Conceptos más Costosos</h3>
+                            </div>
+                            <div class="table-wrapper" style="max-height: 380px; overflow-y: auto;">
+                                <table class="custom-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 10%; text-align: center;">#</th>
+                                            <th style="width: 50%;">Concepto</th>
+                                            <th style="width: 20%; text-align: center;">Naturaleza</th>
+                                            <th style="width: 20%; text-align: right;">Total Liquidado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="overview-concepts-tbody">
+                                        <!-- Dinámico por JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Resumen Consolidado -->
                     <div class="table-card"
                         style="margin-top: 24px; max-width: 1000px; margin-left: auto; margin-right: auto;">
@@ -535,120 +571,122 @@
                         </div>
                     </div>
 
-                    <!-- Parte Superior: Grid de 3 Columnas para Gráficos y Análisis -->
-                    <div class="employee-dashboard-3col-layout">
-                        
-                        <!-- Columna 1: Evolución Salarial y Capacidad de Endeudamiento -->
-                        <div class="employee-col">
-                            <!-- Evolución Salarial Mensual -->
-                            <div class="chart-card" style="margin: 0;">
-                                <div class="chart-card-header">
-                                    <h3 class="chart-card-title">Evolución Salarial Mensual</h3>
-                                </div>
-                                <div class="chart-container" style="min-height: 250px;">
-                                    <canvas id="employee-history-chart"></canvas>
-                                </div>
+                    <!-- Fila de Gráficos -->
+                    <div class="chart-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Evolución Salarial Mensual</h3>
                             </div>
-                            
-                            <!-- Capacidad de Endeudamiento -->
-                            <div class="chart-card" style="margin: 0;">
-                                <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                                    <h3 class="chart-card-title">Capacidad de Endeudamiento</h3>
-                                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">Descuentos / Ingresos</span>
-                                </div>
-                                <div class="chart-container" style="min-height: 250px;">
-                                    <canvas id="employee-debt-chart"></canvas>
-                                </div>
+                            <div class="chart-container">
+                                <canvas id="employee-history-chart"></canvas>
                             </div>
                         </div>
-
-                        <!-- Columna 2: Distribución de Conceptos y Comparación Mes a Mes -->
-                        <div class="employee-col">
-                            <!-- Distribución de Conceptos -->
-                            <div class="chart-card" style="margin: 0;">
-                                <div class="chart-card-header">
-                                    <h3 class="chart-card-title">Distribución de Conceptos</h3>
-                                </div>
-                                <div class="chart-container" style="min-height: 250px;">
-                                    <canvas id="employee-distribution-chart"></canvas>
-                                </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3 class="chart-card-title">Distribución de Conceptos</h3>
                             </div>
-                            
-                            <!-- Comparación Mes a Mes -->
-                            <div class="chart-card" style="margin: 0; padding: 24px; display: flex; flex-direction: column;">
-                                <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                                    <h3 class="chart-card-title" style="font-size: 1.02rem; display: flex; align-items: center; gap: 8px;">
-                                        <span>🔄</span> Comparación Mes a Mes
-                                    </h3>
-                                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                        <div class="select-wrapper" style="width: 120px;">
-                                            <select id="employee-compare-period-a" class="custom-select" style="font-size: 0.78rem !important; height: 30px !important; padding: 4px 20px 4px 6px !important; border-radius: 6px !important;"></select>
-                                        </div>
-                                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">vs</span>
-                                        <div class="select-wrapper" style="width: 120px;">
-                                            <select id="employee-compare-period-b" class="custom-select" style="font-size: 0.78rem !important; height: 30px !important; padding: 4px 20px 4px 6px !important; border-radius: 6px !important;"></select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="employee-comparison-container" style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6;">
-                                    <!-- Cargado dinámicamente por JS -->
-                                </div>
+                            <div class="chart-container">
+                                <canvas id="employee-distribution-chart"></canvas>
                             </div>
                         </div>
-
-                        <!-- Columna 3: Hallazgos Estratégicos -->
-                        <div class="employee-col">
-                            <div class="chart-card" style="margin: 0; padding: 24px; height: 100%;">
-                                <div class="chart-card-header" style="margin-bottom: 20px;">
-                                    <h3 class="chart-card-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                                        <span>💡</span> Hallazgos Estratégicos
-                                    </h3>
-                                </div>
-                                <div id="employee-findings-container" style="display: flex; flex-direction: column; gap: 16px;">
-                                    <!-- Cargado dinámicamente por JS -->
-                                </div>
-                            </div>
-                        </div>
-                        
                     </div>
 
-                    <!-- Parte Inferior: Detalle de Transacciones (Ancho Completo) -->
-                    <div class="table-card" style="margin-top: 24px;">
-                        <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                            <h3 class="table-title">Detalle de Transacciones de Pago</h3>
-                            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Periodo:</span>
-                                    <div class="select-wrapper" style="width: 170px;">
-                                        <select id="employee-detail-filter-period" class="custom-select" style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
-                                            <option value="ALL">Todos los Periodos</option>
-                                        </select>
+                    <!-- Fila de Endeudamiento y Detalle de Transacciones (Una sola fila) -->
+                    <div class="overview-charts"
+                        style="margin-top: 24px; align-items: stretch; grid-template-columns: 1fr 1fr;">
+                        <!-- Gráfico de Endeudamiento -->
+                        <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+                            <div class="chart-card-header"
+                                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <h3 class="chart-card-title">Capacidad de Endeudamiento por Periodo</h3>
+                                <span
+                                    style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal;">Fórmula:
+                                    Descuentos / Ingresos</span>
+                            </div>
+                            <div class="chart-container" style="flex-grow: 1; min-height: 320px; height: 100%;">
+                                <canvas id="employee-debt-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Detalle -->
+                        <div class="table-card" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+                            <div class="table-header"
+                                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                                <h3 class="table-title">Detalle de Transacciones de Pago</h3>
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span
+                                            style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Periodo:</span>
+                                        <div class="select-wrapper" style="width: 170px;">
+                                            <select id="employee-detail-filter-period" class="custom-select"
+                                                style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
+                                                <option value="ALL">Todos los Periodos</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Concepto:</span>
-                                    <div class="select-wrapper" style="width: 210px;">
-                                        <select id="employee-detail-filter-concept" class="custom-select" style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
-                                            <option value="ALL">Todos los Conceptos</option>
-                                        </select>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span
+                                            style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">Concepto:</span>
+                                        <div class="select-wrapper" style="width: 210px;">
+                                            <select id="employee-detail-filter-concept" class="custom-select"
+                                                style="font-size: 0.82rem !important; padding: 6px 30px 6px 12px !important; height: 34px !important; border-radius: 8px !important; line-height: 1.2 !important;">
+                                                <option value="ALL">Todos los Conceptos</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="table-wrapper" style="flex-grow: 1; max-height: 320px; overflow-y: auto;">
+                                <table class="custom-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;width: 25%;">Periodo<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;width: 35%;">Concepto<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Ingresos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                            <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Descuentos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="employee-details-tbody">
+                                        <!-- Dinámico por JS -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div class="table-wrapper" style="max-height: 380px; overflow-y: auto; width: 100%;">
-                            <table class="custom-table">
-                                <thead>
-                                    <tr>
-                                        <th class="sortable-header" style="cursor:pointer;user-select:none;width: 20%;">Periodo<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
-                                        <th class="sortable-header" style="cursor:pointer;user-select:none;width: 40%;">Concepto<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
-                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Ingresos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
-                                        <th class="sortable-header" style="cursor:pointer;user-select:none;text-align: right; width: 20%;">Descuentos<span class="sort-arrow" style="color:#cbd5e1;font-size:0.75rem;margin-left:4px;">↕</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="employee-details-tbody">
-                                    <!-- Dinámico por JS -->
-                                </tbody>
-                            </table>
+                    </div>
+
+                    <!-- Fila de Hallazgos y Comparación Mes a Mes -->
+                    <div class="overview-charts" style="margin-top: 24px; align-items: stretch; grid-template-columns: 1fr 1fr;">
+                        <!-- Tarjeta de Hallazgos Estratégicos -->
+                        <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%; padding: 24px;">
+                            <div class="chart-card-header" style="margin-bottom: 20px;">
+                                <h3 class="chart-card-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                    <span>💡</span> Hallazgos y Análisis Estratégico
+                                </h3>
+                            </div>
+                            <div id="employee-findings-container" style="display: flex; flex-direction: column; gap: 16px; flex-grow: 1;">
+                                <!-- Cargado dinámicamente por JS -->
+                            </div>
+                        </div>
+
+                        <!-- Tarjeta de Comparación Mes a Mes -->
+                        <div class="chart-card" style="margin: 0; display: flex; flex-direction: column; height: 100%; padding: 24px;">
+                            <div class="chart-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                                <h3 class="chart-card-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                    <span>🔄</span> Comparación Mes a Mes
+                                </h3>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <div class="select-wrapper" style="width: 145px;">
+                                        <select id="employee-compare-period-a" class="custom-select" style="font-size: 0.8rem !important; height: 32px !important; padding: 4px 24px 4px 8px !important; border-radius: 6px !important;"></select>
+                                    </div>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">vs</span>
+                                    <div class="select-wrapper" style="width: 145px;">
+                                        <select id="employee-compare-period-b" class="custom-select" style="font-size: 0.8rem !important; height: 32px !important; padding: 4px 24px 4px 8px !important; border-radius: 6px !important;"></select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="employee-comparison-container" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6;">
+                                <!-- Cargado dinámicamente por JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
